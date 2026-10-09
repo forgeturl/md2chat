@@ -45,11 +45,11 @@ test('payload retains table contents in text fallback and images in HTML order',
  await assert.rejects(()=>ctx.buildPayload('[图片]'),/占位符/);await assert.rejects(()=>ctx.buildPayload('[[DING_IMAGE:999]]'),/失效/);
  const fixture=fs.readFileSync(path.join(__dirname,'../examples/reading-club.md'),'utf8');assert.equal(chat.parse(fixture).find(b=>b.type==='table').rows.length,2);
 });
-test('remote image opt-in blocks requests, unsafe schemes are rejected',async()=>{
- let fetched=false;const ctx={document:{getElementById:()=>({checked:false})},fetch:()=>{fetched=true;throw Error('unexpected fetch')}};vm.createContext(ctx);
+test('remote images load by default without credentials, unsafe schemes are rejected',async()=>{
+ const requests=[];const ctx={AbortSignal,fetch:async(url,options)=>{requests.push({url,options});return {ok:false,status:403};}};vm.createContext(ctx);
  vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
- await assert.rejects(()=>ctx.ensureImage({src:'https://example.com/photo.png'}),/远程图片加载未开启/);assert(!fetched);
- await assert.rejects(()=>ctx.ensureImage({src:'javascript:alert(1)'}),/不受支持/);
+ await assert.rejects(()=>ctx.ensureImage({src:'https://example.com/photo.png'}),/HTTP 403/);assert.equal(requests.length,1);assert.equal(requests[0].url,'https://example.com/photo.png');assert.equal(requests[0].options.credentials,'omit');assert.equal(requests[0].options.referrerPolicy,'no-referrer');
+ await assert.rejects(()=>ctx.ensureImage({src:'javascript:alert(1)'}),/不受支持/);assert.equal(requests.length,1);
 });
 test('diagnostic reports exclude clipboard text content',async()=>{
  const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};

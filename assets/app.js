@@ -64,7 +64,6 @@ async function ensureImage(asset){
  asset.pending=(async()=>{
   try{
    if(!asset.src.startsWith('data:')){
-    if(!asset.src.startsWith('blob:')&&!document.getElementById('allow-remote').checked)throw new Error('远程图片加载未开启，可勾选允许加载或直接粘贴图片本身');
     const response=await fetch(asset.src,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(12000)});
     if(!response.ok)throw new Error('图片服务返回 HTTP '+response.status);
     const blob=await response.blob();if(!blob.type.startsWith('image/'))throw new Error('图片地址未返回图片数据');
@@ -236,10 +235,6 @@ button.addEventListener('click',async()=>{
   status.textContent='已复制标准图文，含 '+cachedPayload.imageCount+' 张图片。请在目标聊天框确认图片是否保留。';
  }catch(error){status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问，或选中下方预览手动复制。';}
  finally{button.disabled=false;}
-});
-document.getElementById('allow-remote').addEventListener('change',()=>{
- for(const asset of assets.values())delete asset.failed;
- cachedPayload=null;cachedSource=null;updatePreview();
 });
 
 updatePreview();
