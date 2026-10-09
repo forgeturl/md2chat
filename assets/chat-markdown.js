@@ -1,7 +1,17 @@
 /* Chat adapter for Marked 15.0.12. Never insert Markdown's raw HTML. */
 (function(root){
  const md=typeof module==='object'?require('./vendor/marked.js'):root.marked;
- const lexer=new md.Marked({gfm:true,breaks:true,extensions:[{
+ const mathInline={name:'chatMathInline',level:'inline',start:src=>{const i=src.search(/\$|\\\(/);return i<0?undefined:i;},tokenizer(src){
+  let match=/^\\\(([^\n]+?)\\\)/.exec(src);
+  if(match)return {type:'chatMathInline',raw:match[0],tex:match[1]};
+  match=/^\$(?!\$)([^\s$](?:\\.|[^\n$])*?[^\s$]|[^\s$])\$(?![\d$])/.exec(src);
+  if(match)return {type:'chatMathInline',raw:match[0],tex:match[1]};
+ }};
+ const mathBlock={name:'chatMathBlock',level:'block',start:src=>{const i=src.search(/(?:^|\n)(?:\$\$|\\\[)/);return i<0?undefined:i;},tokenizer(src){
+  const match=/^\$\$([\s\S]+?)\$\$(?:[ \t]*(?:\n|$))/.exec(src)||/^\\\[([\s\S]+?)\\\](?:[ \t]*(?:\n|$))/.exec(src);
+  if(match)return {type:'chatMathBlock',raw:match[0],tex:match[1].trim()};
+ }};
+ const lexer=new md.Marked({gfm:true,breaks:true,extensions:[mathInline,mathBlock,{
   name:'chatImage',level:'inline',start:src=>src.indexOf('[[DING_IMAGE:'),
   tokenizer(src){const match=/^\[\[DING_IMAGE:(\d+)\]\]/.exec(src);if(match)return {type:'chatImage',raw:match[0],id:match[1]};}
  }]});
@@ -33,6 +43,7 @@
    const out=[];
    for(const t of tokens||[]){
     switch(t.type){
+     case 'chatMathInline':out.push(append(t.raw,{...style,math:t.tex}));break;
      case 'strong':out.push(...inline(t.tokens,{...style,bold:true}));break;
      case 'em':out.push(...inline(t.tokens,{...style,italic:true}));break;
      case 'del':out.push(...inline(t.tokens,{...style,strikethrough:true}));break;
@@ -73,6 +84,7 @@
       if(last?.type==='text'&&t.raw.includes('\n\n')&&tokens.slice(tokenIndex+1).some(next=>!['space','def'].includes(next.type))){last.text+='\n';last.runs.push({text:'\n'});}break;
      }
      case 'def':break;
+     case 'chatMathBlock':blocks.push({type:'math',tex:t.tex});break;
      case 'heading':emit([append('【',{bold:true}),...inline(t.tokens,{bold:true}),append('】',{bold:true})],quote);break;
      case 'paragraph':case 'text':emit(t.tokens?inline(t.tokens):[append(t.text||'')],quote);break;
      case 'blockquote':walk(t.tokens,depth,quote+'│ ');break;
@@ -84,7 +96,7 @@
        if(first?.type==='text'){first.text=prefix+first.text;first.runs.unshift({text:prefix});}
        else blocks.splice(start,0,{type:'text',text:prefix.trimEnd(),runs:[{text:prefix.trimEnd()}]});
       });break;
-     case 'code':emit([append('⟦代码'+(t.lang?' · '+t.lang:'')+'⟧\n',{bold:true}),append(t.text,{code:true})],quote);break;
+     case 'code':if((t.lang||'').trim().toLowerCase()==='mermaid'){blocks.push({type:'mermaid',text:t.text});break;}emit([append('⟦代码'+(t.lang?' · '+t.lang:'')+'⟧\n',{bold:true}),append(t.text,{code:true})],quote);break;
      case 'hr':emit([append('────────────')],quote);break;
      case 'table':blocks.push({type:'table',header:t.header.map(cell),rows:t.rows.map(row=>row.map(cell))});break;
      case 'html':emit([append(t.raw)],quote);break;
@@ -97,7 +109,7 @@
  function compactImages(blocks){
   return blocks.map((block,index)=>{
    if(block.type!=='text')return block;
-   const imageLike=b=>b&&['image','table'].includes(b.type);
+   const imageLike=b=>b&&['image','table','math','mermaid'].includes(b.type);
    let start=0,end=block.text.length;
    if(imageLike(blocks[index-1]))start=(block.text.match(/^(?:[ \t]*\n)+/)||[''])[0].length;
    if(imageLike(blocks[index+1]))end-=((block.text.slice(start).match(/\n[ \t\r\n]*$/)||[''])[0].length);

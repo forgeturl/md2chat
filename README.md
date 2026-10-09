@@ -24,11 +24,14 @@
 - 编号、嵌套列表、任务项、引用、分隔线。
 - 链接保留可读地址；代码保留原文和缩进。
 - GFM 表格转高清 PNG；较长表格自动分图。
+- 行内/独立 LaTeX 数学公式与 Mermaid 图表在浏览器内渲染为 PNG，复制时随图文一起保留；纯文本保留源码。
 - 原图保留位置；缺失或不能读取的图片会阻止复制并提示补图。
 - 同时复制标准 HTML 和纯文本；纯文本包含表格内容，避免目标应用只取纯文本时表格完全丢失。
 - 剪贴板排查显示可见格式、大小、图片数量与引用类型；复制的报告不含正文或图片地址。
 
-公式和 Mermaid 暂不渲染；Markdown 内的 HTML 源码按文字显示。网页不能读取或写入原生应用的专有剪贴板格式。
+公式支持 `$…$`、`\(…\)`、`$$…$$`、`\[…\]`；Mermaid 使用 `mermaid` 围栏代码块。数学公式使用 MathJax 的 base / AMS 子集，表格单元格内公式暂保留源码；图表不接受自定义配置、外部资源或 HTML 标签。语法错误会阻止复制并提示具体公式/图表。Markdown 内的 HTML 源码按文字显示。网页不能读取或写入原生应用的专有剪贴板格式。
+
+使用示例见 [公式与图表](examples/math-and-diagrams.md)。渲染器首次遇到公式或图表时才从本站加载，不依赖 CDN 或在线渲染服务。
 
 ## 图片与隐私
 
@@ -69,7 +72,8 @@ npm run build  # 生成 dist/，只包含公开网页所需资源
 index.html                 页面与通用示例
 assets/app.js              输入、预览、图片和标准剪贴板处理
 assets/chat-markdown.js     Marked token → 聊天文字结构
-assets/vendor/             固定版本 Marked 及其许可证
+assets/renderers.js         公式和 Mermaid → 本地 SVG → PNG
+assets/vendor/             固定版本 Marked、MathJax、Mermaid 及其许可证
 scripts/                   静态开发服务、公开资源构建
 tests/                     自动化回归测试
 ```

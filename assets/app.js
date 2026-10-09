@@ -175,18 +175,32 @@ function renderTable(header,rows){
 
 async function buildPayload(source){
  if(source.length>2*1024*1024)throw new Error('文字过长，请分段转换（最多 2 MB 字符）。');
- const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[];let tableCount=0,imageCount=0,tableImages=0,originalImages=0;
+ const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[];let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0;
  const lineBreak='<br>';
  const appendImage=image=>{
   imageCount++;
-  parts.push('<img src="'+escapeHtml(image.src)+'" width="'+image.width+'" height="'+image.height+'">');
-  preview.push('<img src="'+escapeHtml(image.src)+'" alt="图文中的图片 '+imageCount+'" style="display:block;max-width:100%;width:auto;height:auto;margin:0">');
+  parts.push('<img src="'+escapeHtml(image.src)+'" width="'+(image.displayWidth||image.width)+'" height="'+(image.displayHeight||image.height)+'">');
+  preview.push('<img src="'+escapeHtml(image.src)+'" alt="图文中的图片 '+imageCount+'" style="display:block;max-width:100%;width:'+(image.displayWidth?image.displayWidth+'px':'auto')+';height:auto;margin:0">');
  };
  for(const block of blocks){
   if(block.type==='text'){
    if(/^\s*\[图片\]\s*$/m.test(block.text))throw new Error('输入中只有 [图片] 占位符，没有对应图片数据。请从钉钉重新复制完整图文，或删除占位符后在原位置粘贴图片。');
-   const textHtml=ChatMarkdown.runsHtml(block.runs);
+   const rendered=[];
+   for(const run of block.runs){
+    if(!run.math){rendered.push(ChatMarkdown.runsHtml([run]));continue;}
+    try{
+     const image=await ChatRenderers.math(run.math,false);mathImages++;imageCount++;
+     rendered.push('<img src="'+image.src+'" width="'+image.displayWidth+'" height="'+image.displayHeight+'" alt="'+escapeHtml(run.text)+'" style="display:inline-block;vertical-align:middle;max-width:100%;height:auto">');
+    }catch(error){throw new Error('第 '+(mathImages+1)+' 个公式：'+error.message);}
+   }
+   const textHtml=rendered.join('');
    parts.push(textHtml);plain.push(block.text);preview.push('<div style="white-space:pre-wrap;margin:0">'+textHtml+'</div>');
+  }else if(block.type==='math'||block.type==='mermaid'){
+   try{
+    const image=block.type==='math'?await ChatRenderers.math(block.tex):await ChatRenderers.mermaid(block.text);
+    if(block.type==='math')mathImages++;else mermaidImages++;
+    appendImage(image);plain.push(block.type==='math'?'$$\n'+block.tex+'\n$$':'```mermaid\n'+block.text+'\n```');
+   }catch(error){throw new Error((block.type==='math'?'第 '+(mathImages+1)+' 个公式':'第 '+(mermaidImages+1)+' 个 Mermaid 图')+'：'+error.message);}
   }else if(block.type==='table'){
    tableCount++;
    for(const image of renderTable(block.header,block.rows)){tableImages++;appendImage(image);}
@@ -197,7 +211,7 @@ async function buildPayload(source){
    const image=await ensureImage(asset);originalImages++;appendImage(image);plain.push('[图片]');
   }
  }
- return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),tableCount,imageCount,tableImages,originalImages};
+ return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages};
 }
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 async function updatePreview(){
@@ -210,11 +224,11 @@ async function updatePreview(){
   const payload=await buildPayload(source);
   if(version!==renderVersion)return null;
   message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;
-  document.getElementById('conversion-info').textContent='原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 = 共 '+payload.imageCount+' 张图片。';
+  document.getElementById('conversion-info').textContent='原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 = 共 '+payload.imageCount+' 张图片。';
   status.textContent='图文已准备好，可以复制。';return payload;
  }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据上方提示调整内容后重试。';}return null;}
 }
-input.addEventListener('input',()=>{button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字和图片…';previewTimer=setTimeout(updatePreview,350);});
+input.addEventListener('input',()=>{button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
 function nativeCopy(payload){
  const sink=document.createElement('div');sink.contentEditable='true';sink.setAttribute('aria-hidden','true');sink.style.cssText='position:fixed;left:-100000px;top:0;width:1100px;background:white;';
  sink.innerHTML=payload.html;document.body.appendChild(sink);

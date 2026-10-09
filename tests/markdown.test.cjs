@@ -58,3 +58,34 @@ test('diagnostic reports exclude clipboard text content',async()=>{
  await ctx.showSample('测试',[{type:'text/plain',blob:new Blob(['PRIVATE-SAMPLE-123'])}]);
  assert(!el('diagnostic-report').textContent.includes('PRIVATE-SAMPLE'));assert(el('diagnostic-report').textContent.includes('text/plain'));
 });
+test('inline and display math parsing does not interpret code or currency as math',()=>{
+ const inline=chat.parse('能量 $E=mc^2$，以及 \\(a+b\\)。')[0];
+ assert.deepEqual(inline.runs.filter(r=>r.math).map(r=>r.math),['E=mc^2','a+b']);
+ assert.equal(chat.parse('$$\n\\frac{1}{2}\n$$')[0].tex,'\\frac{1}{2}');
+ assert.equal(chat.parse('\\[x^2\\]')[0].tex,'x^2');
+ assert(!chat.parse('`$x$`')[0].runs.some(r=>r.math));
+ assert(!chat.parse('价格 $5 和 $10')[0].runs.some(r=>r.math));
+ assert(!chat.parse('\\$x\\$')[0].runs.some(r=>r.math));
+ assert.equal(chat.parse('```js\nconst x = "$y$";\n```')[0].type,'text');
+ assert.equal(chat.parse('```mermaid\nflowchart LR\n A-->B\n```')[0].type,'mermaid');
+ assert.equal(chat.parse('```text\nflowchart LR\n A-->B\n```')[0].type,'text');
+});
+test('math and diagrams enter the copied HTML as PNG, plaintext retains their source',async()=>{
+ const ctx=payloadContext();const calls=[];
+ const image={src:'data:image/png;base64,RENDERED',width:80,height:40,displayWidth:40,displayHeight:20};
+ ctx.ChatRenderers={math:async(tex,display)=>{calls.push({tex,display});return image},mermaid:async source=>{calls.push({source});return image}};
+ const result=await ctx.buildPayload('前文 $x^2$ 后文\n\n$$\\frac{1}{2}$$\n\n```mermaid\nflowchart LR\n A-->B\n```');
+ assert.equal(result.mathImages,2);assert.equal(result.mermaidImages,1);assert.equal(result.imageCount,3);
+ assert.equal((result.html.match(/<img /g)||[]).length,3);assert(result.html.includes('前文 <img'));assert(result.html.includes('vertical-align:middle'));
+ assert(result.plain.includes('$x^2$'));assert(result.plain.includes('\\frac{1}{2}'));assert(result.plain.includes('```mermaid\nflowchart LR\n A-->B\n```'));
+ assert.equal(calls[0].display,false);
+ ctx.ChatRenderers.math=async()=>{throw new Error('测试错误')};await assert.rejects(()=>ctx.buildPayload('$bad$'),/第 1 个公式：测试错误/);
+ ctx.ChatRenderers.mermaid=async()=>{throw new Error('测试错误')};await assert.rejects(()=>ctx.buildPayload('```mermaid\nbad\n```'),/第 1 个 Mermaid 图：测试错误/);
+});
+test('renderers reject external resources and per-diagram config before loading libraries',async()=>{
+ const ctx={URL,document:{currentScript:{src:'https://example.com/md2chat/assets/renderers.js'}}};vm.createContext(ctx);
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../assets/renderers.js'),'utf8'),ctx);
+ await assert.rejects(()=>ctx.ChatRenderers.math('\\require{html}'),/外部资源/);
+ await assert.rejects(()=>ctx.ChatRenderers.mermaid('%%{init: {securityLevel: "loose"}}%%\nflowchart LR\n A-->B'),/配置/);
+ await assert.rejects(()=>ctx.ChatRenderers.mermaid('flowchart LR\n A[https://example.com]'),/外部资源/);
+});
