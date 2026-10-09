@@ -175,7 +175,7 @@ function renderTable(header,rows){
 
 async function buildPayload(source){
  if(source.length>2*1024*1024)throw new Error('文字过长，请分段转换（最多 2 MB 字符）。');
- const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[];let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0;
+ const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[];let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0,codeImages=0,codeCount=0;
  const lineBreak='<br>';
  const appendImage=image=>{
   imageCount++;
@@ -195,6 +195,12 @@ async function buildPayload(source){
    }
    const textHtml=rendered.join('');
    parts.push(textHtml);plain.push(block.text);preview.push('<div style="white-space:pre-wrap;margin:0">'+textHtml+'</div>');
+  }else if(block.type==='code'){
+   codeCount++;
+   try{for(const image of await ChatRenderers.code(block.text,block.language)){codeImages++;appendImage(image);}}
+   catch(error){throw new Error('第 '+codeCount+' 个代码块：'+error.message);}
+   const fence='`'.repeat(Math.max(3,...[...block.text.matchAll(/`+/g)].map(m=>m[0].length+1)));
+   plain.push(fence+block.language+'\n'+block.text+'\n'+fence);
   }else if(block.type==='math'||block.type==='mermaid'){
    try{
     const image=block.type==='math'?await ChatRenderers.math(block.tex):await ChatRenderers.mermaid(block.text);
@@ -211,7 +217,7 @@ async function buildPayload(source){
    const image=await ensureImage(asset);originalImages++;appendImage(image);plain.push('[图片]');
   }
  }
- return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages};
+ return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages,codeImages};
 }
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 async function updatePreview(){
@@ -224,7 +230,7 @@ async function updatePreview(){
   const payload=await buildPayload(source);
   if(version!==renderVersion)return null;
   message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;
-  document.getElementById('conversion-info').textContent='原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 = 共 '+payload.imageCount+' 张图片。';
+  document.getElementById('conversion-info').textContent='原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';
   status.textContent='图文已准备好，可以复制。';return payload;
  }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据上方提示调整内容后重试。';}return null;}
 }

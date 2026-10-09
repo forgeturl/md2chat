@@ -36,10 +36,10 @@ console.log(greeting);
 
 ---
 期待见面！</div>
-<p class="help">标题、强调、列表、引用、链接、代码保留为文字；表格、公式和 Mermaid 转成图片。可粘贴图片本身补充原图。远程图片自动从原网址加载。输入仅保留在本页内存，刷新会清空。</p>
+<p class="help">标题、强调、列表、引用、链接、行内代码保留为文字；代码块带语法高亮和行号，和表格、公式、Mermaid 一起转成图片。可粘贴图片本身补充原图。远程图片自动从原网址加载。输入仅保留在本页内存，刷新会清空。</p>
 </section>
 <div class="toolbar"><button id="copy-all" disabled>转换并复制完整图文</button><div id="status" role="status" aria-live="polite">正在准备预览…</div><p class="help">复制标准 HTML 与纯文本。钉钉、微信等客户端可能忽略样式或图片；复制成功不等于粘贴完整，请检查目标聊天框。</p></div>
-<details class="help"><summary>支持的格式与兼容性</summary><p>支持标题、粗体、斜体、删除线、编号和嵌套列表、任务项、引用、链接、代码块、分隔线、表格及图片。原始 HTML 按文字显示，支持 $…$ / \(…\) 行内公式、$$…$$ / \[…\] 独立公式和 mermaid 代码块。公式与图表转为 PNG，纯文本保留源码；表格单元格内的公式暂保留源码。</p><p>图片读取受限时会阻止复制并提示补图。网页无法访问钉钉专有剪贴板格式。不能保证一键图文粘贴适用于所有聊天客户端。</p></details>
+<details class="help"><summary>支持的格式与兼容性</summary><p>支持标题、粗体、斜体、删除线、编号和嵌套列表、任务项、引用、链接、代码块、分隔线、表格及图片。原始 HTML 按文字显示，支持 $…$ / \(…\) 行内公式、$$…$$ / \[…\] 独立公式和 mermaid 代码块。代码块使用深色语法高亮，长行折行、长代码分图，未知语言按原文排版。代码、公式与图表转为 PNG，纯文本保留源码；表格单元格内的公式暂保留源码。</p><p>图片读取受限时会阻止复制并提示补图。网页无法访问钉钉专有剪贴板格式。不能保证一键图文粘贴适用于所有聊天客户端。</p></details>
 <h2 class="preview-label">转换预览</h2><p class="help" id="conversion-info"></p><article id="message"></article>
 <details class="diagnostics" id="diagnostics"><summary>剪贴板排查</summary>
 <p>只在你点击或粘贴时读取浏览器开放的格式，不读取原生应用专有格式。报告仅含格式、大小及图片数量，不包含正文和图片地址。</p>
@@ -50,5 +50,5 @@ console.log(greeting);
 </details>
 <footer>开源实验版 · <a href="https://github.com/forgeturl/md2chat/issues" target="_blank" rel="noopener noreferrer">反馈兼容性问题</a> · 托管平台可能记录访问日志；复制后的内容由系统剪贴板及目标应用管理。</footer>
 </main>
-<script src="./assets/vendor/marked.js"></script><script src="./assets/chat-markdown.js"></script><script src="./assets/renderers.js"></script><script src="./assets/app.js"></script>
+<script src="./assets/vendor/marked.js"></script><script src="./assets/chat-markdown.js"></script><script src="./assets/code-images.js"></script><script src="./assets/renderers.js"></script><script src="./assets/app.js"></script>
 </body></html>

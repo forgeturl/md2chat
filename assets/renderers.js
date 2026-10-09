@@ -66,5 +66,7 @@
   const result=serial.then(()=>run(type,source,display));serial=result.catch(()=>{});cache.set(key,result);
   result.catch(()=>cache.delete(key));if(cache.size>24)cache.delete(cache.keys().next().value);return result;
  }
- root.ChatRenderers={math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source)};
+ root.ChatRenderers={math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source),code:async(source,language)=>{
+  await load('highlight/highlight.min.js');return root.CodeImages.render(source,language,root.hljs);
+ }};
 })(globalThis);

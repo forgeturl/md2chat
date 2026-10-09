@@ -21,3 +21,10 @@ Marked is bundled locally. Loading md2chat does not contact a CDN.
   - Source: https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js
 
 The renderer bundles are unmodified and served from the same static site. No content is sent to an external renderer.
+
+- **Highlight.js 11.12.0**, BSD 3-Clause License.
+  - Upstream: https://github.com/highlightjs/highlight.js
+  - Common-language build: `assets/vendor/highlight/highlight.min.js`
+  - License: `assets/vendor/highlight/LICENSE`
+  - Source: https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js
+  - Served locally and loaded only when rendering code blocks; source code is not uploaded.

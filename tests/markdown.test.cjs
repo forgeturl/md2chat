@@ -14,7 +14,7 @@ test('headings, emphasis, tasks, nested lists and references',()=>{
 });
 test('code, escapes and paragraph spacing are preserved',()=>{
  const code='  const a = "**literal**";\n\n  <script>x</script>\n  [[DING_IMAGE:9]]';
- assert.equal(plain('```js\n'+code+'\n```'),'⟦代码 · js⟧\n'+code);
+ assert.equal(plain('```js\n'+code+'\n```'),code);
  assert.equal(plain('\\*原样\\* a_b_c'),'*原样* a_b_c');
  assert.equal(plain('甲\n\n乙'),'甲\n\n乙');
 });
@@ -66,9 +66,9 @@ test('inline and display math parsing does not interpret code or currency as mat
  assert(!chat.parse('`$x$`')[0].runs.some(r=>r.math));
  assert(!chat.parse('价格 $5 和 $10')[0].runs.some(r=>r.math));
  assert(!chat.parse('\\$x\\$')[0].runs.some(r=>r.math));
- assert.equal(chat.parse('```js\nconst x = "$y$";\n```')[0].type,'text');
+ assert.equal(chat.parse('```js\nconst x = "$y$";\n```')[0].type,'code');
  assert.equal(chat.parse('```mermaid\nflowchart LR\n A-->B\n```')[0].type,'mermaid');
- assert.equal(chat.parse('```text\nflowchart LR\n A-->B\n```')[0].type,'text');
+ assert.equal(chat.parse('```text\nflowchart LR\n A-->B\n```')[0].type,'code');
 });
 test('math and diagrams enter the copied HTML as PNG, plaintext retains their source',async()=>{
  const ctx=payloadContext();const calls=[];
@@ -88,4 +88,14 @@ test('renderers reject external resources and per-diagram config before loading 
  await assert.rejects(()=>ctx.ChatRenderers.math('\\require{html}'),/外部资源/);
  await assert.rejects(()=>ctx.ChatRenderers.mermaid('%%{init: {securityLevel: "loose"}}%%\nflowchart LR\n A-->B'),/配置/);
  await assert.rejects(()=>ctx.ChatRenderers.mermaid('flowchart LR\n A[https://example.com]'),/外部资源/);
+});
+test('code payload uses colored image parts in order and retains complete source fallback',async()=>{
+ const ctx=payloadContext();const source='const value = "<script> & ```";\n\tconsole.log(value);';
+ ctx.ChatRenderers={code:async(text,lang)=>{assert.equal(text,source);assert.equal(lang,'js');return [1,2].map(n=>({src:'data:image/png;base64,CODE'+n,width:100,height:40,displayWidth:50,displayHeight:20}));}};
+ const result=await ctx.buildPayload('开头\n\n~~~~js\n'+source+'\n~~~~\n\n结尾');
+ assert.equal(result.codeImages,2);assert.equal(result.imageCount,2);
+ assert(result.html.indexOf('CODE1')<result.html.indexOf('CODE2'));assert(result.html.indexOf('CODE2')<result.html.indexOf('结尾'));
+ assert(result.plain.includes('````js\n'+source+'\n````'));assert(!result.html.includes('<script>'));
+ assert.equal(chat.parse('```JavaScript title=test\nconst x=1;\n```')[0].language,'javascript');
+ ctx.ChatRenderers.code=async()=>{throw new Error('测试错误')};await assert.rejects(()=>ctx.buildPayload('```js\na\n```'),/第 1 个代码块：测试错误/);
 });

@@ -96,7 +96,10 @@
        if(first?.type==='text'){first.text=prefix+first.text;first.runs.unshift({text:prefix});}
        else blocks.splice(start,0,{type:'text',text:prefix.trimEnd(),runs:[{text:prefix.trimEnd()}]});
       });break;
-     case 'code':if((t.lang||'').trim().toLowerCase()==='mermaid'){blocks.push({type:'mermaid',text:t.text});break;}emit([append('⟦代码'+(t.lang?' · '+t.lang:'')+'⟧\n',{bold:true}),append(t.text,{code:true})],quote);break;
+     case 'code':{
+      const language=(t.lang||'').trim().split(/\s+/)[0].toLowerCase();
+      blocks.push({type:language==='mermaid'?'mermaid':'code',text:t.text,language});break;
+     }
      case 'hr':emit([append('────────────')],quote);break;
      case 'table':blocks.push({type:'table',header:t.header.map(cell),rows:t.rows.map(row=>row.map(cell))});break;
      case 'html':emit([append(t.raw)],quote);break;
@@ -109,7 +112,7 @@
  function compactImages(blocks){
   return blocks.map((block,index)=>{
    if(block.type!=='text')return block;
-   const imageLike=b=>b&&['image','table','math','mermaid'].includes(b.type);
+   const imageLike=b=>b&&['image','table','math','mermaid','code'].includes(b.type);
    let start=0,end=block.text.length;
    if(imageLike(blocks[index-1]))start=(block.text.match(/^(?:[ \t]*\n)+/)||[''])[0].length;
    if(imageLike(blocks[index+1]))end-=((block.text.slice(start).match(/\n[ \t\r\n]*$/)||[''])[0].length);

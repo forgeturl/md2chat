@@ -1,6 +1,6 @@
 # md2chat · 贴贴 Markdown
 
-把 Markdown 转成适合聊天粘贴的图文：**文字保留为文字，表格转为图片。**
+把 Markdown 转成适合聊天粘贴的图文：**正文保留为文字，表格、代码、公式和图表转为图片。**
 
 纯前端 · 无需登录 · 无后端服务 · 不上传或持久化保存输入
 
@@ -22,7 +22,8 @@
 
 - 标题、粗体、斜体、删除线、行内代码和代码块。
 - 编号、嵌套列表、任务项、引用、分隔线。
-- 链接保留可读地址；代码保留原文和缩进。
+- 链接保留可读地址；行内代码保留文字。
+- 代码块使用深色语法高亮、行号和 2 倍分辨率 PNG；长行折行、长代码自动分图。支持 JavaScript / TypeScript、Python、JSON、HTML / CSS、SQL、Go 等常见语言；未知或未标注语言按原文排版。纯文本副本保留完整源码。
 - GFM 表格转高清 PNG；较长表格自动分图。
 - 行内/独立 LaTeX 数学公式与 Mermaid 图表在浏览器内渲染为 PNG，复制时随图文一起保留；纯文本保留源码。
 - 原图保留位置；缺失或不能读取的图片会阻止复制并提示补图。
@@ -31,7 +32,7 @@
 
 公式支持 `$…$`、`\(…\)`、`$$…$$`、`\[…\]`；Mermaid 使用 `mermaid` 围栏代码块。数学公式使用 MathJax 的 base / AMS 子集，表格单元格内公式暂保留源码；图表不接受自定义配置、外部资源或 HTML 标签。语法错误会阻止复制并提示具体公式/图表。Markdown 内的 HTML 源码按文字显示。网页不能读取或写入原生应用的专有剪贴板格式。
 
-使用示例见 [公式与图表](examples/math-and-diagrams.md)。渲染器首次遇到公式或图表时才从本站加载，不依赖 CDN 或在线渲染服务。
+使用示例见 [代码高亮](examples/code-highlighting.md) 和 [公式与图表](examples/math-and-diagrams.md)。渲染器首次遇到对应内容时才从本站加载，不依赖 CDN 或在线渲染服务。
 
 ## 图片与隐私
 
@@ -73,7 +74,8 @@ index.html                 页面与通用示例
 assets/app.js              输入、预览、图片和标准剪贴板处理
 assets/chat-markdown.js     Marked token → 聊天文字结构
 assets/renderers.js         公式和 Mermaid → 本地 SVG → PNG
-assets/vendor/             固定版本 Marked、MathJax、Mermaid 及其许可证
+assets/code-images.js       代码语法高亮、折行、分图
+assets/vendor/             固定版本 Marked、MathJax、Mermaid、Highlight.js 及其许可证
 scripts/                   静态开发服务、公开资源构建
 tests/                     自动化回归测试
 ```
