@@ -147,3 +147,9 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Local-only files
+.DS_Store
+*.log
+.env*
+!.env.example

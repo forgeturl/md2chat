@@ -1,0 +1,14 @@
+{
+  "name": "md2chat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-only Markdown to chat-friendly content",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node scripts/serve.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check assets/app.js && node --check assets/chat-markdown.js && npm test",
+    "build": "node scripts/build.cjs"
+  }
+}

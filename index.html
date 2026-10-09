@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="贴贴 Markdown：在浏览器中将 Markdown 转成适合聊天粘贴的图文，支持表格转图片和剪贴板排查。无需登录，不上传正文。">
+<meta name="referrer" content="no-referrer">
+<title>贴贴 Markdown · md2chat</title>
+<link rel="stylesheet" href="./assets/style.css">
+</head>
+<body><main>
+<header><div><h1>贴贴 Markdown</h1><p>让 Markdown 更适合聊天。</p></div><a href="https://github.com/forgeturl/md2chat" target="_blank" rel="noopener noreferrer">GitHub ↗</a></header>
+<section class="input-panel">
+<p class="privacy-note help">纯前端处理 · 无需登录 · 不上传正文或图片 · 不持久化保存输入</p>
+<label for="markdown-input">粘贴 Markdown、文字或图片</label>
+<div id="markdown-input" contenteditable="true" role="textbox" aria-multiline="true" aria-label="粘贴图文或 Markdown 内容" spellcheck="false"># 周末读书会
+
+**时间**：周六下午 · *记得带上喜欢的书*
+
+- [x] 确定主题
+- [ ] 准备茶点
+  - 水果和饼干
+
+&gt; 每个人分享一个让自己印象深刻的观点。
+
+| 环节 | 时长 | 说明 |
+| --- | --- | --- |
+| 自由阅读 | 20 分钟 | 选择自己喜欢的章节 |
+| 交流讨论 | 30 分钟 | 轮流分享 |
+
+[Markdown 介绍](https://commonmark.org/)
+
+```js
+const greeting = "Hello, friends!";
+console.log(greeting);
+```
+
+---
+期待见面！</div>
+<label class="option"><input id="allow-remote" type="checkbox">允许从图片原网址加载远程图片（将向图片来源发起请求）</label>
+<p class="help">标题、强调、列表、引用、链接、代码保留为文字；表格转成图片。可粘贴图片本身补充原图。输入仅保留在本页内存，刷新会清空。</p>
+</section>
+<div class="toolbar"><button id="copy-all" disabled>转换并复制完整图文</button><div id="status" role="status" aria-live="polite">正在准备预览…</div><p class="help">复制标准 HTML 与纯文本。钉钉、微信等客户端可能忽略样式或图片；复制成功不等于粘贴完整，请检查目标聊天框。</p></div>
+<details class="help"><summary>支持的格式与兼容性</summary><p>支持标题、粗体、斜体、删除线、编号和嵌套列表、任务项、引用、链接、代码块、分隔线、表格及图片。原始 HTML 按文字显示，公式和 Mermaid 暂不渲染。</p><p>图片读取受限时会阻止复制并提示补图。网页无法访问钉钉专有剪贴板格式。不能保证一键图文粘贴适用于所有聊天客户端。</p></details>
+<h2 class="preview-label">转换预览</h2><p class="help" id="conversion-info"></p><article id="message"></article>
+<details class="diagnostics" id="diagnostics"><summary>剪贴板排查</summary>
+<p>只在你点击或粘贴时读取浏览器开放的格式，不读取原生应用专有格式。报告仅含格式、大小及图片数量，不包含正文和图片地址。</p>
+<div class="diagnostic-actions"><button id="read-clipboard">读取当前剪贴板</button><button id="copy-report" disabled>复制排查报告</button></div>
+<div id="clipboard-paste" class="paste-zone" contenteditable="true" role="textbox" aria-label="粘贴剪贴板样本" data-placeholder="在这里按 ⌘V / Ctrl+V 粘贴样本"></div>
+<p id="diagnostic-status" role="status" aria-live="polite">不会自动读取、上传或保存内容。</p>
+<pre id="diagnostic-report" class="diagnostic-report">尚无样本。</pre><div id="clipboard-images"></div>
+</details>
+<footer>开源实验版 · <a href="https://github.com/forgeturl/md2chat/issues" target="_blank" rel="noopener noreferrer">反馈兼容性问题</a> · 托管平台可能记录访问日志；复制后的内容由系统剪贴板及目标应用管理。</footer>
+</main>
+<script src="./assets/vendor/marked.js"></script><script src="./assets/chat-markdown.js"></script><script src="./assets/app.js"></script>
+</body></html>
