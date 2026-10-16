@@ -2,7 +2,22 @@ const {test} = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
 const {buildRelease} = require('../scripts/build-desktop-release.cjs');
 const {signingFixture} = require('./helpers/updater.cjs');
-const appleSecrets = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_SIGNING_IDENTITY', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'];
+const appleSecrets = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'];
+// Public self-signed certificate used only to exercise CN extraction. Its private
+// key was discarded; production trust is enforced by codesign and Gatekeeper.
+const developerCertificate = `-----BEGIN CERTIFICATE-----
+MIIB7jCCAZSgAwIBAgIJAKuYHMGMGT/VMAoGCCqGSM49BAMCMFIxOTA3BgNVBAMM
+MERldmVsb3BlciBJRCBBcHBsaWNhdGlvbjogVGVzdCBUZWFtICgwMTIzNDU2Nzg5
+KTEVMBMGA1UECgwMbWQyY2hhdCBUZXN0MB4XDTI2MTAxNjE5MDEyMVoXDTI2MTEx
+NTE5MDEyMVowUjE5MDcGA1UEAwwwRGV2ZWxvcGVyIElEIEFwcGxpY2F0aW9uOiBU
+ZXN0IFRlYW0gKDAxMjM0NTY3ODkpMRUwEwYDVQQKDAxtZDJjaGF0IFRlc3QwWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAAR2jL/Pehm/gKDNvWpmWs6JpdXbbLOmibXL
+yW28GZeyoNAX164aBi3cE1XyQ6DAO+JTbUrQDO643bZvuKx7eL1Ro1MwUTAdBgNV
+HQ4EFgQU6dgbDIkrwGWuRFFf5aYbzv5kyw0wHwYDVR0jBBgwFoAU6dgbDIkrwGWu
+RFFf5aYbzv5kyw0wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAo
+o0LiVM5CiN0G38rb+0NZobsuPHzM8PWi+us3yIqFLAIhAJBnMaF6PukgNKhyvB1b
+npg+a4SJNLXwa4VlZ8IbG288
+-----END CERTIFICATE-----`;
 function fixture(callback) {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-tauri-build-'));
  const signing = signingFixture();
@@ -10,13 +25,16 @@ function fixture(callback) {
  const calls = [];
  function run(command, args, options) {
   calls.push({command, args, options});
+  if (command === 'openssl') return {stdout: developerCertificate};
+  if (args[0] === 'notarytool') return {stdout: JSON.stringify({status: 'Accepted'})};
   if (!args.includes('build')) return;
+  const updater = JSON.parse(args.at(-1)).bundle.createUpdaterArtifacts;
   const target = args[args.indexOf('--target') + 1], bundle = path.join(root, 'src-tauri/target', target, 'release/bundle');
-  const files = target.startsWith('universal') ? ['macos/md2chat.app/Contents/MacOS/md2chat', 'macos/md2chat.app.tar.gz', 'dmg/md2chat_0.6.6_universal.dmg'] : ['nsis/md2chat_0.6.6_x64-setup.exe'];
+  const files = target.startsWith('universal') ? ['macos/md2chat.app/Contents/MacOS/md2chat', 'dmg/md2chat_0.6.6_universal.dmg', ...(updater ? ['macos/md2chat.app.tar.gz'] : [])] : ['nsis/md2chat_0.6.6_x64-setup.exe'];
   for (const name of files) {
    const file = path.join(bundle, name), data = Buffer.from(name);
    fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, data);
-   if (name.endsWith('.gz') || name.endsWith('.exe')) fs.writeFileSync(file + '.sig', signing.sign(data));
+   if (updater && (name.endsWith('.gz') || name.endsWith('.exe'))) fs.writeFileSync(file + '.sig', signing.sign(data));
   }
  }
  try { callback({root, env, calls, run}); } finally { fs.rmSync(root, {recursive: true, force: true}); }
@@ -28,14 +46,100 @@ test('Mac release builds Tauri universal app, verifies signature and notarizatio
  assert(build.args.includes('universal-apple-darwin')); assert(build.args.includes('app,dmg'));
  const config = JSON.parse(build.args.at(-1)); assert.equal(config.plugins.updater.pubkey, env.TAURI_UPDATER_PUBLIC_KEY);
  assert.equal(build.options.env.APPLE_CERTIFICATE, env.CSC_LINK); assert.equal(build.options.env.APPLE_PASSWORD, env.APPLE_APP_SPECIFIC_PASSWORD);
- assert.deepEqual(calls.slice(1).map(call => call.command), ['lipo', 'codesign', 'spctl', 'xcrun', 'xcrun']);
+ assert.deepEqual(calls.slice(1).map(call => call.command), ['lipo', 'codesign', 'spctl', 'xcrun', 'codesign', 'xcrun', 'xcrun', 'xcrun']);
  assert.deepEqual(calls[1].args.slice(-3), ['-verify_arch', 'arm64', 'x86_64']);
+ const dmg = path.join(root, 'src-tauri/target/universal-apple-darwin/release/bundle/dmg/md2chat_0.6.6_universal.dmg');
+ assert.deepEqual(calls[5].args, ['--verify', '--strict', dmg]);
+ assert.deepEqual(calls[6].args, ['notarytool', 'submit', dmg, '--apple-id', env.APPLE_ID,
+  '--password', env.APPLE_APP_SPECIFIC_PASSWORD, '--team-id', env.APPLE_TEAM_ID,
+  '--wait', '--timeout', '30m', '--output-format', 'json']);
+ assert.deepEqual(calls[6].options.stdio, ['ignore', 'pipe', 'pipe']);
+ assert.equal(calls[6].options.encoding, 'utf8');
+ assert.deepEqual(calls[7].args, ['stapler', 'staple', dmg]);
+ assert.deepEqual(calls[8].args, ['stapler', 'validate', dmg]);
  for (const name of assets) assert(fs.statSync(path.join(root, 'release', name)).size);
 }));
 test('Windows NSIS release uses the signed installer itself as updater artifact', () => fixture(({root, env, calls, run}) => {
  for (const name of appleSecrets) delete env[name];
  assert.deepEqual(buildRelease('win', 'x64', {root, env, run}), ['md2chat-windows-x64-setup.exe', 'md2chat-windows-x64-setup.exe.sig']);
  assert.equal(calls.length, 1); assert(calls[0].args.includes('x86_64-pc-windows-msvc')); assert(calls[0].args.includes('nsis'));
+}));
+test('Mac derives an omitted signing identity from a private temporary P12 and cleans it up', () => fixture(({root, env, calls, run}) => {
+ delete env.APPLE_SIGNING_IDENTITY;
+ env.CSC_LINK = Buffer.from('encrypted-p12-test').toString('base64');
+ let temporary;
+ buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'openssl') {
+   temporary = args[args.indexOf('-in') + 1];
+   assert.equal(fs.readFileSync(temporary, 'utf8'), 'encrypted-p12-test');
+   if (process.platform !== 'win32') {
+    assert.equal(fs.statSync(temporary).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(path.dirname(temporary)).mode & 0o777, 0o700);
+   }
+   assert.deepEqual(args.slice(3), ['-clcerts', '-nokeys', '-passin', 'env:CSC_KEY_PASSWORD']);
+   assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+   assert(!args.includes(env.CSC_KEY_PASSWORD));
+  }
+  return run(command, args, options);
+ }});
+ assert(temporary); assert(!fs.existsSync(path.dirname(temporary)));
+ assert.equal(calls.find(call => call.args.includes('build')).options.env.APPLE_SIGNING_IDENTITY, 'Developer ID Application: Test Team (0123456789)');
+}));
+test('Mac retries legacy P12 extraction without exposing the underlying error', () => fixture(({root, env, run}) => {
+ delete env.APPLE_SIGNING_IDENTITY;
+ env.CSC_LINK = Buffer.from('encrypted-p12-test').toString('base64');
+ let attempts = 0;
+ buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'openssl' && ++attempts === 1) throw new Error('private OpenSSL diagnostic');
+  if (command === 'openssl') assert.equal(args.at(-1), '-legacy');
+  return run(command, args, options);
+ }});
+ assert.equal(attempts, 2);
+}));
+test('Mac fails closed on ambiguous, unrelated, malformed, or unreadable certificates and cleans temporary files', () => fixture(({root, env, run}) => {
+ delete env.APPLE_SIGNING_IDENTITY;
+ env.CSC_LINK = Buffer.from('encrypted-p12-test').toString('base64');
+ const raw = new (require('node:crypto').X509Certificate)(developerCertificate).raw;
+ const unrelated = '-----BEGIN CERTIFICATE-----\n' + Buffer.from(raw.toString('latin1').replaceAll('Developer ID Application', 'Developer ID Unsupported'), 'latin1').toString('base64') + '\n-----END CERTIFICATE-----';
+ const secret = 'private-certificate-diagnostic';
+ for (const response of [
+  () => ({stdout: developerCertificate + '\n' + developerCertificate}),
+  () => ({stdout: unrelated}),
+  () => ({stdout: 'invalid certificate ' + secret}),
+  () => {throw new Error('OpenSSL failed with password=' + secret);}
+ ]) {
+  const paths = [];
+  assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+   if (command === 'openssl') {paths.push(args[args.indexOf('-in') + 1]); return response();}
+   return run(command, args, options);
+  }}), error => /Cannot derive exactly one Developer ID Application identity/.test(error.message) && !error.message.includes(secret));
+  assert(paths.length); for (const file of paths) assert(!fs.existsSync(path.dirname(file)));
+  assert(!fs.existsSync(path.join(root, 'release')));
+ }
+}));
+test('manual test builds omit updater keys and artifacts while preserving Mac signing and notarization', () => fixture(({root, env, calls, run}) => {
+ delete env.TAURI_SIGNING_PRIVATE_KEY; delete env.TAURI_UPDATER_PUBLIC_KEY;
+ Object.assign(env, {GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch'});
+ assert.deepEqual(buildRelease('mac', 'universal', {root, env, run, testBuild: true}), ['md2chat-mac-universal.dmg']);
+ assert.deepEqual(JSON.parse(calls[0].args.at(-1)), {bundle: {createUpdaterArtifacts: false}, plugins: {updater: {pubkey: ''}}});
+ assert(calls.some(call => call.args[0] === 'notarytool'));
+ assert(calls.some(call => call.args[0] === 'stapler' && call.args[1] === 'validate' && call.args[2].endsWith('.dmg')));
+ assert.deepEqual(fs.readdirSync(path.join(root, 'release')), ['md2chat-mac-universal.dmg']);
+ assert.throws(() => buildRelease('mac', 'universal', {root, env: {...env, APPLE_ID: ''}, run, testBuild: true}), /APPLE_ID/);
+}));
+test('Windows test builds require no Apple or updater credentials and emit only the installer', () => fixture(({root, calls, run}) => {
+ assert.deepEqual(buildRelease('win', 'x64', {root, env: {}, run, testBuild: true}), ['md2chat-windows-x64-setup.exe']);
+ assert.equal(calls.length, 1);
+ assert.equal(JSON.parse(calls[0].args.at(-1)).bundle.createUpdaterArtifacts, false);
+ assert.deepEqual(fs.readdirSync(path.join(root, 'release')), ['md2chat-windows-x64-setup.exe']);
+}));
+test('test builds cannot downgrade a GitHub tag build and unknown CLI flags are rejected', () => fixture(({root, env, run, calls}) => {
+ assert.throws(() => buildRelease('mac', 'universal', {root, env: {...env, GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push'}, run, testBuild: true}), /only for workflow_dispatch/);
+ assert.equal(calls.length, 0);
+ for (const extra of [['--unknown'], ['--test-build', '--test-build']]) {
+  const result = require('node:child_process').spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/build-desktop-release.cjs'), 'win', 'x64', ...extra], {encoding: 'utf8'});
+  assert.notEqual(result.status, 0); assert.match(result.stderr, /Invalid build arguments/);
+ }
 }));
 test('invalid targets, missing credentials, and ad hoc identities fail before building', () => fixture(({root, env, run, calls}) => {
  for (const [platform, arch] of [['mac', 'arm64'], ['win', 'arm64'], ['linux', 'x64'], []]) assert.throws(() => buildRelease(platform, arch, {root, env, run}), /Invalid build target/);
@@ -50,4 +154,31 @@ test('build failures and signature mismatches never copy publishable artifacts',
  assert(!fs.existsSync(path.join(root, 'release')));
  assert.throws(() => buildRelease('win', 'x64', {root, env: {...env, TAURI_UPDATER_PUBLIC_KEY: signingFixture().publicKey}, run}), /signature/);
  assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('DMG notarization failures stop before stapling or copying and do not expose diagnostics', () => fixture(({root, env, run}) => {
+ const secret = 'private-service-diagnostic';
+ for (const response of [
+  () => ({stdout: 'invalid JSON ' + secret}),
+  () => ({stdout: JSON.stringify({status: 'Invalid', detail: secret})}),
+  () => ({stdout: JSON.stringify({status: 'In Progress'})}),
+  () => {throw new Error('spawn failed with password=' + secret);}
+ ]) {
+  let stapled = false;
+  assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+   if (args[0] === 'notarytool') return response();
+   if (args[0] === 'stapler' && args[1] === 'staple') stapled = true;
+   return run(command, args, options);
+  }}), error => /DMG notarization/.test(error.message) && !error.message.includes(secret));
+  assert.equal(stapled, false);
+  assert(!fs.existsSync(path.join(root, 'release')));
+ }
+}));
+test('DMG stapling and ticket validation failures never copy publishable artifacts', () => fixture(({root, env, run}) => {
+ for (const operation of ['staple', 'validate']) {
+  assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+   if (args[0] === 'stapler' && args[1] === operation && args[2].endsWith('.dmg')) throw new Error('DMG ticket failed');
+   return run(command, args, options);
+  }}), /DMG ticket failed/);
+  assert(!fs.existsSync(path.join(root, 'release')));
+ }
 }));

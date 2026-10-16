@@ -8,7 +8,7 @@ Windows 安装 Node.js 22、Rust 和 Visual Studio C++ 构建工具后，在仓�
 
 原生测试使用生产 Rust 剪贴板接口写入与读回，检查 HTML / 纯文本、CF_HTML 字节偏移及 PNG 表示。一般模块测试使用 `npm run desktop:test`；触及真实剪贴板的往返测试标记为 ignored，只由明确的原生验证命令执行。
 
-Actions 的 `windows-clipboard-qa`（独立验证）或 `windows-clipboard-qa-release`（发布验证）附件包含原生测试日志、本说明及人工 Markdown 样例。日志不包含原剪贴板正文、图片或地址。自动验证判断系统格式传输和数据完整性，不能判断钉钉是否接受这些表示。旧 Electron 测试文件保留为格式历史对照，不属于当前桌面运行时。
+Actions 的 `windows-clipboard-qa`（独立验证）或 `windows-clipboard-qa-release`（发布验证）附件包含原生测试日志、本说明及人工 Markdown 样例。日志不包含原剪贴板正文、图片或地址。自动验证判断系统格式传输和数据完整性，不能判断钉钉是否接受这些表示。旧 Electron 实现及其专用测试已移除，当前验证使用 Rust 原生接口。
 
 ## 钉钉人工用例
 

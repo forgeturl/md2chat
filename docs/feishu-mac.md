@@ -28,7 +28,7 @@ fragment 中图片使用新 UUID、`INITIAL` 状态和应用自己生成的 PNG 
 
 ## 自动检查
 
-`npm run desktop:test:feishu` 检查当前 Rust 实现的 Pickle 编码、Unicode 和大小边界，不读写系统剪贴板。`node --test tests/feishu*.test.cjs` 保留历史协议、顺序和样式的对照用例。
+`npm run desktop:test:feishu` 检查当前 Rust 实现的 Pickle 编码、Unicode 和大小边界，不读写系统剪贴板。`node --test tests/feishu*.test.cjs` 检查前端的飞书复制与操作提示。
 
 `npm run desktop:test:native` 使用当前 Rust 原生剪贴板接口，写入并读回虚构的纯文字、HTML 和 PNG；Mac 另检查钉钉、飞书原生表示。测试结束后恢复原剪贴板；若期间用户复制了新内容，则保留新内容。运行时请暂时不要复制其他内容。此命令只验证系统格式传输，不代表飞书客户端接受整段图文。
 

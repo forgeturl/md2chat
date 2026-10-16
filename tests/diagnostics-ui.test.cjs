@@ -1,7 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ClipboardDiagnostics=require('../assets/clipboard-diagnostics.js');
-const {inspectClipboard}=require('../desktop/clipboard-diagnostics.cjs');
 const source=fs.readFileSync(path.join(__dirname,'../assets/app.js'),'utf8');
 function fixture(desktop){
  const elements=new Map(),writes=[];
@@ -27,7 +26,7 @@ test('browser HTML diagnostics expose useful reference types and structure witho
 
 test('desktop read and report copy use sanitized metadata and retain exactly the last two samples',async()=>{
  let html='<div><img src="data:image/png;base64,AAAA"></div>';
- const writes=[],desktop={inspect:()=>inspectClipboard({read:async()=>[{types:['text/html'],getType:async()=>new Blob([html])}]},{platform:'win32',version:'0.6.2'}),copy:async parts=>writes.push(parts[0].text)};
+ const writes=[],desktop={inspect:async()=>({platform:'win32',version:'0.6.6',formats:[{type:'text/html',bytes:Buffer.byteLength(html)}],html:[ClipboardDiagnostics.summarizeHtml(html)],htmlImages:1,htmlTables:0,imageFormats:0,macDingtalk:{applicable:false,present:false,images:null},truncated:false}),copy:async parts=>writes.push(parts[0].text)};
  const f=fixture(desktop);
  await f.read();assert(f.report().includes('src=data'));assert(f.report().includes('Mac 钉钉专用格式图片：不适用'));
  assert(f.report().includes('不代表 Windows 原生 CF_HTML 头'));

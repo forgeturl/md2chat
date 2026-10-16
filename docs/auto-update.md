@@ -12,7 +12,7 @@ Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer
 | --- | --- |
 | CSC_LINK | Developer ID Application 证书及对应私钥导出的 .p12 文件的 Base64 |
 | CSC_KEY_PASSWORD | 导出 .p12 时设置的密码 |
-| APPLE_SIGNING_IDENTITY | 完整签名名称，例如 `Developer ID Application: Your Name (TEAMID1234)` |
+| APPLE_SIGNING_IDENTITY | 可选。完整签名名称，例如 `Developer ID Application: Your Name (TEAMID1234)`；省略时从 `CSC_LINK` 的证书安全推导 |
 | APPLE_ID | 用于公证、具有团队权限的 Apple 账户邮箱 |
 | APPLE_APP_SPECIFIC_PASSWORD | Apple 账户生成的 App 专用密码 |
 | APPLE_TEAM_ID | 证书所属团队的 10 位 Team ID |
@@ -22,7 +22,7 @@ Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer
 
 使用 `npm run tauri -- signer generate --help` 查看密钥生成命令，在安全位置生成并备份密钥。私钥丢失后无法再向已安装版本提供受信更新。仓库默认公钥留空；正式构建要求提供真实密钥对，通过临时 Tauri 配置注入公钥，不生成或使用测试生产密钥。
 
-Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
+Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。省略 `APPLE_SIGNING_IDENTITY` 时，脚本在私有临时文件中用 OpenSSL 提取公开证书，由 Node 解析唯一 Developer ID Application 名称后清理；提取失败或名称存在歧义就停止，不使用临时签名。Tauri 负责 App 签名、公证和装订票据；发布脚本另行提交签名后的 DMG 公证，等待 `Accepted` 后装订并验证票据。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
 
 Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺少时联网安装，因此不会在主安装包中嵌入完整浏览器。Tauri updater 签名不等于 Windows Authenticode；Windows 代码签名尚未接入。
 
@@ -42,7 +42,7 @@ Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺�
 
 Mac 与 Windows 构建任务均安装 Rust 并执行原生模块测试；Windows 另运行临时写入并恢复剪贴板的原生往返测试。CI 通过不能证明聊天客户端接受相应格式，人工步骤见 [Windows 剪贴板验证](windows-clipboard-qa.md)。
 
-手动运行 `Desktop release` 只保留构建产物，不发布或部署。版本标签构建同版本官网与安装包；全部成功后发布并设为 Latest，再部署官网。官网部署失败保留已发布安装包，旧版本不再是 Latest 时跳过部署。产物保留 3 天。
+手动运行 `Desktop release` 使用 `--test-build`，只保留 DMG / EXE 构建产物，不发布或部署。此模式无需 Tauri updater 密钥，关闭更新产物生成并清空内嵌更新公钥，因此测试包禁用应用内更新；Mac 仍使用 Developer ID 签名并验证 App / DMG 公证。GitHub Actions 的标签构建禁止此模式，正式构建仍要求完整 updater 密钥和资产校验。版本标签构建同版本官网与安装包；全部成功后发布并设为 Latest，再部署官网。官网部署失败保留已发布安装包，旧版本不再是 Latest 时跳过部署。产物保留 3 天。
 
 ## 验收与本地构建
 

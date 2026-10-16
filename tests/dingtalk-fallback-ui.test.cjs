@@ -36,13 +36,3 @@ test('HTML tests run only on explicit click and explain that the clipboard was r
  f.ctx.window.md2chatDesktop.testDingtalkHtml=async()=>{throw new Error('没有 HTML');};
  await f.tests[1].listeners.click();assert.match(f.node('diagnostic-status').textContent,/未完成.*没有 HTML/);assert.equal(f.ctx.copying,false);
 });
-test('HTML-test IPC checks the caller and copy lock and releases it after failures',async()=>{
- const source=fs.readFileSync(path.join(__dirname,'../desktop/main.cjs'),'utf8');let handler;const calls=[];
- const ctx={copying:false,clipboardConversion:{busy:false},trusted:event=>{if(event!=='trusted')throw new Error('untrusted');},runDingtalkHtmlTest:async(mode,options)=>{calls.push({mode,options});if(mode==='invalid')throw new Error('invalid');return {mode};},process:{platform:'win32'},clipboard:{},ClipboardItem:class{},ipcMain:{handle:(_name,fn)=>{handler=fn;}}};
- vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf("ipcMain.handle('md2chat:test-dingtalk-html'"),source.indexOf(' clipboardConversion=createClipboardConversion')),ctx);
- await assert.rejects(()=>handler('foreign','text'),/untrusted/);ctx.clipboardConversion.busy=true;
- await assert.rejects(()=>handler('trusted','text'),/稍候/);ctx.clipboardConversion.busy=false;ctx.copying=true;
- await assert.rejects(()=>handler('trusted','text'),/稍候/);assert.equal(calls.length,0);ctx.copying=false;
- await assert.rejects(()=>handler('trusted','invalid'),/invalid/);assert.equal(ctx.copying,false);
- assert.equal((await handler('trusted','rewrite')).mode,'rewrite');assert.equal(calls[1].options.platform,'win32');assert.equal(ctx.copying,false);
-});

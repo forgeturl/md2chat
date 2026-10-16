@@ -4,7 +4,7 @@
 
 ## 2026-10-17 Tauri 迁移验证
 
-- macOS 15.7.4 Intel 本机：27 项 Rust 单元测试、308 项 JavaScript 回归及 Clippy 静态检查通过。
+- macOS 15.7.4 Intel 本机：Rust 单元测试、JavaScript 回归及 Clippy 静态检查通过；旧 Electron 运行代码与专用测试已移除，前端、Tauri 桥接和发布流程验证继续保留。
 - 显式原生剪贴板测试通过，确认纯文字、HTML、PNG、钉钉和飞书原生表示可写入并读回；测试恢复原剪贴板。这是系统传输证据，不是客户端粘贴证据。
 - 直接运行通用包中的应用二进制，隐藏的真实 WKWebView 通过表格、代码、公式、Mermaid、后台转换保留编辑器内容，以及命令窗口隔离共 6 项检查。可用 `npm run desktop:test:render` 重跑渲染测试，虚构图片和报告写入 `release/qa/`。
 - Mac 通用 DMG 为 14,939,583 字节，应用二进制含 `arm64` 与 `x86_64`；本次仅在 Intel Mac 运行。测试包使用本地临时签名，未公证，未正式发布。

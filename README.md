@@ -102,7 +102,6 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 - `desktop/design/`、`desktop/icon.py`：Image Gen 图标原图、提示词与跨平台图标打包脚本。
 - `assets/tauri-bridge.js`：网页界面与 Rust 命令之间的窄接口；网页版不启用。
 - `scripts/build-desktop.cjs`：仅打包共用界面、首选项及资源，不包含 Node.js 运行时。
-- `desktop/*.cjs`：历史格式协议与测试对照；Tauri 发行包不包含这些 Electron 文件。
 - `tests/`：纯逻辑、图片顺序、原生格式与缓存清理测试。
 
 桌面 WebView 只加载打包的本地界面，不提供 Node.js 集成。按窗口限制 Tauri 命令权限，拒绝任意外部页面导航；仅允许指定 GitHub 和官网链接经系统浏览器打开。IPC 验证调用方和内容，复制接口只接受内嵌图片，缓存写入路径由主进程决定。本地图片读取接口只接受本机绝对路径，经文件类型、大小和图片解码校验后返回内嵌图片，不接受目录、符号链接或远程共享路径；粘贴 HTML 中的任意文件引用仍不可读取。
@@ -135,7 +134,7 @@ Actions 为每个工作流保留最近 10 次运行，较旧且已结束的运�
 
 仓库自带 [发布 skill](.agents/skills/md2chat-release/SKILL.md) 和根目录 [AGENTS.md](AGENTS.md)，随代码一起维护。Codex 遇到准备新版本、更新说明或发布请求时会按此流程处理；脚本与流水线负责强制校验，普通提交和应用内「检查更新」不触发发布流程。
 
-README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 `Desktop release` 仅生成安装包构建产物供验证，不发布 Release 或更新官网。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
+README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 `Desktop release` 仅生成测试安装包，不启用应用内更新，不发布 Release 或更新官网；Mac 仍要求开发者签名和公证。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
 
 0.6.0 发布流水线要求 Mac Developer ID 签名和 Apple 公证，缺少凭据会阻止发布；Windows 暂未接入代码签名。先按 [签名配置步骤](docs/auto-update.md) 添加 GitHub Secrets，再手动运行工作流验证。发布时会验证 Tauri updater 签名并上传统一的 `latest.json`；Mac 公证凭据与更新签名密钥均必须配置。源码实现和状态测试不代表跨版本安装已验收；不要在网站上宣称未验证的客户端已兼容。
 

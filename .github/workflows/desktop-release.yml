@@ -74,7 +74,7 @@ jobs:
             examples/windows-clipboard/
       - name: Build signed and notarized Mac installer
         if: matrix.platform == 'mac'
-        run: node scripts/build-desktop-release.cjs mac universal
+        run: node scripts/build-desktop-release.cjs mac universal${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -87,7 +87,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Build Windows installer
         if: matrix.platform == 'win'
-        run: node scripts/build-desktop-release.cjs win ${{ matrix.arch }}
+        run: node scripts/build-desktop-release.cjs win ${{ matrix.arch }}${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
