@@ -30,13 +30,13 @@ AI 回答常用 Markdown，但并非所有输出或复制方式都相同。这�
 
 桌面版支持 Markdown 图片中的本地绝对路径和本机 `file:///` 地址，例如 `![截图](/Users/name/Pictures/screenshot.png)`；路径含空格时可写为 `![截图](</Users/name/Pictures/my screenshot.png>)`。PNG、JPEG、GIF、WebP、BMP 会读取到内存并嵌入预览和复制结果，单张最多 10 MB、2000 万像素。普通文件链接仍保留为文字链接。网页版请直接粘贴图片本身。
 
-已发布的 0.5.1 及更早安装包**未完成平台开发者签名（macOS 也未公证）**，系统可能提示或阻止打开。0.6.0 的 Mac 发布要求签名和公证，以实际 Release 构建结果为准。macOS 使用钉钉原生图文格式，已在 M 系列 Mac 的钉钉输入框验证；Windows 钉钉一次图文粘贴尚未解决，0.6.4 的仅 HTML 方案有完全空白的用户反馈，已恢复纯文本兜底并提供可选分段复制和 HTML 排查实验。Intel Mac、微信等客户端未完成同等粘贴验证。不支持自动发送消息。
+已发布的 0.5.1 及更早安装包**未完成平台开发者签名（macOS 也未公证）**，系统可能提示或阻止打开。0.6.0 的 Mac 发布要求签名和公证，以实际 Release 构建结果为准。macOS 使用钉钉原生图文格式，已在 M 系列 Mac 的钉钉输入框验证；Windows 使用与 Chromium 一致的 CF_HTML 封装并保留纯文本兜底，仍需在当前 Tauri 版与钉钉客户端重新验证粘贴效果。Intel Mac、微信等客户端未完成同等粘贴验证。不支持自动发送消息。
 
 ## 按目标平台复制
 
 | 入口 | 输出 | 验证范围 |
 | --- | --- | --- |
-| 钉钉 | Mac 原生图文 + HTML + 纯文本；Windows HTML + 纯文本与可选分段；网页版禁用 | Mac M 系列输入框已实测；Windows 一次混排未解决，分段待实测 |
+| 钉钉 | Mac 原生图文 + HTML + 纯文本；Windows Chromium 兼容 HTML + 纯文本；网页版禁用 | Mac M 系列输入框已实测；Windows Tauri 版需重新实测 |
 | 微信 | 标准 HTML 图文 + 纯文本 | 需按客户端版本确认图片 |
 | 飞书 | Mac 原生编辑图文 + HTML + 纯文本；网页和 Windows 标准图文 | Mac 展开的富文本输入框一次混排与发送已实测；网页和 Windows 待验证 |
 | 企微 | 有图时按顺序分别复制纯文本与 PNG；纯文字直接复制 | macOS 企微 5.0.12 网页 5 段、桌面 3 段粘贴已实测；Windows 未验证 |
@@ -48,7 +48,7 @@ Mac 飞书请先点击输入框的展开按钮，进入富文本编辑，再一�
 
 Mac 飞书的使用方式、已验证范围及本机剪贴板测试见 [飞书 Mac 适配](docs/feishu-mac.md)。
 
-Windows 桌面版另提供「钉钉分段复制（备用）」及排查窗口的「复制 HTML 文字测试」「重写当前 HTML」。Windows CI 使用 Rust 原生剪贴板写入并读回，校验 CF_HTML；测试日志与人工样例随 Actions 上传。运行方式、样例和判读见 [Windows 验证步骤](docs/windows-clipboard-qa.md)。
+Windows 桌面版在排查窗口提供「复制 HTML 文字测试」「重写当前 HTML」。Windows CI 使用 Rust 原生剪贴板写入并读回，校验 CF_HTML；测试日志与人工样例随 Actions 上传。运行方式、样例和判读见 [Windows 验证步骤](docs/windows-clipboard-qa.md)。
 
 ## 菜单栏、托盘与开机自启动
 

@@ -54,7 +54,6 @@
   platform,
   copy: (parts, target = 'dingtalk') => invoke('desktop_copy', {parts, target}),
   copyWecomSegment: segment => invoke('desktop_copy_segment', {segment}),
-  copyChatSegment: segment => invoke('desktop_copy_segment', {segment}),
   testDingtalkHtml: mode => invoke('desktop_test_dingtalk_html', {mode}),
   inspect: () => invoke('desktop_inspect'),
   readLocalImage: source => invoke('desktop_read_local_image', {source}),

@@ -46,8 +46,10 @@ pub fn write_checked(_: Vec<(String, Vec<u8>)>, _: Option<u64>) -> Result<(), St
 
 #[cfg(any(windows, test))]
 pub fn cf_html(html: &str) -> Vec<u8> {
-    let before = "<html><body><!--StartFragment-->";
-    let after = "<!--EndFragment--></body></html>";
+    // Match Chromium's Windows CF_HTML envelope byte-for-byte. Some consumers
+    // accept the documented offsets but still depend on Chromium's CRLF layout.
+    let before = "<html>\r\n<body>\r\n<!--StartFragment-->";
+    let after = "<!--EndFragment-->\r\n</body>\r\n</html>";
     let dummy="Version:0.9\r\nStartHTML:0000000000\r\nEndHTML:0000000000\r\nStartFragment:0000000000\r\nEndFragment:0000000000\r\n";
     let start = dummy.len();
     let fragment = start + before.len();
@@ -86,6 +88,27 @@ mod tests {
         let bytes = cf_html(html);
         assert_eq!(parse_cf_html(&bytes).unwrap(), html.as_bytes());
         assert!(String::from_utf8_lossy(&bytes).contains("StartFragment:"));
+    }
+    #[test]
+    fn cf_html_matches_chromium_windows_envelope() {
+        assert_eq!(
+            cf_html("Sample"),
+            concat!(
+                "Version:0.9\r\n",
+                "StartHTML:0000000105\r\n",
+                "EndHTML:0000000183\r\n",
+                "StartFragment:0000000141\r\n",
+                "EndFragment:0000000147\r\n",
+                "<html>\r\n",
+                "<body>\r\n",
+                "<!--StartFragment-->",
+                "Sample",
+                "<!--EndFragment-->\r\n",
+                "</body>\r\n",
+                "</html>\0"
+            )
+            .as_bytes()
+        );
     }
     #[test]
     fn invalid_offsets_rejected() {
