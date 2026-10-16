@@ -29,21 +29,35 @@ function probeMetadata(value={}){
   fragmentMarkersMatch:value.fragmentMarkersMatch===true,sourceUrlPresent:value.sourceUrlPresent===true};
 }
 
+const probeCodes=new Set(['ETIMEDOUT','ERR_CHILD_PROCESS_STDIO_MAXBUFFER']);
+const probeStatuses=new Set(['ok','no_html','invalid_cf_html','self_test_passed','probe_failed','unsupported_platform','register_failed','open_failed','data_failed','size_failed','oversized','lock_failed']);
 function inspectCfHtml(selfTest=false,execute=execFile){
  // Windows clipboard owners may need to dispatch messages while another process
  // requests delayed data. Keep Electron's main loop running during the probe.
  return new Promise((resolve,reject)=>{
-  execute('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'../scripts/inspect-windows-clipboard.ps1'),...(selfTest?['-SelfTest']:[])],{encoding:'utf8',windowsHide:true,timeout:15000,maxBuffer:64*1024},(error,stdout)=>{
-   if(error){reject(new Error('CF_HTML probe failed'));return;}
-   try{resolve(JSON.parse(stdout.replace(/^\uFEFF/,'').trim()));}catch{reject(new Error('CF_HTML probe returned invalid metadata'));}
+  const started=Date.now();
+  function fail(message,error,stdout){
+   const failure=new Error(message);if(probeCodes.has(error?.code))failure.code=error.code;
+   let status=null;try{const parsed=JSON.parse(stdout.replace(/^\uFEFF/,'').trim());if(probeStatuses.has(parsed?.status))status=parsed.status;}catch{}
+   failure.probe={numericExitCode:Number.isSafeInteger(error?.code)?error.code:null,
+    signal:['SIGTERM','SIGKILL'].includes(error?.signal)?error.signal:null,killed:error?.killed===true,status,elapsedMs:Date.now()-started};
+   reject(failure);
+  }
+  execute('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'../scripts/inspect-windows-clipboard.ps1'),...(selfTest?['-SelfTest']:[])],{encoding:'utf8',windowsHide:true,timeout:45000,maxBuffer:64*1024},(error,stdout)=>{
+   if(error){fail('CF_HTML probe failed',error,stdout);return;}
+   try{resolve(JSON.parse(stdout.replace(/^\uFEFF/,'').trim()));}catch{fail('CF_HTML probe returned invalid metadata',null,stdout);}
   });
  });
 }
 
 function errorMetadata(error){
  const names=new Set(['Error','TypeError','RangeError','SyntaxError','DOMException','NotAllowedError','NotFoundError','NotReadableError','DataError','InvalidStateError','AbortError','TimeoutError','AssertionError']);
- const codes=new Set(['ERR_ASSERTION','ERR_INVALID_ARG_TYPE','ENOENT','EACCES','EPERM','ETIMEDOUT']);
- return {errorName:names.has(error?.name)?error.name:'OtherError',errorCode:codes.has(error?.code)?error.code:null};
+ const codes=new Set(['ERR_ASSERTION','ERR_INVALID_ARG_TYPE','ENOENT','EACCES','EPERM',...probeCodes]);
+ const result={errorName:names.has(error?.name)?error.name:'OtherError',errorCode:codes.has(error?.code)?error.code:null};
+ if(error?.probe){const value=error.probe;result.probe={numericExitCode:Number.isSafeInteger(value.numericExitCode)?value.numericExitCode:null,
+  signal:['SIGTERM','SIGKILL'].includes(value.signal)?value.signal:null,killed:value.killed===true,status:probeStatuses.has(value.status)?value.status:null,
+  elapsedMs:Number.isSafeInteger(value.elapsedMs)&&value.elapsedMs>=0?value.elapsedMs:null};}
+ return result;
 }
 
 async function captureClipboardBackup(clipboard,ClipboardItem,{onProgress}={}){

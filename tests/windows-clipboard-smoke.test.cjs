@@ -46,13 +46,29 @@ test('the native probe executes asynchronously while the parent event loop conti
    options=settings;assert(args.includes('-SelfTest'));
    return execFile(process.execPath,['-e','setTimeout(()=>process.stdout.write(JSON.stringify({status:"self_test_passed",passed:9})),50)'],settings,callback);
   });
-  assert.equal(result.passed,9);assert(ticks>0);assert.equal(options.timeout,15000);assert.equal(options.maxBuffer,64*1024);
+  assert.equal(result.passed,9);assert(ticks>0);assert.equal(options.timeout,45000);assert.equal(options.maxBuffer,64*1024);
  }finally{clearInterval(timer);}
 });
 
 test('native probe failures and malformed output never expose subprocess text',async()=>{
  await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(new Error('PRIVATE_SENTINEL'),'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe failed');
  await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(null,'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe returned invalid metadata');
+});
+
+test('native probe failure reports retain only fixed process codes, exit status and safe probe status',async()=>{
+ for(const [failure,stdout,expected] of [
+  [{code:'ETIMEDOUT',signal:'SIGTERM',killed:true},'PRIVATE_SENTINEL',{code:'ETIMEDOUT',numericExitCode:null,signal:'SIGTERM',killed:true,status:null}],
+  [{code:'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',signal:'SIGKILL',killed:true},'PRIVATE_SENTINEL',{code:'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',numericExitCode:null,signal:'SIGKILL',killed:true,status:null}],
+  [{code:1,signal:null,killed:false},'{"status":"probe_failed","stderr":"PRIVATE_SENTINEL"}',{code:null,numericExitCode:1,signal:null,killed:false,status:'probe_failed'}],
+  [{code:'PRIVATE_SENTINEL',signal:'PRIVATE_SENTINEL',killed:false},'{"status":"PRIVATE_SENTINEL"}',{code:null,numericExitCode:null,signal:null,killed:false,status:null}]
+ ]){
+  await assert.rejects(()=>inspectCfHtml(true,(_command,_args,_settings,callback)=>callback(Object.assign(new Error('PRIVATE_SENTINEL'),failure),stdout)),error=>{
+   const metadata=errorMetadata(error);assert.equal(metadata.errorCode,expected.code);
+   for(const key of ['numericExitCode','signal','killed','status'])assert.equal(metadata.probe[key],expected[key]);
+   assert(Number.isSafeInteger(metadata.probe.elapsedMs));assert(metadata.probe.elapsedMs>=0);
+   assert(!JSON.stringify(metadata).includes('PRIVATE_SENTINEL'));return true;
+  });
+ }
 });
 
 test('clipboard backup skips the empty read-side item returned by Electron 44 without constructing an empty item',async()=>{
