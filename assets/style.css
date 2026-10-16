@@ -70,3 +70,5 @@ footer{margin:18px 0 4px;font-size:12px;color:#617188}
 #clear-input{background:#edf3fc;color:#47658a;padding:6px 12px}
 #clear-input:hover{background:#e0ebfc}
 @media(max-width:480px){.input-panel .panel-hint{display:none}}
+
+.app-brand-image{vertical-align:middle;margin-right:8px;object-fit:contain}

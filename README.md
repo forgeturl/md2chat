@@ -27,10 +27,18 @@
 
 安装包目前**未完成平台开发者签名（macOS 也未公证）**，系统可能提示或阻止打开。macOS 使用钉钉原生图文格式，已在 M 系列 Mac 的钉钉输入框验证；Windows 使用标准 HTML 图文，尚未适配和验证 Windows 钉钉专有格式，可能丢图。Intel Mac、微信等客户端未完成同等粘贴验证。不支持自动发送消息。
 
+## 菜单栏、托盘与开机自启动
+
+- macOS 菜单栏 / Windows 系统托盘显示 md2chat 图标。关闭主窗口会隐藏到托盘，当前输入保留在内存中。
+- 点击 Mac 菜单栏图标，或右击 Windows 托盘图标，可「显示主窗口」「开机自启动」「退出 md2chat」。Windows 单击托盘图标可打开窗口。
+- 也可在主窗口「设置」菜单中配置。开机自启动默认不主动启用；勾选后注册系统登录项，取消勾选后移除。开机自动运行时只驻留托盘，不弹出编辑窗口。
+- 自启动需使用安装后的桌面版；开发模式不注册登录项。Mac 请先将应用放到「应用程序」。未签名、公证的 macOS 应用可能无法成功注册，或需要在「系统设置 → 通用 → 登录项」批准；应用会显示系统状态，不能保证当前未签名包的自启动可靠性。
+- 退出应用请使用菜单「退出 md2chat」（Mac 也可 ⌘Q）；关闭窗口不代表退出。Windows 自启动设置和托盘交互尚需 Windows 真机验收。
+
 ## 隐私
 
 - 不登录，不上传正文或图片到 md2chat 服务；转换逻辑在本机运行。
-- 不持久化保存输入正文。桌面版将复制用图片缓存在应用本机目录，保留以支持退出后粘贴。超过 7 天后下次启动时清理；剪贴板仍含钉钉格式时暂缓清理。
+- 不持久化保存输入正文。关闭窗口驻留时仅在进程内存保留输入，退出后清除。桌面版将复制用图片缓存在应用本机目录，保留以支持退出后粘贴。超过 7 天后下次启动时清理；剪贴板仍含钉钉格式时暂缓清理。
 - 引用远程图片会访问其原网址，网页版仍受 CORS 与来源访问权限限制。
 - 排查按钮只展示格式、字节数与图片数量；不输出正文、媒体标识或文件路径。
 - 帮助菜单打开 GitHub Releases 查看更新；本版没有后台自动更新。
@@ -57,6 +65,8 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 - `index.html`、`assets/landing*.css`：产品宣传与下载页面。
 - `editor.html`、`assets/app.js`：网页/桌面共用转换界面。
 - `assets/chat-markdown.js`、`assets/renderers.js`、`assets/code-images.js`：解析与图片渲染。
+- `desktop/integration.cjs`：菜单栏／托盘、系统登录项和窗口唤回。
+- `desktop/design/`、`desktop/icon.py`：Image Gen 图标原图、提示词与跨平台图标打包脚本。
 - `desktop/main.cjs`、`preload.cjs`：隔离的桌面主进程与窄 IPC 接口。
 - `desktop/payload.cjs`：受验证的图文数据、本地图片和钉钉剪贴板结构。
 - `tests/`：纯逻辑、图片顺序、原生格式与缓存清理测试。
@@ -68,7 +78,7 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 推送 main 自动发布 Pages。发布桌面版时：
 
 1. 更新 `package.json` 和 `package-lock.json` 的版本，以及 `docs/release-notes.md`。
-2. 提交并推送代码，再推送同版本标签（例如 `v0.3.0`）。
+2. 提交并推送代码，再推送同版本标签（例如 `v0.4.0`）。
 3. `Desktop release` 自动在 macOS / Windows runner 上检查并打包。三个构建全部成功后，校验五个发行文件，生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest。
 
 README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 workflow 仅生成构建产物，不发布 Release。

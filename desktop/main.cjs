@@ -1,9 +1,16 @@
-const {app,BrowserWindow,Menu,ipcMain,clipboard,ClipboardItem,nativeImage,shell,session}=require('electron');
+const {app,BrowserWindow,Menu,ipcMain,clipboard,ClipboardItem,nativeImage,shell,session,Tray,dialog}=require('electron');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {makePayload,pruneImages,RAW_FORMAT}=require('./payload.cjs');
+const {createIntegration,startHidden}=require('./integration.cjs');
 app.setName('md2chat');
-let win,copying=false;
+let win,copying=false,quitting=false,integration;
+const primaryInstance=app.requestSingleInstanceLock();
+if(!primaryInstance)app.quit();
+function showWindow(){if(!win||win.isDestroyed())return;if(win.isMinimized())win.restore();win.show();win.focus();integration?.refreshApplicationMenu();}
+app.on('second-instance',showWindow);
+app.on('before-quit',()=>{quitting=true;});
+app.on('will-quit',()=>integration?.destroy());
 const entry=path.join(__dirname,'../editor.html'),entryURL=pathToFileURL(entry).href;
 function trusted(event){if(!win||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==entryURL)throw new Error('不允许的调用来源');}
 async function inspect(){
@@ -14,7 +21,7 @@ async function inspect(){
  }
  return {formats,images,platform:process.platform};
 }
-app.whenReady().then(async()=>{
+if(primaryInstance)app.whenReady().then(async()=>{
  const cache=path.join(app.getPath('userData'),'clipboard-images');
  // Do not inspect clipboard contents on startup. Keep image references alive while a DingTalk item exists.
  if(!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
@@ -33,14 +40,15 @@ app.whenReady().then(async()=>{
  });
  ipcMain.handle('md2chat:inspect',async event=>{trusted(event);return inspect();});
  function createWindow(){
-  win=new BrowserWindow({width:1320,height:880,minWidth:760,minHeight:560,title:'md2chat · 贴贴 Markdown',backgroundColor:'#f3f5f8',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,spellcheck:false}});
+  win=new BrowserWindow({width:1320,height:880,minWidth:760,minHeight:560,title:'md2chat · 贴贴 Markdown',show:false,icon:path.join(__dirname,'../assets/app-icon.png'),backgroundColor:'#f3f5f8',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,spellcheck:false}});
   win.webContents.on('will-navigate',event=>event.preventDefault());
   win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\/(github\.com|forgeturl\.github\.io)\//.test(url))shell.openExternal(url);return {action:'deny'};});
   win.webContents.on('will-attach-webview',event=>event.preventDefault());
+  win.on('close',event=>{if(!quitting&&integration?.hasTray){event.preventDefault();win.hide();}});
+  win.once('ready-to-show',()=>{if(!integration?.hasTray||!startHidden(app,process.platform,process.argv,process.execPath))showWindow();});
   win.loadFile(entry);
  }
- const help=[{label:'检查新版本',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/releases/latest')},{label:'反馈问题',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
- Menu.setApplicationMenu(Menu.buildFromTemplate([...(process.platform==='darwin'?[{role:'appMenu'}]:[]),{role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'},{label:'帮助',submenu:help}]));
- createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
+ integration=createIntegration({app,Tray,Menu,nativeImage,dialog,showWindow});
+ createWindow();app.on('activate',showWindow);
 });
-app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
+app.on('window-all-closed',()=>{if(!integration?.hasTray)app.quit();});

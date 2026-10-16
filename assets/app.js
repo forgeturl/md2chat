@@ -233,6 +233,7 @@ if(window.md2chatDesktop){
  copyMode.replaceChildren(new Option('桌面完整图文','desktop'));copyMode.value='desktop';document.querySelector('.copy-options').hidden=true;
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 复制所需图片临时保存在本机';
  document.getElementById('copy-help').textContent=window.md2chatDesktop.platform==='darwin'?'复制后，到聊天输入框按 ⌘V 粘贴完整图文。macOS 钉钉使用原生图文格式；其他客户端请确认图片是否保留。':'复制后，到聊天输入框按 Ctrl+V 粘贴。Windows 使用标准图文格式，钉钉可能忽略图片，请检查粘贴结果。';
+ document.getElementById('copy-help').textContent+=' 关闭窗口后仍驻留菜单栏／托盘，可在其中重新打开、设置开机自启动或退出。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
 }
 function updateCopyControls(rebuild=false){
