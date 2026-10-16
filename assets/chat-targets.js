@@ -16,7 +16,7 @@
  function render(parts,target){
   profile(target);let images=0;
   const html=parts.map(p=>{
-   if(p.type==='text')return '<div style="margin:0;line-height:1.5">'+runsHtml(p)+'</div>';
+   if(p.type==='text')return '<div style="margin:0;line-height:1.5;white-space:pre-wrap">'+runsHtml(p)+'</div>';
    if(p.type==='table'&&target==='email')return '<table cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">'+p.rows.map((row,i)=>'<tr>'+row.map(cell=>'<'+(i?'td':'th')+' style="border:1px solid #ccd5df;text-align:left;'+(i?'':'background:#edf2f8;')+'">'+esc(cell).replaceAll('\n','<br>')+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('')+'</table>';
    if(p.type!=='image'||!/^data:image\/(png|jpe?g|webp|gif|bmp);base64,[A-Za-z0-9+/=]+$/i.test(p.src))throw new Error('图片必须是完整的内嵌图片');
    images++;return '<div style="margin:0;line-height:0"><img src="'+p.src+'"'+(p.width?' width="'+Math.min(1100,Math.max(1,Number(p.width)||1))+'"':'')+' alt="图片" style="display:block;max-width:100%;height:auto;border:0"></div>';

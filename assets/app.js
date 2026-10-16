@@ -338,7 +338,7 @@ document.getElementById('read-clipboard').addEventListener('click',async()=>{
  try{
   if(window.md2chatDesktop){
    const report=await window.md2chatDesktop.inspect();
-   const text=['md2chat 桌面剪贴板报告','系统：'+report.platform,...report.formats.map(f=>f.type+'：'+f.bytes+' 字节'),'钉钉图文图片数量：'+report.images,'报告不含正文、图片内容和文件路径。'].join('\n');
+   const text=['md2chat 桌面剪贴板报告','系统：'+report.platform,'最近复制目标：'+(lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无'),...report.formats.map(f=>f.type+'：'+f.bytes+' 字节'),'钉钉原生图片数量：'+report.images,'HTML 图片标签：'+report.htmlImages+'；HTML 表格：'+report.htmlTables,'格式存在不代表目标客户端已成功导入。','报告不含正文、图片内容和文件路径。'].join('\n');
    sampleHistory.push(text);if(sampleHistory.length>2)sampleHistory.shift();document.getElementById('diagnostic-report').textContent=text;document.getElementById('copy-report').disabled=false;diagnosticStatus.textContent='系统剪贴板排查完成。';return;
   }
   if(!navigator.clipboard?.read)throw new Error('Clipboard.read unavailable');

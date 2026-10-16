@@ -105,3 +105,11 @@ test('DingTalk segments preserve editable text around each real image without ta
  assert.equal(result.segments[0].text,'开头 文字');assert.equal(result.segments[1].src,'data:image/png;base64,TABLE');assert.equal(result.segments[2].text,'结束文字');
  const only=await payloadContext().buildPayload('只有文字\n\n下一段');assert.equal(only.segments.length,1);assert.equal(only.segments[0].text,'只有文字\n\n下一段');
 });
+
+test('email replaces table image groups with one editable table without changing chat segments',async()=>{
+ const ctx=payloadContext();const payload=await ctx.buildPayload('前文\n\n| 品名 | 数量 |\n| --- | --- |\n| 苹果 | 2 |\n\n后文');
+ assert.equal(payload.emailSegments.map(s=>s.type).join(','),'text,table,text');
+ assert.equal(payload.segments.map(s=>s.type).join(','),'text,image,text');
+ assert.equal(payload.emailSegments[1].rows[1][0],'苹果');
+ assert.equal(payload.emailSegments[0].text,'前文');assert.equal(payload.emailSegments[2].text,'后文');
+});

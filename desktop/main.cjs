@@ -14,12 +14,13 @@ app.on('will-quit',()=>integration?.destroy());
 const entry=path.join(__dirname,'../editor.html'),entryURL=pathToFileURL(entry).href;
 function trusted(event){if(!win||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==entryURL)throw new Error('不允许的调用来源');}
 async function inspect(){
- const formats=[];let images=0;
+ const formats=[];let images=0,htmlImages=0,htmlTables=0;
  for(const item of await clipboard.read())for(const type of item.types){
   const blob=await item.getType(type);formats.push({type,bytes:blob.size||0});
+  if(type==='text/html'&&blob.size<=60*1024*1024){const html=await blob.text();htmlImages+=(html.match(/<img\b/gi)||[]).length;htmlTables+=(html.match(/<table\b/gi)||[]).length;}
   if(type===RAW_FORMAT){try{const data=JSON.parse(await blob.text());for(const c of data.contents||[])images+=(c.text?.items||[]).filter(i=>i.type==='image').length;}catch{}}
  }
- return {formats,images,platform:process.platform};
+ return {formats,images,htmlImages,htmlTables,platform:process.platform};
 }
 if(primaryInstance)app.whenReady().then(async()=>{
  const cache=path.join(app.getPath('userData'),'clipboard-images');
