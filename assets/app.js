@@ -3,7 +3,7 @@ const button=document.getElementById('copy-all');
 const status=document.getElementById('status');
 const input=document.getElementById('markdown-input');
 const escapeHtml=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const assets=new Map();let nextAsset=1;let selectedImageId=null;
+const assets=new Map();let nextAsset=1;let selectedImageId=null;let inputEpoch=0;
 function safeImageSource(src){return /^data:image\/(png|jpe?g|gif|webp|bmp);base64,/i.test(src)||/^https?:\/\//i.test(src)||/^blob:/i.test(src);}
 function registerImage(src){
  if(!safeImageSource(src))throw new Error('粘贴的图片只有应用专有地址，网页无法读取。请从钉钉复制图片本身，再粘贴到原位置。');
@@ -94,6 +94,7 @@ async function replaceImage(id,src){
 }
 input.addEventListener('paste',async event=>{
  event.preventDefault();
+ const epoch=inputEpoch;
  const data=event.clipboardData,markup=data.getData('text/html'),plain=data.getData('text/plain');
  const files=[...data.files].filter(file=>file.type.startsWith('image/'));
  const selection=getSelection();let range=selection.rangeCount?selection.getRangeAt(0).cloneRange():null;
@@ -109,6 +110,7 @@ input.addEventListener('paste',async event=>{
    if(target){
     const src=files.length?await blobToData(files[0]):htmlImages[0].getAttribute('src');
     if(!src||!safeImageSource(src))throw new Error('仍然没有得到可读取的图片数据，请在钉钉中对图片使用“复制”，而不是复制整条消息。');
+    if(epoch!==inputEpoch)return;
     await replaceImage(target,src);return;
    }
   }
@@ -123,18 +125,19 @@ input.addEventListener('paste',async event=>{
    }else if(!plain&&template.content.querySelector('table'))source=htmlToSource(markup);
   }
   if(!/\[\[DING_IMAGE:\d+\]\]/.test(source)&&files.length){
-   for(const file of files){const token=registerImage(await blobToData(file));if(source.includes('[图片]'))source=source.replace('[图片]',token);else source+='\n'+token;}
+   for(const file of files){const src=await blobToData(file);if(epoch!==inputEpoch)return;const token=registerImage(src);if(source.includes('[图片]'))source=source.replace('[图片]',token);else source+='\n'+token;}
   }
   // Prefer real image files supplied alongside HTML over a remote image URL.
   const ids=[...source.matchAll(/\[\[DING_IMAGE:(\d+)\]\]/g)].map(match=>match[1]);
   if(files.length&&ids.length===files.length){
-   for(let i=0;i<ids.length;i++){const asset=assets.get(ids[i]);if(asset&&!asset.src.startsWith('data:'))assets.set(ids[i],{src:await blobToData(files[i])});}
+   for(let i=0;i<ids.length;i++){const asset=assets.get(ids[i]);if(asset&&!asset.src.startsWith('data:')){const src=await blobToData(files[i]);if(epoch!==inputEpoch)return;assets.set(ids[i],{src});}}
   }
+  if(epoch!==inputEpoch)return;
   const fragment=sourceFragment(source);const tail=fragment.lastChild;
   range.deleteContents();range.insertNode(fragment);
   if(tail){range.setStartAfter(tail);range.collapse(true);selection.removeAllRanges();selection.addRange(range);}
   await updatePreview();
- }catch(error){status.textContent='粘贴未完成：'+error.message;button.disabled=true;}
+ }catch(error){if(epoch!==inputEpoch)return;status.textContent='粘贴未完成：'+error.message;button.disabled=true;}
 });
 
 function parseMarkdown(source){return ChatMarkdown.parse(source);}
@@ -229,7 +232,7 @@ const copyMode=document.getElementById('copy-mode'),segmentSelect=document.getEl
 if(window.md2chatDesktop){
  copyMode.replaceChildren(new Option('桌面完整图文','desktop'));copyMode.value='desktop';document.querySelector('.copy-options').hidden=true;
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 复制所需图片临时保存在本机';
- document.getElementById('copy-help').textContent='复制后，到聊天输入框按 ⌘V 粘贴完整图文。macOS 钉钉使用原生图文格式；其他客户端请确认图片是否保留。';
+ document.getElementById('copy-help').textContent=window.md2chatDesktop.platform==='darwin'?'复制后，到聊天输入框按 ⌘V 粘贴完整图文。macOS 钉钉使用原生图文格式；其他客户端请确认图片是否保留。':'复制后，到聊天输入框按 Ctrl+V 粘贴。Windows 使用标准图文格式，钉钉可能忽略图片，请检查粘贴结果。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
 }
 function updateCopyControls(rebuild=false){
@@ -255,6 +258,10 @@ async function updatePreview(){
   status.textContent=copyMode.value==='segments'?'已准备 '+payload.segments.length+' 段。每次复制后到同一个聊天输入框末尾粘贴，再回来复制下一段。':'图文已准备好，可以复制。';return payload;
  }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据上方提示调整内容后重试。';}return null;}
 }
+document.getElementById('clear-input').addEventListener('click',()=>{
+ inputEpoch++;clearTimeout(previewTimer);input.replaceChildren();assets.clear();selectedImageId=null;cachedSource=null;cachedPayload=null;
+ updateCopyControls(true);updatePreview();status.textContent='已清空，请粘贴新内容。';input.focus();
+});
 input.addEventListener('input',()=>{button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
 function nativeCopy(payload){
  const sink=document.createElement('div');sink.contentEditable='true';sink.setAttribute('aria-hidden','true');sink.style.cssText='position:fixed;left:-100000px;top:0;width:1100px;background:white;';

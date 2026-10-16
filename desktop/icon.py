@@ -16,3 +16,5 @@ with tempfile.TemporaryDirectory() as root:
             suffix='@2x' if scale==2 else ''
             img.resize((size*scale,size*scale),Image.Resampling.LANCZOS).save(folder/f'icon_{size}x{size}{suffix}.png')
     img.save(Path(__file__).with_name('icon.icns'), format='ICNS')
+
+    img.save(Path(__file__).with_name('icon.ico'), format='ICO', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])

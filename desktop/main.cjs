@@ -39,7 +39,7 @@ app.whenReady().then(async()=>{
   win.webContents.on('will-attach-webview',event=>event.preventDefault());
   win.loadFile(entry);
  }
- const help=[{label:'检查新版本',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/releases')},{label:'反馈问题',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
+ const help=[{label:'检查新版本',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/releases/latest')},{label:'反馈问题',click:()=>shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
  Menu.setApplicationMenu(Menu.buildFromTemplate([...(process.platform==='darwin'?[{role:'appMenu'}]:[]),{role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'},{label:'帮助',submenu:help}]));
  createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});
 });

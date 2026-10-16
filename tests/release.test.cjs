@@ -14,3 +14,22 @@ test('first-party frontend has no persistence or native API dependency',()=>{
 test('build has a narrow public-file allowlist',()=>{
  const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','LICENSE','THIRD_PARTY_NOTICES.md']"));
 });
+test('latest download links match the complete release asset contract',()=>{
+ const {expectedAssets}=require('../scripts/release-assets.cjs');
+ const readme=fs.readFileSync(path.join(root,'README.md'),'utf8');
+ for(const name of expectedAssets)assert(readme.includes('/releases/latest/download/'+name));
+ const pkg=require('../package.json');
+ assert.equal(pkg.version,require('../package-lock.json').version);
+ assert.equal(pkg.build.artifactName,'md2chat-${os}-${arch}.${ext}');
+ assert.equal(pkg.build.nsis.artifactName,'md2chat-windows-${arch}-setup.${ext}');
+});
+test('release checksums require all platform assets before publication',()=>{
+ const {expectedAssets,writeChecksums}=require('../scripts/release-assets.cjs');
+ const dir=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'md2chat-release-'));
+ try{
+  for(const name of expectedAssets.slice(0,-1))fs.writeFileSync(path.join(dir,name),'sample');
+  assert.throws(()=>writeChecksums(dir));assert(!fs.existsSync(path.join(dir,'SHA256SUMS.txt')));
+  fs.writeFileSync(path.join(dir,expectedAssets.at(-1)),'sample');writeChecksums(dir);
+  assert.equal(fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8').trim().split('\n').length,5);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

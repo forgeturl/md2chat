@@ -1,6 +1,6 @@
 {
   "name": "md2chat",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Markdown to editable chat messages — desktop and web",
   "license": "MIT",
@@ -15,7 +15,9 @@
     "desktop": "electron .",
     "desktop:pack": "electron-builder --mac dir --arm64",
     "desktop:dist": "electron-builder --mac dmg zip --arm64 --publish never",
-    "desktop:test": "electron desktop/smoke.cjs"
+    "desktop:test": "electron desktop/smoke.cjs",
+    "desktop:dist:mac": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
+    "desktop:dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "44.8.0",
@@ -36,7 +38,8 @@
       "package.json",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
-      "desktop/icon.icns"
+      "desktop/icon.icns",
+      "desktop/icon.ico"
     ],
     "asar": true,
     "mac": {
@@ -48,9 +51,20 @@
       "identity": null,
       "icon": "desktop/icon.icns"
     },
-    "artifactName": "md2chat-${version}-${os}-${arch}.${ext}",
+    "artifactName": "md2chat-${os}-${arch}.${ext}",
     "dmg": {
       "title": "md2chat ${version}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "desktop/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "md2chat-windows-${arch}-setup.${ext}"
     }
   }
 }
