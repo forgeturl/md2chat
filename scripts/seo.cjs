@@ -16,7 +16,7 @@ function files(){
  for(const file of ['index.html','editor.html']){
   const original=fs.readFileSync(path.join(root,file),'utf8').replaceAll('\r\n','\n');
   const title=file==='index.html'?'md2chat — Markdown 转钉钉、微信图文 | 免费开源桌面工具':'Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat';
-  const description=file==='index.html'?'免费开源的 Markdown 图文转换工具：保留可编辑文字，表格、代码、公式与 Mermaid 转图片。提供 macOS 和 Windows 桌面版及网页试用，附钉钉、微信等平台兼容性说明。':'在线输入 Markdown 或图文，预览后按微信、钉钉、飞书、企微或邮件目标复制。表格和代码转图片，邮件保留可编辑表格；不上传正文，实际粘贴以客户端为准。';
+  const description=file==='index.html'?'免费开源的 Markdown 图文转换工具：保留可编辑文字，表格、代码、公式与 Mermaid 转图片。提供 macOS 和 Windows 桌面版及网页试用，附钉钉、微信等平台兼容性说明。':'在线输入 Markdown 或图文，预览后按微信、飞书、企微或邮件目标复制；钉钉请下载桌面版。表格和代码转图片，邮件保留可编辑表格；不上传正文，实际粘贴以客户端为准。';
   const url=origin+(file==='index.html'?'':file);
   const schema=file==='index.html'?{'@context':'https://schema.org','@type':'SoftwareApplication',name:'md2chat',url:origin,description,applicationCategory:'ProductivityApplication',operatingSystem:'macOS, Windows',isAccessibleForFree:true,offers:{'@type':'Offer',price:'0',priceCurrency:'USD'},license:'https://github.com/forgeturl/md2chat/blob/main/LICENSE',downloadUrl:'https://github.com/forgeturl/md2chat/releases/latest',screenshot:origin+'assets/desktop-preview.png'}:null;
   let page=original.replace(/<title>.*?<\/title>/,`<title>${title}</title>`).replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${description}">`);

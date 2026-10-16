@@ -1,7 +1,8 @@
 const message=document.getElementById('message');
 const copyButtons=[...document.querySelectorAll('[data-copy-target]')];
 let copying=false,lastCopyTarget=null;
-const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying;}};
+const desktopRequired=b=>b.dataset.copyTarget==='dingtalk'&&!window.md2chatDesktop;
+const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
 let copyNoticeTimer;
@@ -244,12 +245,13 @@ async function buildPayload(source){
 }
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 if(window.md2chatDesktop){
+ document.getElementById('dingtalk-desktop-hint').hidden=true;
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
  document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；其他平台使用标准图文。飞书、企微、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
-function updateCopyControls(){for(const b of copyButtons)b.setAttribute('aria-pressed','false');for(const b of copyButtons)b.title='复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;}
+function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'钉钉复制仅限桌面版，请下载桌面版':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
 async function updatePreview(){
  const source=serializeInput();const version=++renderVersion;
@@ -280,7 +282,7 @@ function nativeCopy(payload){
  finally{sink.remove();selection.removeAllRanges();for(const range of previous){try{selection.addRange(range);}catch(_){}}if(active&&active.focus)active.focus();}
 }
 for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=>{
- if(copying)return;
+ if(copying||desktopRequired(copyButton))return;
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=ChatTargets.profile(target);
  if(!cachedPayload||cachedSource!==serializeInput()){await updatePreview();status.textContent='预览已更新，请点击平台图标复制。';return;}
