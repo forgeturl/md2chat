@@ -1,4 +1,6 @@
 const path = require('node:path');
+const {profiles} = require('../assets/chat-targets.js');
+const {createMenuIcons} = require('./menu-icons.cjs');
 
 // Login state belongs to the OS, not a second preferences file that can go stale.
 function loginOptions(platform, execPath) {
@@ -26,51 +28,66 @@ function startHidden(app, platform, argv, execPath) {
  if (platform === 'win32') return argv.includes('--autostart');
  return platform === 'darwin' && loginState(app, platform, execPath).wasOpenedAtLogin === true;
 }
-function createIntegration({app, Tray, Menu, nativeImage, dialog, showWindow, checkUpdates = showWindow, platform = process.platform, execPath = process.execPath}) {
- let tray;
- async function toggleLogin(item) {
+function createIntegration({app, Tray, Menu, nativeImage, dialog, shell, showWindow, openPreferences = showWindow, getPreferences = () => ({pinnedTargets: [], showTrayLabel: false}), checkUpdates = showWindow, convertClipboard, convertClipboardToImage, getClipboardConversionState = () => ({busy: false}), platform = process.platform, execPath = process.execPath}) {
+ const menuIcon = createMenuIcons(nativeImage);
+ let tray, trayMenu;
+ function preferences() {
   try {
-   const result = setLogin(app, platform, execPath, item.checked);
-   if (!item.checked && result.registered) throw new Error('系统尚未确认移除登录项，请在系统启动项设置中检查。');
-   if (item.checked && !result.enabled) {
-    await dialog.showMessageBox({type: 'info', title: '开机自启动', message: result.pending ? '需要在系统设置中允许 md2chat 登录项' : '系统尚未确认开机自启动生效', detail: platform === 'darwin' ? '请在「系统设置 → 通用 → 登录项」检查并允许 md2chat。' : '请在「设置 → 应用 → 启动」检查 md2chat 是否被禁用。'});
-   }
-  } catch (error) {
-   await dialog.showMessageBox({type: 'error', title: '开机自启动', message: '未能更改开机自启动', detail: error.message});
-  } finally { refreshApplicationMenu(); }
+   const value = getPreferences();
+   const pinnedTargets = Array.isArray(value?.pinnedTargets) ? [...new Set(value.pinnedTargets.filter(target => typeof target === 'string' && Object.hasOwn(profiles, target)))] : [];
+   return {pinnedTargets, showTrayLabel: value?.showTrayLabel === true};
+  } catch { return {pinnedTargets: [], showTrayLabel: false}; }
  }
- function settingsItems() {
-  const state = loginState(app, platform, execPath);
-  return [{label: '开机自启动', type: 'checkbox', checked: state.registered ?? state.enabled, enabled: state.supported, click: toggleLogin},
-   ...(!state.supported ? [{label: state.reason, enabled: false}] : state.pending ? [{label: '等待系统批准登录项', enabled: false}] : state.blocked ? [{label: '启动项已被系统禁用', enabled: false}] : [])];
+ const formatItem = (target, busy) => ({label: (target === 'wecom' ? '企业微信' : profiles[target].label) + '格式', icon: menuIcon(target), enabled: !busy, click: () => convertClipboard(target)});
+ function clipboardItems(busy) {
+  const submenu = [
+   ...(typeof convertClipboardToImage === 'function' ? [{label: '转图片', icon: menuIcon('image'), enabled: !busy, click: convertClipboardToImage}] : []),
+   ...(typeof convertClipboard === 'function' ? Object.keys(profiles).map(target => formatItem(target, busy)) : [])
+  ];
+  return submenu.length ? [{label: busy ? '正在转换…' : '剪贴板转换', icon: menuIcon('clipboard'), enabled: !busy, submenu}] : [];
  }
- const help = [{label: '检查更新', click: checkUpdates}, {label: '反馈问题', click: () => require('electron').shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
+ const helpItem = {label: '帮助 ↗', icon: menuIcon('help'), click: () => (shell || require('electron').shell).openExternal('https://github.com/forgeturl/md2chat/issues')};
+ const updateItem = {label: '检查更新', icon: menuIcon('update'), click: checkUpdates};
  function refreshApplicationMenu() {
+  const preferencesItem = {label: '首选项', icon: menuIcon('preferences'), click: openPreferences, ...(platform === 'darwin' ? {accelerator: 'Command+,'} : {})};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-   ...(platform === 'darwin' ? [{role: 'appMenu'}] : []),
-   {role: 'editMenu'}, {role: 'viewMenu'}, {role: 'windowMenu'},
-   {label: '设置', submenu: [{label: '显示主窗口', click: showWindow}, ...settingsItems(), {type: 'separator'}, {label: '退出 md2chat', accelerator: platform === 'darwin' ? 'Command+Q' : 'Control+Q', click: () => app.quit()}]},
-   {label: '帮助', submenu: help}
+   ...(platform === 'darwin' ? [{role: 'appMenu', submenu: [{role: 'about'}, {type: 'separator'}, preferencesItem, helpItem, updateItem, {type: 'separator'}, {role: 'services'}, {type: 'separator'}, {role: 'hide'}, {role: 'hideOthers'}, {role: 'unhide'}, {type: 'separator'}, {role: 'quit'}]}] : [{label: '文件', icon: menuIcon('window'), submenu: [{label: '显示主窗口', icon: menuIcon('window'), click: showWindow}, preferencesItem, helpItem, updateItem, {type: 'separator'}, {label: '退出 md2chat', icon: menuIcon('quit'), accelerator: 'Control+Q', click: () => app.quit()}]}]),
+   {role: 'editMenu'}, {role: 'viewMenu'}, {role: 'windowMenu'}
   ]));
+ }
+ function refreshTray() {
+  if (!tray) return;
+  const value = preferences(), busy = getClipboardConversionState()?.busy === true;
+  if (platform === 'darwin' && typeof tray.setTitle === 'function') tray.setTitle(value.showTrayLabel ? 'md2chat' : '');
+  const conversions = clipboardItems(busy);
+  trayMenu = Menu.buildFromTemplate([
+   ...(typeof convertClipboard === 'function' ? value.pinnedTargets.map(target => formatItem(target, busy)) : []),
+   ...conversions, ...(conversions.length ? [{type: 'separator'}] : []),
+   {label: '显示主窗口', icon: menuIcon('window'), click: showWindow},
+   {label: '首选项', icon: menuIcon('preferences'), click: openPreferences}, helpItem, updateItem,
+   {type: 'separator'}, {label: '退出 md2chat', icon: menuIcon('quit'), click: () => app.quit()}
+  ]);
  }
  refreshApplicationMenu();
  try {
-  const image = nativeImage.createFromPath(path.join(__dirname, '../assets/app-icon.png'));
+  const image = nativeImage.createFromPath(path.join(__dirname, '../assets/menu-icons/tray.png'));
   if (image.isEmpty()) throw new Error('图标资源缺失');
-  tray = new Tray(image.resize({width: platform === 'darwin' ? 18 : 24, height: platform === 'darwin' ? 18 : 24}));
+  const size = platform === 'darwin' ? 22 : 24, trayImage = image.resize({width: size, height: size});
+  if (typeof trayImage.setTemplateImage === 'function') trayImage.setTemplateImage(false);
+  tray = new Tray(trayImage);
   tray.setToolTip('md2chat · 贴贴 Markdown');
-  const popup = () => tray.popUpContextMenu(Menu.buildFromTemplate([
-   {label: '显示主窗口', click: showWindow},
-   {type: 'separator'}, ...settingsItems(), {type: 'separator'},
-   ...help, {type: 'separator'}, {label: '退出 md2chat', click: () => app.quit()}
-  ]));
+  const popup = () => {
+   refreshTray();
+   tray.popUpContextMenu(trayMenu);
+  };
   tray.on('right-click', popup);
   tray.on('click', platform === 'darwin' ? popup : showWindow);
   if (platform === 'win32') tray.on('double-click', showWindow);
+  refreshTray();
  } catch (error) {
   if (tray) tray.destroy();tray = null;
   dialog.showErrorBox('托盘暂不可用', '主窗口仍可正常使用；关闭窗口会退出应用。' + error.message);
  }
- return {get hasTray() {return !!tray;}, refreshApplicationMenu, destroy() {if (tray) {tray.destroy();tray = null;}}};
+ return {get hasTray() {return !!tray;}, refreshApplicationMenu, refreshTray, destroy() {if (tray) {tray.destroy();tray = null;trayMenu = null;}}};
 }
 module.exports = {loginOptions, loginState, setLogin, startHidden, createIntegration};

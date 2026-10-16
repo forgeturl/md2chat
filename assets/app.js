@@ -1,5 +1,9 @@
 const message=document.getElementById('message');
 const copyButtons=[...document.querySelectorAll('[data-copy-target]')];
+const wecomSegments=WecomSegments.create({copySegment:segment=>{
+ const result=window.md2chatDesktop?window.md2chatDesktop.copyWecomSegment(segment):ChatClipboard.writeSegment(segment);
+ return Promise.resolve(result).then(value=>{lastCopyTarget='wecom';return value;});
+}});
 let copying=false,lastCopyTarget=null;
 const desktopRequired=b=>b.dataset.copyTarget==='dingtalk'&&!window.md2chatDesktop;
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
@@ -21,16 +25,17 @@ function registerImage(src){
  if(!safeImageSource(src))throw new Error('粘贴的图片只有应用专有地址，网页无法读取。请从钉钉复制图片本身，再粘贴到原位置。');
  const id=String(nextAsset++);assets.set(id,{src});return '\n[[DING_IMAGE:'+id+']]\n';
 }
-function htmlToSource(markup){
+function htmlToSource(markup,imageRegistrar=registerImage){
  const template=document.createElement('template');template.innerHTML=markup;
  function walk(node){
   if(node.nodeType===3)return node.textContent.trim()?node.textContent:'';
   if(node.nodeType!==1&&node.nodeType!==11)return '';
   const tag=node.nodeName.toLowerCase();
   if(['script','style','meta','head','iframe','object','embed'].includes(tag))return '';
-  if(tag==='img')return registerImage(node.getAttribute('src')||'');
+  if(tag==='img')return imageRegistrar(node.getAttribute('src')||'');
   if(tag==='br')return '\n';
   if(tag==='table'){
+   if(node.querySelector('img'))throw new Error('暂不支持表格单元格中的图片，请将图片移到表格外后重试。');
    const rows=[...node.querySelectorAll('tr')].map(tr=>[...tr.children].filter(el=>['TD','TH'].includes(el.tagName)).map(cell=>cell.textContent.trim().replace(/\|/g,'\\|').replace(/\n/g,' ')));
    if(!rows.length)return '';
    return '\n'+rows.map((row,i)=>'| '+row.join(' | ')+' |'+(i===0?'\n| '+row.map(()=> '---').join(' | ')+' |':'')).join('\n')+'\n';
@@ -188,14 +193,14 @@ function renderTable(header,rows){
  });
 }
 
-async function buildPayload(source){
+async function buildPayload(source,imageAssets=assets){
  if(source.length>2*1024*1024)throw new Error('文字过长，请分段转换（最多 2 MB 字符）。');
  const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[],segments=[],emailTables=new Map(),emailSkip=new Set();let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0,codeImages=0,codeCount=0;
  const appendText=(text,run={})=>{if(segments.at(-1)?.type==='text'){segments.at(-1).text+=text;segments.at(-1).runs.push({...run,text});}else segments.push({type:'text',text,runs:[{...run,text}]});};
  const lineBreak='<br>';
  const appendImage=image=>{
   imageCount++;
-  segments.push({type:'image',src:image.src});
+  segments.push({type:'image',src:image.src,displayWidth:image.displayWidth||image.width});
   parts.push('<img src="'+escapeHtml(image.src)+'" width="'+(image.displayWidth||image.width)+'" height="'+(image.displayHeight||image.height)+'">');
   preview.push('<img src="'+escapeHtml(image.src)+'" alt="图文中的图片 '+imageCount+'" style="display:block;max-width:100%;width:'+(image.displayWidth?image.displayWidth+'px':'auto')+';height:auto;margin:0">');
  };
@@ -207,7 +212,7 @@ async function buildPayload(source){
     if(!run.math){rendered.push(ChatMarkdown.runsHtml([run]));appendText(run.text,run);continue;}
     try{
      const image=await ChatRenderers.math(run.math,false);mathImages++;imageCount++;
-     segments.push({type:'image',src:image.src});
+     segments.push({type:'image',src:image.src,displayWidth:image.displayWidth||image.width});
      rendered.push('<img src="'+image.src+'" width="'+image.displayWidth+'" height="'+image.displayHeight+'" alt="'+escapeHtml(run.text)+'" style="display:inline-block;vertical-align:middle;max-width:100%;height:auto">');
     }catch(error){throw new Error('第 '+(mathImages+1)+' 个公式：'+error.message);}
    }
@@ -234,7 +239,7 @@ async function buildPayload(source){
    for(let i=start+1;i<segments.length;i++)emailSkip.add(i);
    plain.push([block.header,...block.rows].map(row=>row.join(' | ')).join('\n'));
   }else{
-   const asset=block.id?assets.get(block.id):{src:block.src};
+   const asset=block.id?imageAssets.get(block.id):{src:block.src};
    if(!asset)throw new Error('原文图片引用已失效，请重新粘贴完整图文。');
    const image=await ensureImage(asset);originalImages++;appendImage(image);plain.push('[图片]');
   }
@@ -251,7 +256,7 @@ if(window.md2chatDesktop){
  dingtalkWrapper.classList.remove('desktop-only-copy');
  for(const name of ['tabindex','aria-label','aria-describedby'])dingtalkWrapper.removeAttribute(name);
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
- document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；其他平台使用标准图文。飞书、企微、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
+ document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；企微图文请按分段窗口的顺序逐段复制粘贴，文字保持可编辑。飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
@@ -269,7 +274,7 @@ async function updatePreview(){
   message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;updateCopyControls(true);
   document.getElementById('conversion-info').textContent=conversionSummary(payload);
   status.textContent='图文已准备好，点击目标平台图标复制。';return payload;
- }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据上方提示调整内容后重试。';}return null;}
+ }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}return null;}
 }
 document.getElementById('clear-input').addEventListener('click',()=>{
  inputEpoch++;clearTimeout(previewTimer);input.replaceChildren();assets.clear();selectedImageId=null;cachedSource=null;cachedPayload=null;
@@ -290,6 +295,11 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=ChatTargets.profile(target);
  if(!cachedPayload||cachedSource!==serializeInput()){await updatePreview();status.textContent='预览已更新，请点击平台图标复制。';return;}
+ if(target==='wecom'&&cachedPayload.segments.some(part=>part.type==='image')){
+  try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
+  catch(error){showCopyNotice(error.message,true);}
+  return;
+ }
  copying=true;button.disabled=true;
  showCopyNotice('');status.textContent='正在复制到剪贴板…';
  const payload=cachedPayload,source=cachedSource,parts=target==='email'?payload.emailSegments:payload.segments;
@@ -376,3 +386,22 @@ document.getElementById('copy-report').addEventListener('click',async()=>{
  try{const report=sampleHistory.join('\n\n────────\n\n');if(window.md2chatDesktop)await window.md2chatDesktop.copy([{type:'text',text:report}]);else await navigator.clipboard.writeText(report);diagnosticStatus.textContent='元数据报告已复制，当前剪贴板已被报告替换。';}
  catch(_){diagnosticStatus.textContent='自动复制失败，请手动选中上面的报告复制。';}
 });
+
+// Tray conversions use their own image registry and never replace the editor's input or preview.
+async function convertClipboardContent(content,target){
+ if(target!=='image')ChatTargets.profile(target);
+ const imageAssets=new Map();let nextId=1;
+ const register=src=>{
+  if(!safeImageSource(src))throw new Error('剪贴板图片无法读取，请复制图片本身后重试。');
+  const id=String(nextId++);imageAssets.set(id,{src});return '\n[[DING_IMAGE:'+id+']]\n';
+ };
+ const sources=[];
+ for(const item of content)sources.push(await ClipboardSource.toSource(item,{registerImage:register,htmlToSource}));
+ const source=sources.join('\n');
+ if(!source.trim())throw new Error('剪贴板中没有可转换的文字或图片。');
+ const payload=await buildPayload(source,imageAssets);
+ if(target==='image')return [await ClipboardImage.render(payload.segments)];
+ return target==='email'?payload.emailSegments:payload.segments;
+}
+window.md2chatDesktop?.onWecomSegments?.(parts=>wecomSegments.open(parts));
+window.md2chatDesktop?.onConvertClipboard?.(convertClipboardContent);

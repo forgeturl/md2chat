@@ -34,6 +34,12 @@ test('image boundaries collapse extra newlines without losing styles or code ind
  assert.equal(blocks[0].text,'甲\n\n');
 });
 const code=fs.readFileSync(path.join(__dirname,'../assets/app.js'),'utf8');
+test('HTML tables containing images fail explicitly instead of silently dropping those images',()=>{
+ const table={nodeType:1,nodeName:'TABLE',querySelector:selector=>selector==='img'?{}:null};
+ const ctx={registerImage(){assert.fail('must not partially import');},document:{createElement:()=>({content:{nodeType:11,nodeName:'#document-fragment',childNodes:[table]}})}};
+ vm.createContext(ctx);vm.runInContext(code.slice(code.indexOf('function htmlToSource('),code.indexOf('function sourceFragment(')),ctx);
+ assert.throws(()=>ctx.htmlToSource('<table><tr><td><img src="data:image/png;base64,AAAA"></td></tr></table>'),/表格单元格中的图片/);
+});
 function payloadContext(){
  const ctx={ChatMarkdown:chat,assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
  vm.runInContext(code.slice(code.indexOf('const escapeHtml='),code.indexOf('const assets='))+code.slice(code.indexOf('function parseMarkdown('),code.indexOf('function renderTable('))+code.slice(code.indexOf('async function buildPayload('),code.indexOf('let cachedSource=')),ctx);return ctx;

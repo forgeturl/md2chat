@@ -2,8 +2,8 @@
  'use strict';
  const api = window.md2chatDesktop?.updates;
  if (!api) return;
- const entry = document.createElement('button');entry.type = 'button';entry.textContent = '检查更新';
- document.querySelector('header').append(entry);
+ const entry = document.createElement('button');entry.type = 'button';entry.className = 'update-entry';entry.textContent = '检查更新';
+ document.getElementById('utility-actions').append(entry);
  const panel = document.createElement('dialog');panel.className = 'update-dialog';
  panel.innerHTML = '<h2>软件更新</h2><p class="update-version"></p><p class="update-status" role="status" aria-live="polite"></p><pre class="update-notes"></pre><progress max="100" aria-label="更新下载进度"></progress><p class="help">更新时会连接 GitHub；不会上传输入内容。安装前请保存需要的内容。</p><div class="update-actions"><button type="button" class="update-close">稍后</button><button type="button" class="update-action">检查更新</button></div><p><a href="https://github.com/forgeturl/md2chat/releases/latest" target="_blank" rel="noopener noreferrer">前往下载页面 ↗</a></p>';
  document.body.append(panel);

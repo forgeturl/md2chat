@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'">
+  <title>首选项 · md2chat</title>
+  <link rel="stylesheet" href="../assets/preferences.css">
+  <script src="../assets/preferences.js" defer></script>
+</head>
+<body>
+  <div class="preferences-shell">
+    <header class="preferences-header">
+      <img src="../assets/app-icon.png" width="40" height="40" alt="">
+      <div><h1>首选项</h1><p>让 md2chat 更顺手</p></div>
+    </header>
+
+    <main id="preferences-content" aria-busy="true">
+      <section class="preferences-section" aria-labelledby="tray-formats-title">
+        <h2 id="tray-formats-title">托盘常用格式</h2>
+        <p id="pin-description" class="section-description">勾选常用格式，按列表顺序显示在托盘菜单顶部。</p>
+        <fieldset id="target-options" class="target-options" aria-describedby="pin-description pin-note" disabled>
+          <legend class="visually-hidden">选择并排列托盘常用格式</legend>
+          <ol id="target-list" class="target-list">
+            <li class="target-option" data-target="wechat" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="wechat"><img src="../assets/platforms/wechat.svg" width="22" height="22" alt=""><span>微信格式</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="微信格式上移" title="微信格式上移" disabled>↑</button><button type="button" data-move="down" aria-label="微信格式下移" title="微信格式下移" disabled>↓</button></div>
+            </li>
+            <li class="target-option" data-target="dingtalk" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="dingtalk"><img src="../assets/platforms/dingtalk.svg" width="22" height="22" alt=""><span>钉钉格式</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="钉钉格式上移" title="钉钉格式上移" disabled>↑</button><button type="button" data-move="down" aria-label="钉钉格式下移" title="钉钉格式下移" disabled>↓</button></div>
+            </li>
+            <li class="target-option" data-target="feishu" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="feishu"><img src="../assets/platforms/feishu.svg" width="22" height="22" alt=""><span>飞书格式</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="飞书格式上移" title="飞书格式上移" disabled>↑</button><button type="button" data-move="down" aria-label="飞书格式下移" title="飞书格式下移" disabled>↓</button></div>
+            </li>
+            <li class="target-option" data-target="wecom" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="wecom"><img src="../assets/platforms/wecom.svg" width="22" height="22" alt=""><span>企业微信格式</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="企业微信格式上移" title="企业微信格式上移" disabled>↑</button><button type="button" data-move="down" aria-label="企业微信格式下移" title="企业微信格式下移" disabled>↓</button></div>
+            </li>
+            <li class="target-option" data-target="email" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="email"><img src="../assets/platforms/email.svg" width="22" height="22" alt=""><span>邮件格式</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="邮件格式上移" title="邮件格式上移" disabled>↑</button><button type="button" data-move="down" aria-label="邮件格式下移" title="邮件格式下移" disabled>↓</button></div>
+            </li>
+          </ol>
+        </fieldset>
+        <p id="pin-note" class="section-note">拖动或使用上移、下移调整顺序；全部格式仍可在“剪贴板转换”中使用。</p>
+      </section>
+
+      <section class="preferences-section" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">显示与启动</h2>
+        <div class="settings-card">
+          <label id="tray-label-row" class="setting-row" hidden>
+            <span class="setting-copy"><span class="setting-title">菜单栏显示应用名</span><span class="setting-description">在图标旁显示 md2chat，更容易找到。</span></span>
+            <span class="switch-control"><input id="show-tray-label" type="checkbox" role="switch" disabled><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+          <label class="setting-row">
+            <span class="setting-copy"><span class="setting-title">开机自启动</span><span id="login-description" class="setting-description">登录电脑后，在后台启动 md2chat。</span></span>
+            <span class="switch-control"><input id="open-at-login" type="checkbox" role="switch" aria-describedby="login-description" disabled><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <footer class="preferences-footer">
+      <p id="preferences-status" role="status" aria-live="polite" aria-atomic="true" data-state="loading">正在读取设置…</p>
+      <button id="retry-load" type="button" hidden>重新加载</button>
+    </footer>
+  </div>
+</body>
+</html>

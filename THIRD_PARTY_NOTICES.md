@@ -32,3 +32,16 @@ The renderer bundles are unmodified and served from the same static site. No con
 - **electron-updater 6.8.9**, MIT License.
   - Upstream: https://github.com/electron-userland/electron-builder
   - Bundled in the desktop app with its dependency licenses; checks and downloads releases from GitHub.
+
+## Platform identifiers
+
+Platform logos are used only to identify the corresponding copy destinations. They remain the property and trademarks of their respective owners; the project license does not license these marks or imply endorsement. The following sources were verified on 2026-10-16:
+
+| Local asset | Official page | Official source and local preparation |
+| --- | --- | --- |
+| `assets/platforms/wechat.svg` | [WeChat](https://www.wechat.com/en/) | [Official touch icon](https://newres.wechat.com/t/fed_upload/08b92997-2415-408f-b706-442ed4ede518/OTE0YTAw.png), original PNG bytes embedded in a self-contained SVG. |
+| `assets/platforms/dingtalk.svg` | [DingTalk](https://www.dingtalk.com/) | [Official favicon](https://gw.alicdn.com/imgextra/i3/O1CN014ZbI6ZTEhdC0ttN2_!!6000000003783-2-tps-444-444.png), original PNG bytes embedded in a self-contained SVG. |
+| `assets/platforms/feishu.svg` | [Feishu](https://www.feishu.cn/) | [Official header logo](https://p1-hera.feishucdn.com/tos-cn-i-jbbdkfciu3/eff71c9398c04ebd8452d748646fc1e8.png~tplv-jbbdkfciu3-png:0:0.png), original PNG bytes embedded in an SVG viewport that excludes the wordmark. |
+| `assets/platforms/wecom.svg` | [WeCom](https://work.weixin.qq.com/) | `LogoSingle` from the [official vector sprite](https://wwcdn.weixin.qq.com/node/wwnl/wwnl/style/images/officialImages$hab21d86.svg), with its original paths and colors centered in a square viewport. |
+
+`assets/platforms/email.svg` is a generic envelope drawn for this project, rather than a mail provider's logo. The tray PNGs are generated locally from these same SVGs by `scripts/render-menu-icons.cjs`, at 1× and 2× resolutions. All icon assets are bundled locally; displaying them does not fetch third-party resources.

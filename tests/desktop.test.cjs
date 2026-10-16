@@ -21,6 +21,22 @@ test('native entry rejects external paths and oversized input before filesystem 
  assert.throws(()=>validateParts([{type:'text',text:'a'.repeat(2*1024*1024+1)}]));
  assert.throws(()=>validateParts([]));
 });
+test('2x images retain logical dimensions while PNG cache bytes and legacy sizing stay unchanged',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'md2chat-display-'));
+ const image={createFromDataURL:()=>({isEmpty:()=>false,getSize:()=>({width:640,height:240}),toPNG:()=>png})};
+ try{
+  for(const [hint,expectedWidth] of [[320,320],[1280,640],[undefined,640],[Infinity,640],[NaN,640],[0,640],[-1,640],['320',640],['" onerror="bad',640]]){
+   const part={type:'image',src:'data:image/png;base64,'+png.toString('base64'),displayWidth:hint};
+   const result=await makePayload([part],{directory:dir,nativeImage:image});
+   const item=result.rich.contents[0].text.items[0],expectedHeight=Math.round(240*expectedWidth/640);
+   assert.equal(item.style.width,expectedWidth);assert.equal(item.style.height,expectedHeight);
+   assert.match(result.html,new RegExp('width="'+expectedWidth+'" height="'+expectedHeight+'"'));
+   assert.deepEqual(await fs.readFile(item.data.path),png);assert.equal(result.plain,'[图片]');
+   assert.equal(part.displayWidth,hint);
+  }
+  assert.equal((await fs.readdir(dir)).length,1);
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
 test('cache pruning preserves current and recent images and never follows arbitrary filenames',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'md2chat-prune-'));
  try{

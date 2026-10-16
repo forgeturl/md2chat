@@ -1,19 +1,23 @@
 const {app,BrowserWindow,Menu,ipcMain,clipboard,ClipboardItem,nativeImage,shell,session,Tray,dialog,Notification}=require('electron');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
-const {makePayload,pruneImages,RAW_FORMAT}=require('./payload.cjs');
-const {createIntegration,startHidden}=require('./integration.cjs');
+const {makePayload,pruneImages,RAW_FORMAT,validateParts}=require('./payload.cjs');
+const {makeWecomSegmentData}=require('./wecom-segment.cjs');
+const {createIntegration,startHidden,loginState,setLogin}=require('./integration.cjs');
+const {createPreferences}=require('./preferences.cjs');
 const {createUpdates}=require('./updates.cjs');
+const {createClipboardConversion,createConversionBridge,makeClipboardImageData}=require('./clipboard-conversion.cjs');
+const {profile}=require('../assets/chat-targets.js');
 app.setName('md2chat');
-let win,copying=false,quitting=false,integration,updates;
+let win,copying=false,quitting=false,integration,updates,clipboardConversion,conversionBridge,preferences;
 const primaryInstance=app.requestSingleInstanceLock();
 if(!primaryInstance)app.quit();
-function showWindow(){if(!win||win.isDestroyed())return;if(win.isMinimized())win.restore();win.show();win.focus();integration?.refreshApplicationMenu();}
+function showWindow(){if(!win||win.isDestroyed())return;if(win.webContents.isCrashed())void win.loadFile(entry);if(win.isMinimized())win.restore();win.show();win.focus();integration?.refreshApplicationMenu();}
 app.on('second-instance',showWindow);
 app.on('before-quit',()=>{quitting=true;});
 // Native updater closes windows before app.before-quit; bypass tray hiding first.
 require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;});
-app.on('will-quit',()=>{integration?.destroy();updates?.destroy();});
+app.on('will-quit',()=>{integration?.destroy();updates?.destroy();conversionBridge?.destroy();preferences?.destroy();});
 const entry=path.join(__dirname,'../editor.html'),entryURL=pathToFileURL(entry).href;
 function trusted(event){if(!win||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==entryURL)throw new Error('不允许的调用来源');}
 async function inspect(){
@@ -24,6 +28,14 @@ async function inspect(){
   if(type===RAW_FORMAT){try{const data=JSON.parse(await blob.text());for(const c of data.contents||[])images+=(c.text?.items||[]).filter(i=>i.type==='image').length;}catch{}}
  }
  return {formats,images,htmlImages,htmlTables,platform:process.platform};
+}
+async function writePayload(payload,target){
+ const data={'text/plain':payload.plain,'text/html':payload.html};
+ const native=process.platform==='darwin'&&target==='dingtalk';
+ if(native)data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
+ await clipboard.write([new ClipboardItem(data)]);
+ if(native&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
+ return {images:payload.imageCount,native,target};
 }
 if(primaryInstance)app.whenReady().then(async()=>{
  const {autoUpdater}=require('electron-updater');
@@ -44,7 +56,7 @@ if(primaryInstance)app.whenReady().then(async()=>{
   }
  },confirmInstall:async()=>{
   showWindow();
-  if(copying)return false;
+  if(copying||clipboardConversion?.busy)return false;
   const result=await dialog.showMessageBox(win,{type:'question',title:'重启并安装更新',message:'现在安装新版 md2chat？',detail:'应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。',buttons:['取消','重启并安装'],defaultId:0,cancelId:0,noLink:true});
   return result.response===1;
  }});
@@ -56,20 +68,55 @@ if(primaryInstance)app.whenReady().then(async()=>{
  session.defaultSession.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
  session.defaultSession.setPermissionCheckHandler(()=>false);
  ipcMain.handle('md2chat:copy',async(event,parts,target='dingtalk')=>{
-  trusted(event);if(copying)throw new Error('正在复制，请稍候');copying=true;
+  trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');copying=true;
   try{
+   if(target==='wecom'&&Array.isArray(parts)&&parts.some(part=>part?.type==='image'))throw new Error('企微图文请使用分段复制，按顺序粘贴文字和图片。');
    const payload=await makePayload(parts,{directory:cache,nativeImage,target});
-   const data={'text/plain':payload.plain,'text/html':payload.html};
-   const native=process.platform==='darwin'&&target==='dingtalk';
-   if(native)data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
+   return await writePayload(payload,target);
+  }finally{copying=false;}
+ });
+ ipcMain.handle('md2chat:copy-wecom-segment',async(event,segment)=>{
+  trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');copying=true;
+  try{
+   const {data,type}=await makeWecomSegmentData(segment,{nativeImage});
    await clipboard.write([new ClipboardItem(data)]);
-   if(native&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
-   return {images:payload.imageCount,native,target};
+   return {type};
   }finally{copying=false;}
  });
  ipcMain.handle('md2chat:inspect',async event=>{trusted(event);return inspect();});
+ conversionBridge=createConversionBridge({ipcMain,trusted,getWebContents:()=>win?.webContents});
+ clipboardConversion=createClipboardConversion({clipboard,render:async(content,target)=>{
+  if(win?.webContents.isCrashed())await win.loadFile(entry);
+  return conversionBridge.render(content,target);
+ },prepare:async(parts,target)=>{
+  if(target==='image')return {imageData:await makeClipboardImageData(parts,{nativeImage})};
+  validateParts(parts,target);
+  if(target==='wecom'&&parts.some(part=>part.type==='image'))return {segments:parts};
+  return makePayload(parts,{directory:cache,nativeImage,target});
+ },write:async(payload,target)=>{
+  if(target==='image'){
+   await clipboard.write([new ClipboardItem(payload.imageData)]);
+   return {images:1,target};
+  }
+  if(payload.segments){
+   showWindow();await conversionBridge.openWecomSegments(payload.segments);
+   return {segmented:true,target};
+  }
+  return writePayload(payload,target);
+ },isCopying:()=>copying});
+ async function convertClipboard(target){
+  try{
+   const result=await clipboardConversion.convert(target);
+   if(result.segmented)return;
+   const body=target==='image'?'已转为图片并写入剪贴板，可以直接粘贴。':'已转为'+profile(target).label+'格式并写入剪贴板，请到'+(target==='email'?'邮件编辑器':'对应聊天框')+'粘贴。';
+   if(Notification.isSupported())new Notification({title:'剪贴板转换完成',body}).show();
+   else await dialog.showMessageBox({type:'info',title:'剪贴板转换完成',message:body});
+  }catch(error){await dialog.showMessageBox({type:'error',title:'剪贴板转换未完成',message:error.message});}
+ }
  function createWindow(){
-  win=new BrowserWindow({width:1320,height:880,minWidth:760,minHeight:560,title:'md2chat · 贴贴 Markdown',show:false,icon:path.join(__dirname,'../assets/app-icon.png'),backgroundColor:'#f3f5f8',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,spellcheck:false}});
+  win=new BrowserWindow({width:1320,height:880,minWidth:760,minHeight:560,title:'md2chat · 贴贴 Markdown',show:false,icon:path.join(__dirname,'../assets/app-icon.png'),backgroundColor:'#f4f6f4',webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,spellcheck:false,backgroundThrottling:false}});
+  win.webContents.on('did-start-loading',()=>conversionBridge.reset());
+  win.webContents.on('render-process-gone',()=>conversionBridge.reset('转换器异常退出，请重新选择转换格式重试。'));
   win.webContents.on('will-navigate',event=>event.preventDefault());
   win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\/(github\.com|forgeturl\.github\.io)\//.test(url))shell.openExternal(url);return {action:'deny'};});
   win.webContents.on('will-attach-webview',event=>event.preventDefault());
@@ -77,7 +124,12 @@ if(primaryInstance)app.whenReady().then(async()=>{
   win.once('ready-to-show',()=>{if(!integration?.hasTray||!startHidden(app,process.platform,process.argv,process.execPath))showWindow();});
   win.loadFile(entry);
  }
- integration=createIntegration({app,Tray,Menu,nativeImage,dialog,showWindow,checkUpdates:openUpdates});
+ preferences=await createPreferences({app,BrowserWindow,ipcMain,nativeImage,
+  getLoginState:()=>loginState(app,process.platform,process.execPath),
+  setLoginState:enabled=>setLogin(app,process.platform,process.execPath,enabled),
+  onChange:()=>integration?.refreshTray()
+ });
+ integration=createIntegration({app,Tray,Menu,nativeImage,dialog,showWindow,openPreferences:()=>preferences.open(),getPreferences:()=>preferences.snapshot(),checkUpdates:openUpdates,convertClipboard,convertClipboardToImage:()=>convertClipboard('image'),getClipboardConversionState:()=>({busy:copying||clipboardConversion.busy})});
  createWindow();app.on('activate',showWindow);
  updates.start();
 });

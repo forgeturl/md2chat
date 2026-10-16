@@ -9,9 +9,9 @@
 - [Source and compatibility](https://github.com/forgeturl/md2chat): MIT license, tests, releases and evidence.
 - [Markdown 怎么发到钉钉？保留文字、表格和图片](https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html): 解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。
 - [Markdown 转微信图文：文字可编辑，表格转图片](https://forgeturl.github.io/md2chat/guides/markdown-to-wechat.html): 使用 md2chat 将 Markdown、彩色代码、公式和表格转换成微信图文，了解标准 HTML 复制的适用范围和图片排查步骤。
-- [钉钉、微信、飞书、企业微信与邮件的图文复制兼容性](https://forgeturl.github.io/md2chat/guides/chat-compatibility.html): md2chat 各平台复制入口、原生与标准 HTML 的区别，以及飞书、企业微信、邮件尚未实测的兼容性边界。
+- [钉钉、微信、飞书、企业微信与邮件的图文复制兼容性](https://forgeturl.github.io/md2chat/guides/chat-compatibility.html): md2chat 各平台复制入口、企微分段复制、原生与标准 HTML 的区别，以及已实测范围和客户端兼容性边界。
 - [Markdown 表格、代码、公式和 Mermaid 转聊天图文](https://forgeturl.github.io/md2chat/guides/markdown-formatting.html): 了解 md2chat 如何处理 Markdown 标题、列表、链接、表格、语法高亮代码、LaTeX 数学公式及 Mermaid 流程图。
 
 ## Limits
 
-Mac DingTalk native text/image/text paste has been tested on Apple Silicon. Windows DingTalk private clipboard is not implemented. WeChat uses standard HTML. Feishu, WeCom and email are experimental and have not passed client acceptance. Clipboard generation is not proof of successful pasting or email delivery. No guarantee of compatibility with every client version. No user content is uploaded to md2chat; remote image URLs still contact their source.
+Mac DingTalk native text/image/text paste has been tested on Apple Silicon. Windows DingTalk private clipboard is not implemented. WeChat uses standard HTML. WeCom image content uses sequential plain-text and PNG copies on web and desktop. The segment panel was tested end to end in Mac WeCom 5.0.12 drafts: five web segments with two images and three desktop segments with one image. Windows WeCom and sent messages have not been verified. Text remains editable; emphasis styling is not guaranteed. Feishu and email remain experimental without client acceptance. Clipboard generation is not proof of successful pasting or email delivery. No guarantee of compatibility with every client version. No user content is uploaded to md2chat; remote image URLs still contact their source.

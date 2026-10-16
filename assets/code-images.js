@@ -1,6 +1,7 @@
-/* Syntax-colored code cards. Only the highlighter's escaped span output is read. */
+/* GitHub-light code images. Only the highlighter's escaped span output is read.
+   Palette reference: github.com/sindresorhus/github-markdown-css/blob/main/github-markdown-light.css */
 (function(root){
- const colors={plain:'#e6edf3',keyword:'#ff7b72',string:'#a5d6ff',number:'#79c0ff',literal:'#79c0ff',comment:'#8b949e',doctag:'#8b949e',title:'#d2a8ff',built_in:'#ffa657',type:'#ffa657',attr:'#79c0ff',attribute:'#79c0ff',variable:'#ffa657',regexp:'#a5d6ff',symbol:'#79c0ff',meta:'#a5d6ff',tag:'#7ee787',name:'#7ee787',selector_tag:'#7ee787',addition:'#7ee787',deletion:'#ff7b72'};
+ const colors={plain:'#1f2328',keyword:'#cf222e',string:'#0a3069',number:'#0550ae',literal:'#0550ae',comment:'#59636e',doctag:'#cf222e',title:'#6639ba',built_in:'#953800',type:'#953800',attr:'#0550ae',attribute:'#0550ae',variable:'#953800',regexp:'#0a3069',symbol:'#0550ae',meta:'#0550ae',tag:'#116329',name:'#116329',selector_tag:'#116329',addition:'#116329',deletion:'#82071e'};
  const decode=s=>s.replace(/&(amp|lt|gt|quot|#x27|#39);/g,(_,e)=>({amp:'&',lt:'<',gt:'>',quot:'"','#x27':"'",'#39':"'"}[e]));
  function tokens(source,language,engine){
   if(source.length>50000)throw new Error('代码块过长，请拆分为每块不超过 50,000 字符');
@@ -30,21 +31,21 @@
   flush();if(rows.length>2000)throw new Error('代码行数过多，请分段转换');return rows;
  }
  function render(source,language,engine){
-  const {label,runs}=tokens(source,language,engine),font='18px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+  const {label,runs}=tokens(source,language,engine),font='16px ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
   const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');ctx.font=font;
-  const rows=layout(runs,s=>ctx.measureText(s).width,880);
-  const width=Math.max(520,Math.ceil(Math.max(...rows.map(r=>r.width)))+96),pageSize=36,pages=Math.ceil(rows.length/pageSize),images=[];
+  const padding=18,lineHeight=26,rows=layout(runs,s=>ctx.measureText(s).width,560);
+  const width=Math.max(320,Math.ceil(Math.max(...rows.map(r=>r.width)))+padding*2),pageSize=36,pages=Math.ceil(rows.length/pageSize),images=[];
   for(let page=0;page<pages;page++){
-   const slice=rows.slice(page*pageSize,(page+1)*pageSize),height=76+slice.length*28;
+   const slice=rows.slice(page*pageSize,(page+1)*pageSize),height=padding*2+slice.length*lineHeight+(pages>1?24:0);
    canvas.width=width*2;canvas.height=height*2;ctx.scale(2,2);
-   ctx.fillStyle='#0d1117';ctx.fillRect(0,0,width,height);ctx.fillStyle='#161b22';ctx.fillRect(0,0,width,48);
-   ctx.font='600 14px -apple-system, BlinkMacSystemFont, sans-serif';ctx.textBaseline='middle';ctx.fillStyle='#c9d1d9';ctx.fillText(label.slice(0,60),24,24);
-   if(pages>1){ctx.textAlign='right';ctx.fillStyle='#8b949e';ctx.fillText((page+1)+' / '+pages,width-24,24);ctx.textAlign='left';}
-   ctx.font=font;
+   ctx.fillStyle='#f6f8fa';ctx.strokeStyle='#d1d9e0';ctx.lineWidth=1;
+   ctx.beginPath();ctx.roundRect(.5,.5,width-1,height-1,6);ctx.fill();ctx.stroke();
+   ctx.font=font;ctx.textBaseline='middle';ctx.textAlign='left';
    slice.forEach((row,index)=>{
-    const y=70+index*28;ctx.fillStyle='#8b949e';ctx.textAlign='right';if(row.number!==null)ctx.fillText(String(row.number),52,y);ctx.textAlign='left';let x=72;
+    const y=padding+(index+.5)*lineHeight;let x=padding;
     for(const run of row.runs){ctx.fillStyle=run.color;ctx.fillText(run.text,x,y);x+=ctx.measureText(run.text).width;}
    });
+   if(pages>1){ctx.font='11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';ctx.textAlign='right';ctx.fillStyle='#59636e';ctx.fillText(label.slice(0,24)+' · '+(page+1)+' / '+pages,width-padding,height-padding-3);}
    images.push({src:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height,displayWidth:width,displayHeight:height});
   }
   return images;

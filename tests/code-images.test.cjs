@@ -16,12 +16,15 @@ test('wrapping preserves Unicode, indentation, blank lines, and original line nu
  assert.deepEqual(rows.map(r=>r.number),[1,null,2,3]);
  assert(rows.every(r=>r.width<=8));
 });
-test('long code splits into bounded PNG cards with continuous source line numbers',()=>{
+test('long code splits into bounded PNG cards without losing source or shrinking the font',()=>{
  const labels=[];let canvas;
- global.document={createElement:()=>canvas={getContext:()=>({measureText:s=>({width:[...s].length*10}),scale(){},fillRect(){},fillText(text){labels.push(text)}}),toDataURL:()=> 'data:image/png;base64,PNG'}};
+ global.document={createElement:()=>canvas={getContext:()=>({measureText:s=>({width:[...s].length*10}),scale(){},beginPath(){},roundRect(){},fill(){},stroke(){},fillText(text){labels.push(text)}}),toDataURL:()=> 'data:image/png;base64,PNG'}};
  try{
   const result=cards.render(Array.from({length:80},(_,i)=>'const n = '+i+';').join('\n'),'js',engine);
   assert.equal(result.length,3);assert(result.every(i=>i.width===i.displayWidth*2&&i.height===i.displayHeight*2));
-  assert(labels.includes('37'));assert(labels.includes('80'));assert(labels.includes('3 / 3'));
+  assert(result.every(i=>i.displayWidth<=596&&i.displayHeight<=1000));
+  assert.equal(labels.filter(s=>s.startsWith('JavaScript · ')).length,3);assert(labels.includes('JavaScript · 3 / 3'));
+  const text=labels.filter(s=>!s.startsWith('JavaScript · ')).join('');
+  assert.equal(text,Array.from({length:80},(_,i)=>'const n = '+i+';').join(''));
  }finally{delete global.document;}
 });

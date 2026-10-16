@@ -1,0 +1,63 @@
+:root{--canvas:#f4f6f4;--ink:#263c35;--muted:#75827d;--line:#e3e9e5;--accent:#23836d;--accent-soft:#edf6f1;--focus:#69b29d;color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--canvas);font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;font-size:14px;line-height:1.55;overflow:hidden}
+[hidden]{display:none!important}
+.preferences-shell{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.preferences-header{display:flex;flex:none;align-items:center;gap:12px;padding:13px 28px 11px;border-bottom:1px solid var(--line);background:#fafcfb}
+.preferences-header img{flex:none}
+h1{margin:0;font-size:21px;line-height:1.3;letter-spacing:-.4px;font-weight:650}
+.preferences-header p{margin:2px 0 0;color:var(--muted);font-size:12px}
+main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:15px 28px}
+.preferences-section+.preferences-section{margin-top:18px}
+h2{margin:0;font-size:14px;line-height:1.5;font-weight:650}
+.section-description{margin:5px 0 10px;font-size:12px;color:#62766a;line-height:1.65}
+.target-options{margin:0;padding:0;border:0;min-width:0}
+.target-list{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.target-option{display:flex;align-items:center;gap:10px;min-width:0;min-height:42px;padding:6px 12px 6px 10px;transition:background .12s,box-shadow .12s}
+.target-option+.target-option{border-top:1px solid var(--line)}
+.target-option:hover{background:#f7faf8}
+.target-option.is-selected{background:var(--accent-soft)}
+.target-option:focus-within{box-shadow:inset 3px 0 0 var(--accent)}
+.target-grip{flex:none;width:12px;color:#b8c3bc;font-size:18px;line-height:1;user-select:none}
+.target-option[draggable="true"] .target-grip{color:#7b9a88;cursor:grab}
+.target-option.is-dragging{opacity:.45}
+.target-option.is-drop-target{box-shadow:inset 0 2px 0 var(--accent);background:#e1f0e7}
+.target-label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.target-label img{flex:none;width:22px;height:22px;object-fit:contain}
+.target-label span{min-width:0;font-size:13px}
+.target-label input{flex:none;width:15px;height:15px;margin:0 2px 0 0;accent-color:var(--accent);cursor:pointer}
+.target-label input:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+.target-order-actions{display:flex;flex:none;gap:5px}
+.target-order-actions button{display:flex;align-items:center;justify-content:center;width:27px;height:26px;padding:0;border:1px solid #cbdcd1;border-radius:5px;background:#fff;color:#376a53;font-family:inherit;font-size:16px;line-height:1;cursor:pointer}
+.target-order-actions button:hover:not(:disabled){background:#e0eee5;border-color:#91b59f}
+.target-order-actions button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.target-order-actions button:disabled{border-color:transparent;background:transparent;color:#aebcb3;opacity:.55;cursor:default}
+.target-options:disabled .target-label,.target-options:disabled input{cursor:default}
+.section-note{margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.65}
+.settings-card{margin-top:10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:10px 15px;cursor:pointer}
+.setting-row+.setting-row{border-top:1px solid var(--line)}
+.setting-copy{display:block;min-width:0}
+.setting-title{display:block;font-size:13px;font-weight:500}
+.setting-description{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.switch-control{position:relative;display:block;flex:none;width:36px;height:21px}
+.switch-control input{position:absolute;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.switch-track{display:block;width:36px;height:21px;border:1px solid #c8d3cc;border-radius:20px;background:#d6dfd9;transition:background .12s,border-color .12s}
+.switch-track::after{content:"";position:absolute;left:3px;top:3px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #203a2c26;transition:transform .12s}
+.switch-control input:checked+.switch-track{background:var(--accent);border-color:var(--accent)}
+.switch-control input:checked+.switch-track::after{transform:translateX(15px)}
+.switch-control input:focus-visible+.switch-track{outline:3px solid var(--focus);outline-offset:3px}
+.switch-control input:disabled{cursor:default}
+.switch-control input:disabled+.switch-track{opacity:.55}
+.setting-row:has(input:disabled){cursor:default}
+.preferences-footer{display:flex;flex:none;align-items:center;gap:12px;min-height:44px;padding:10px 28px;border-top:1px solid var(--line);background:#fafcfb}
+.preferences-footer p{margin:0;font-size:11px;line-height:1.7;color:#62766a;overflow-wrap:anywhere}
+.preferences-footer p[data-state="saved"]::before{content:"";display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:50%;background:#32aa83;vertical-align:1px}
+.preferences-footer p[data-state="error"]{color:#a52c24}
+.preferences-footer button{flex:none;margin-left:auto;border:1px solid #d5e1d9;border-radius:6px;background:var(--accent-soft);color:var(--accent);padding:5px 10px;font:inherit;font-size:11px;font-weight:500;line-height:1.5;cursor:pointer}
+.preferences-footer button:hover{background:#e0eee5}
+.preferences-footer button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.preferences-footer button:disabled{opacity:.5;cursor:default}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:420px){.preferences-header{padding:13px 22px}.preferences-header h1{font-size:21px}main{padding:15px 22px}.target-option{gap:7px;padding-left:8px;padding-right:8px}.target-label{gap:8px}.target-label span{font-size:12px}.preferences-footer{padding:10px 22px}}
+@media(prefers-reduced-motion:reduce){*,*::after{transition:none!important}}

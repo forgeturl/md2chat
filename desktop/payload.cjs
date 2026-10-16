@@ -51,7 +51,8 @@ async function makePayload(parts, {directory, nativeImage, target='dingtalk'}) {
    const filename=crypto.createHash('sha256').update(bytes).digest('hex')+'.png';
    const file=path.join(directory,filename);
    if(target==='dingtalk'){await fs.mkdir(directory,{recursive:true,mode:0o700});await fs.writeFile(file,bytes,{mode:0o600});}
-   const displayWidth=Math.min(width,1100),displayHeight=Math.round(height*displayWidth/width);
+   const requestedWidth=Number.isFinite(p.displayWidth)&&p.displayWidth>0?p.displayWidth:width;
+   const displayWidth=Math.min(width,1100,Math.max(1,requestedWidth)),displayHeight=Math.round(height*displayWidth/width);
    normalized.push({type:'image',src:'data:image/png;base64,'+bytes.toString('base64'),width:displayWidth,height:displayHeight});
    items.push({type:'image',data:{authMediaId:'',filename,path:file,text:'',url:''},style:{width:displayWidth,height:displayHeight,indent:0,mode:0}});
    html.push(`<img src="data:image/png;base64,${bytes.toString('base64')}" width="${displayWidth}" height="${displayHeight}">`);
