@@ -61,6 +61,25 @@ test('desktop release builds one universal Mac package and publishes only pushed
  assert(macStep);
  for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
 });
+test('release preflight gates both builds while skipped preflight preserves manual installer checks',()=>{
+ const workflow=readWorkflow('desktop-release.yml'),preflight=workflow.jobs.preflight;
+ assertOnlyPushedVersionTags(preflight.if);
+ assert.equal(workflow.jobs.build.needs,'preflight');
+ assert.equal(workflow.jobs['build-site'].needs,'preflight');
+ const expression=workflow.jobs.build.if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
+ for(const [eventName,result,cancelled,expected] of [
+  ['push','success',false,true],['push','failure',false,false],['push','skipped',false,false],
+  ['workflow_dispatch','skipped',false,true],['workflow_dispatch','skipped',true,false]
+ ])assert.equal(require('node:vm').runInNewContext(expression,{github:{event_name:eventName},needs:{preflight:{result}},cancelled:()=>cancelled}),expected,eventName+' '+result);
+ for(const job of [preflight,workflow.jobs.publish]){
+  const guard=job.steps.find(step=>step.run?.startsWith('npm run release:verify'));
+  assert(guard,'validate the version before building and recheck before publishing');
+  assert.equal(guard.run,'npm run release:verify -- --tag "$GITHUB_REF_NAME"');
+  assert.equal(guard.env.GH_TOKEN,'${{ github.token }}');
+ }
+ const publish=workflow.jobs.publish.steps;
+ assert(publish.findIndex(step=>step.run?.startsWith('npm run release:verify'))<publish.findIndex(step=>step.run?.includes('gh release create')));
+});
 test('main, pull requests, and manual checks do not build or deploy the website',()=>{
  const workflow=readWorkflow('pages.yml');
  assert.equal(workflow.name,'Check');

@@ -104,9 +104,23 @@ Actions 为每个工作流保留最近 10 次运行，较旧且已结束的运�
 
 提交 main 或发起 PR 仅运行 `npm run check`，不构建或部署官网。发布桌面版与官网时：
 
-1. 更新 `package.json` 和 `package-lock.json` 的版本，以及 `docs/release-notes.md`。
-2. 提交并推送代码，再推送同版本标签（例如 `v0.6.0`）。
-3. `Desktop release` 为同一版本标签构建 Mac 通用版、Windows x64 安装包和官网静态产物。安装包与官网构建全部成功后，校验三个安装资产（Mac DMG、Mac ZIP、Windows EXE），生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest，随后部署官网。
+1. 将本次已完成变更的更新说明正文写入文件（不带版本标题，命令会自动添加），再运行统一准备命令，例如：
+
+   ```sh
+   npm run release:prepare -- patch --notes-file /tmp/md2chat-release-notes.md
+   ```
+
+   `patch` 可替换为 `minor`、`major` 或明确的 `X.Y.Z` 稳定版本号。命令先校验版本、说明和 GitHub Latest；通过后同步 `package.json`、`package-lock.json` 顶层及根包版本，并把新版本说明放到 `docs/release-notes.md` 首部，保留历史。准备命令只修改这些文件，不提交、不创建标签、不推送。
+2. 审阅变更，运行 `npm run check`；将下方 `vX.Y.Z` 替换为准备好的版本，校验正式发布条件：
+
+   ```sh
+   npm run release:verify -- --tag vX.Y.Z
+   ```
+
+   正式发布要求规范的 `X.Y.Z` 稳定版本号（不接受预发布或 build metadata）、标签与两个 package 文件和更新说明首版本一致、说明正文有实质内容，而且版本严格高于 GitHub Latest。网络、鉴权或限流错误会停止校验；Latest 不存在且已确认仓库可访问时，允许发布首个稳定版。校验读取公开 GitHub API，可通过 `GH_TOKEN` 或 `GITHUB_TOKEN` 提供鉴权。CI 会在构建前和发布前重新校验。
+3. 仅在要正式发布时，提交并推送发布所需代码，再创建并推送同版本 `vX.Y.Z` 标签。普通代码提交和推送 main 不会自动升版，也不会发布。`Desktop release` 从该标签构建 Mac 通用版、Windows x64 安装包和官网静态产物；全部构建成功后，校验三个安装资产（Mac DMG、Mac ZIP、Windows EXE）与自动更新清单，生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest，随后部署同版本官网。
+
+仓库自带 [发布 skill](.agents/skills/md2chat-release/SKILL.md) 和根目录 [AGENTS.md](AGENTS.md)，随代码一起维护。Codex 遇到准备新版本、更新说明或发布请求时会按此流程处理；脚本与流水线负责强制校验，普通提交和应用内「检查更新」不触发发布流程。
 
 README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 `Desktop release` 仅生成安装包构建产物供验证，不发布 Release 或更新官网。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
 
