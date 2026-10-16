@@ -1,6 +1,6 @@
 {
   "name": "md2chat",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Markdown to editable chat messages — desktop and web",
   "license": "MIT",

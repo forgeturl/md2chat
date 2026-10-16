@@ -14,7 +14,7 @@ ${schema?'<script type="application/ld+json">'+JSON.stringify(schema).replaceAll
 function files(){
  const output={};
  for(const file of ['index.html','editor.html']){
-  const original=fs.readFileSync(path.join(root,file),'utf8');
+  const original=fs.readFileSync(path.join(root,file),'utf8').replaceAll('\r\n','\n');
   const title=file==='index.html'?'md2chat — Markdown 转钉钉、微信图文 | 免费开源桌面工具':'Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat';
   const description=file==='index.html'?'免费开源的 Markdown 图文转换工具：保留可编辑文字，表格、代码、公式与 Mermaid 转图片。提供 macOS 和 Windows 桌面版及网页试用，附钉钉、微信等平台兼容性说明。':'在线输入 Markdown 或图文，预览后按微信、钉钉、飞书、企微或邮件目标复制。表格和代码转图片，邮件保留可编辑表格；不上传正文，实际粘贴以客户端为准。';
   const url=origin+(file==='index.html'?'':file);
@@ -37,6 +37,6 @@ function files(){
  output['llms.txt']='# md2chat\n\n> Free, open-source Markdown-to-chat converter. Keeps editable text and turns complex blocks into images. Local processing, macOS / Windows desktop app and web editor.\n\n## Product and evidence\n\n- [Home]('+origin+'): Features and latest downloads.\n- [Editor]('+origin+'editor.html): Local conversion; browser clipboard limitations apply.\n- [Source and compatibility](https://github.com/forgeturl/md2chat): MIT license, tests, releases and evidence.\n'+guides.map(g=>'- ['+g.title+']('+origin+'guides/'+g.slug+'.html): '+g.description).join('\n')+'\n\n## Limits\n\nMac DingTalk native text/image/text paste has been tested on Apple Silicon. Windows DingTalk private clipboard is not implemented. WeChat uses standard HTML. Feishu, WeCom and email are experimental and have not passed client acceptance. Clipboard generation is not proof of successful pasting or email delivery. No guarantee of compatibility with every client version. No user content is uploaded to md2chat; remote image URLs still contact their source.\n';
  return output;
 }
-function run(write){let failed=false;for(const [name,content] of Object.entries(files())){const file=path.join(root,name);if(write){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,content);}else if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==content){console.error('SEO output outdated: '+name);failed=true;}}if(failed)throw new Error('Run npm run seo:generate and review the public text.');}
+function run(write){let failed=false;for(const [name,content] of Object.entries(files())){const file=path.join(root,name);if(write){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,content);}else if(!fs.existsSync(file)||fs.readFileSync(file,'utf8').replaceAll('\r\n','\n')!==content){console.error('SEO output outdated: '+name);failed=true;}}if(failed)throw new Error('Run npm run seo:generate and review the public text.');}
 if(require.main===module){run(process.argv.includes('--write'));console.log('SEO pages, canonical metadata, sitemap and llms.txt are consistent.');}
 module.exports={files,run};

@@ -11,3 +11,16 @@ test('published SEO metadata is current, canonical and discoverable without Java
  }
  for(const g of guides){assert(output['index.html'].includes('./guides/'+g.slug+'.html'));assert(output['llms.txt'].includes(g.slug));}
 });
+test('SEO check accepts Windows CRLF checkout without hiding stale content',()=>{
+ const os=require('node:os'),{execFileSync}=require('node:child_process');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'md2chat-seo-crlf-'));
+ try{
+  for(const name of [...Object.keys(files()),'scripts/seo.cjs','scripts/site-content.cjs','package.json']){
+   fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});
+   fs.writeFileSync(path.join(dir,name),fs.readFileSync(path.join(root,name),'utf8').replaceAll('\r\n','\n').replaceAll('\n','\r\n'));
+  }
+  execFileSync(process.execPath,[path.join(dir,'scripts/seo.cjs')],{stdio:'pipe'});
+  fs.appendFileSync(path.join(dir,'llms.txt'),'stale content');
+  assert.throws(()=>execFileSync(process.execPath,[path.join(dir,'scripts/seo.cjs')],{stdio:'pipe'}));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
