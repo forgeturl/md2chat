@@ -19,6 +19,8 @@ unsafe extern "system" {
     fn RegisterClipboardFormatW(name: *const u16) -> u32;
     fn GetClipboardFormatNameW(format: u32, name: *mut u16, max: i32) -> i32;
     fn GetClipboardSequenceNumber() -> u32;
+    #[cfg(test)]
+    fn GetClipboardOwner() -> Hwnd;
     fn CreateWindowExW(
         style: u32,
         class: *const u16,
@@ -48,6 +50,7 @@ fn wide(value: &str) -> Vec<u16> {
 }
 struct Clipboard {
     window: Hwnd,
+    open: bool,
 }
 impl Clipboard {
     fn open(writing: bool) -> Result<Self, String> {
@@ -75,7 +78,7 @@ impl Clipboard {
             }
             for _ in 0..10 {
                 if OpenClipboard(window) != 0 {
-                    return Ok(Self { window });
+                    return Ok(Self { window, open: true });
                 }
                 thread::sleep(Duration::from_millis(10));
             }
@@ -85,11 +88,20 @@ impl Clipboard {
             Err("剪贴板正被其他程序使用，请重试。".into())
         }
     }
+    fn close(&mut self) -> Result<(), String> {
+        if self.open {
+            if unsafe { CloseClipboard() } == 0 {
+                return Err("无法关闭系统剪贴板。".into());
+            }
+            self.open = false;
+        }
+        Ok(())
+    }
 }
 impl Drop for Clipboard {
     fn drop(&mut self) {
+        let _ = self.close();
         unsafe {
-            CloseClipboard();
             if !self.window.is_null() {
                 DestroyWindow(self.window);
             }
@@ -314,7 +326,10 @@ pub fn write(formats: Vec<(String, Vec<u8>)>) -> Result<(), String> {
 pub fn write_checked(formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Result<(), String> {
     write_owned(formats, sequence).map(|_| ())
 }
-fn write_owned(mut formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Result<u64, String> {
+fn write_owned(
+    mut formats: Vec<(String, Vec<u8>)>,
+    sequence: Option<u64>,
+) -> Result<Clipboard, String> {
     // Windows consumers can choose the first supported representation.
     formats.sort_by_key(|(name, _)| if name == "text/plain" { 2 } else { 0 });
     // Prepare every allocation before clearing the user's clipboard.
@@ -352,7 +367,7 @@ fn write_owned(mut formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Re
                 allocate(CF_DIBV5, &png_to_dib(&bytes)?, &mut allocated)?;
             }
         }
-        let _clipboard = Clipboard::open(true)?;
+        let mut clipboard = Clipboard::open(true)?;
         if sequence
             .is_some_and(|expected| unsafe { GetClipboardSequenceNumber() } as u64 != expected)
         {
@@ -367,7 +382,10 @@ fn write_owned(mut formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Re
             }
             *memory = ptr::null_mut();
         }
-        Ok(unsafe { GetClipboardSequenceNumber() } as u64)
+        // Closing can synthesize Windows formats and advance the sequence. Keep
+        // the owner window alive so tests can restore without a pre-close token.
+        clipboard.close()?;
+        Ok(clipboard)
     })();
     for (_, memory) in allocated {
         if !memory.is_null() {
@@ -438,14 +456,16 @@ fn backup_all() -> Result<Vec<(u32, Vec<u8>)>, String> {
     Ok(formats)
 }
 #[cfg(test)]
-fn restore_all(formats: &[(u32, Vec<u8>)], sequence: u64) -> Result<(), String> {
+fn restore_all(formats: &[(u32, Vec<u8>)], owner: &Clipboard) -> Result<(), String> {
     let mut allocated = Vec::new();
     let result = (|| {
         for (id, bytes) in formats {
             allocate(*id, bytes, &mut allocated)?;
         }
         let _clipboard = Clipboard::open(true)?;
-        if unsafe { GetClipboardSequenceNumber() } as u64 != sequence {
+        // Check ownership while locked: sampling a sequence after closing could
+        // adopt another application's update and later overwrite it.
+        if unsafe { GetClipboardOwner() } != owner.window {
             return Err(super::CHANGED.into());
         }
         if unsafe { EmptyClipboard() } == 0 {
@@ -472,9 +492,9 @@ fn restore_all(formats: &[(u32, Vec<u8>)], sequence: u64) -> Result<(), String> 
 pub fn native_roundtrip() -> Result<(), String> {
     let original = backup_all()?;
     let test = super::super::roundtrip_formats();
-    let mut owned_sequence = None;
+    let mut owned_clipboard = None;
     let result = (|| {
-        owned_sequence = Some(write_owned(test.clone(), None)?);
+        owned_clipboard = Some(write_owned(test.clone(), None)?);
         let snapshot = read()?;
         if snapshot.items.len() != 1 {
             return Err("Native write did not retain one item".into());
@@ -507,10 +527,27 @@ pub fn native_roundtrip() -> Result<(), String> {
         if read()?.sequence != sequence {
             return Err("Rejected write changed clipboard".into());
         }
+        // A subsequent writer must prevent restoration with the old owner.
+        let newer_text = b"newer clipboard content";
+        let newer = write_owned(
+            vec![("text/plain".into(), newer_text.to_vec())],
+            Some(sequence),
+        )?;
+        let rejected = restore_all(&original, owned_clipboard.as_ref().unwrap());
+        owned_clipboard = Some(newer);
+        if rejected != Err(super::CHANGED.into()) {
+            return Err("Restoration did not reject a newer clipboard owner".into());
+        }
+        if !read()?.items[0].iter().any(|format| {
+            format.name == "text/plain" && format.bytes.as_deref() == Some(newer_text)
+        }) {
+            return Err("Rejected restoration changed newer clipboard content".into());
+        }
         Ok(())
     })();
-    if let Some(sequence) = owned_sequence {
-        restore_all(&original, sequence)?;
+    if let Some(owner) = &owned_clipboard {
+        restore_all(&original, owner)
+            .map_err(|error| format!("Could not restore original clipboard: {error}"))?;
     } else {
         return result;
     }
