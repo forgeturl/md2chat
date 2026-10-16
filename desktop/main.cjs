@@ -27,15 +27,16 @@ if(primaryInstance)app.whenReady().then(async()=>{
  if(!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
  session.defaultSession.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
  session.defaultSession.setPermissionCheckHandler(()=>false);
- ipcMain.handle('md2chat:copy',async(event,parts)=>{
+ ipcMain.handle('md2chat:copy',async(event,parts,target='dingtalk')=>{
   trusted(event);if(copying)throw new Error('正在复制，请稍候');copying=true;
   try{
-   const payload=await makePayload(parts,{directory:cache,nativeImage});
+   const payload=await makePayload(parts,{directory:cache,nativeImage,target});
    const data={'text/plain':payload.plain,'text/html':payload.html};
-   if(process.platform==='darwin')data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
+   const native=process.platform==='darwin'&&target==='dingtalk';
+   if(native)data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
    await clipboard.write([new ClipboardItem(data)]);
-   if(process.platform==='darwin'&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
-   return {images:payload.imageCount,native:process.platform==='darwin'};
+   if(native&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
+   return {images:payload.imageCount,native,target};
   }finally{copying=false;}
  });
  ipcMain.handle('md2chat:inspect',async event=>{trusted(event);return inspect();});

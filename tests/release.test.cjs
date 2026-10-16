@@ -12,7 +12,7 @@ test('first-party frontend has no persistence or native API dependency',()=>{
  assert(!js.includes('clipboard-source'));assert(!js.includes('NSPasteboard'));
 });
 test('build has a narrow public-file allowlist',()=>{
- const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','LICENSE','THIRD_PARTY_NOTICES.md']"));
+ const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','guides','sitemap.xml','llms.txt','LICENSE','THIRD_PARTY_NOTICES.md']"));
 });
 test('latest download links match the complete release asset contract',()=>{
  const {expectedAssets}=require('../scripts/release-assets.cjs');

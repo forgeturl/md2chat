@@ -53,7 +53,7 @@ test('remote images load by default without credentials, unsafe schemes are reje
 });
 test('diagnostic reports exclude clipboard text content',async()=>{
  const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};
- const ctx={document:{getElementById:el},window:{isSecureContext:true},navigator:{clipboard:{}},Blob};vm.createContext(ctx);
+ const ctx={lastCopyTarget:null,document:{getElementById:el},window:{isSecureContext:true},navigator:{clipboard:{}},Blob};vm.createContext(ctx);
  const start=code.indexOf('const diagnosticStatus=');const end=code.indexOf("document.getElementById('read-clipboard').addEventListener");vm.runInContext(code.slice(start,end),ctx);
  await ctx.showSample('测试',[{type:'text/plain',blob:new Blob(['PRIVATE-SAMPLE-123'])}]);
  assert(!el('diagnostic-report').textContent.includes('PRIVATE-SAMPLE'));assert(el('diagnostic-report').textContent.includes('text/plain'));

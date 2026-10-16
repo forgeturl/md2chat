@@ -3,3 +3,5 @@
 .product-shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 48px #173f3510}
 
 .brand-image{width:40px;height:40px;object-fit:contain}
+
+.guide{max-width:940px}.guide h1{font-size:clamp(30px,5vw,46px);line-height:1.35;margin:50px 0 24px}.guide h2{font-size:24px;margin:36px 0 12px}.guide main p,.guide main li{font-size:17px;line-height:1.85}.guide main a:not(.button){text-decoration:underline;text-underline-offset:4px}.guide section{margin:28px 0}.features h3 a{text-decoration:underline;text-underline-offset:4px}

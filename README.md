@@ -23,9 +23,20 @@
 
 提供 Windows x64、macOS Apple Silicon 和 Intel 安装包。使用 Electron，应用内包含转换器和原生剪贴板能力，不需要另装插件、Python、Node 或助手。
 
-输入 Markdown（左侧「清空」可重新开始）→ 检查右侧预览 → 点击「转换并复制完整图文」→ 在聊天输入框按一次 ⌘V / Ctrl+V。普通文字仍可编辑，图片能否保留取决于客户端兼容性。
+输入 Markdown（左侧「清空」可重新开始）→ 检查右侧预览 → 点击微信、钉钉、飞书、企微或邮件图标→ 在聊天输入框按一次 ⌘V / Ctrl+V。普通文字仍可编辑，图片能否保留取决于客户端兼容性。
 
 安装包目前**未完成平台开发者签名（macOS 也未公证）**，系统可能提示或阻止打开。macOS 使用钉钉原生图文格式，已在 M 系列 Mac 的钉钉输入框验证；Windows 使用标准 HTML 图文，尚未适配和验证 Windows 钉钉专有格式，可能丢图。Intel Mac、微信等客户端未完成同等粘贴验证。不支持自动发送消息。
+
+## 按目标平台复制
+
+| 入口 | 输出 | 验证范围 |
+| --- | --- | --- |
+| 钉钉 | Mac 原生图文 + HTML + 纯文本；Windows / 网页标准图文 | Mac M 系列输入框已实测；Windows 可能丢图 |
+| 微信 | 标准 HTML 图文 + 纯文本 | 需按客户端版本确认图片 |
+| 飞书 / 企微 | 标准 HTML 图文 + 纯文本 | 实验性，尚未完成客户端验证 |
+| 邮件 | 可编辑 HTML 表格 + 文字；复杂内容为图片 | 实验性，需确认发送后图片仍在 |
+
+一次点击只复制，不会自动发送。网页受浏览器剪贴板能力限制。更多见 [平台指南](https://forgeturl.github.io/md2chat/guides/chat-compatibility.html)。
 
 ## 菜单栏、托盘与开机自启动
 
@@ -73,12 +84,16 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 桌面渲染进程开启 sandbox、contextIsolation，关闭 Node 集成。只加载打包的本地界面，拒绝页面导航、嵌入 webview 和任意外部窗口；剪贴板 IPC 验证调用方和内容，不能让渲染器选择读写文件路径。
 
+## SEO / GEO 维护
+
+官网包含静态使用指南、canonical、分享元数据、应用结构化数据、sitemap 和 llms.txt。每次发布自动检查页面、链接与内容清单，见 [维护步骤](docs/seo.md)。修改公开说明后运行 `npm run seo:generate`；不承诺搜索收录、排名或 AI 引用。
+
 ## 发布
 
 推送 main 自动发布 Pages。发布桌面版时：
 
 1. 更新 `package.json` 和 `package-lock.json` 的版本，以及 `docs/release-notes.md`。
-2. 提交并推送代码，再推送同版本标签（例如 `v0.4.0`）。
+2. 提交并推送代码，再推送同版本标签（例如 `v0.5.0`）。
 3. `Desktop release` 自动在 macOS / Windows runner 上检查并打包。三个构建全部成功后，校验五个发行文件，生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest。
 
 README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 workflow 仅生成构建产物，不发布 Release。
