@@ -2,6 +2,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),vm=require('node:vm');
 const {makePayload,pruneImages,RAW_FORMAT}=require('../desktop/payload.cjs');
 const {inspectClipboard}=require('../desktop/clipboard-diagnostics.cjs');
+const {writeClipboardPayload}=require('../desktop/clipboard-write.cjs');
 const png=Buffer.from('89504e470d0a1a0a','hex');
 const image={type:'image',src:'data:image/png;base64,'+png.toString('base64')};
 const nativeImage={createFromDataURL:()=>({isEmpty:()=>false,getSize:()=>({width:400,height:100}),toPNG:()=>png})};
@@ -12,18 +13,20 @@ async function fixture(platform='win32'){
  const clipboard={write:async items=>writes.push(items),has:async type=>writes.at(-1)?.some(item=>item.types.includes(type))||false,read:async()=>writes.at(-1)||[]};
  class ClipboardItem{constructor(data){this.data=data;this.types=Object.keys(data);}async getType(type){const data=this.data[type];return data instanceof Blob?data:new Blob([data],{type});}}
  const source=await fs.readFile(path.join(__dirname,'../desktop/main.cjs'),'utf8');
- const context={process:{platform},Blob,ClipboardItem,clipboard,RAW_FORMAT,pruneImages,path,app:{getPath:()=>userData}};
+ const context={process:{platform},Blob,ClipboardItem,clipboard,RAW_FORMAT,pruneImages,writeClipboardPayload,path,app:{getPath:()=>userData}};
  vm.createContext(context);
  vm.runInContext(source.slice(source.indexOf('async function writePayload('),source.indexOf('if(primaryInstance)app.whenReady()')),context);
  return {directory,writes,clipboard,write:context.writePayload,cleanup:()=>fs.rm(userData,{recursive:true,force:true})};
 }
 
-test('Windows image copy writes only paragraph HTML, preserving two images around editable text',async()=>{
+test('Windows image copy retains a plain-text fallback alongside paragraph HTML with two images',async()=>{
  const f=await fixture();
  try{
   const payload=await makePayload([{type:'text',text:'前文'},image,{type:'text',text:'中间'},image,{type:'text',text:'后文'}],{directory:f.directory,nativeImage,platform:'win32'});
   const result=await f.write(payload,'dingtalk');
-  assert.deepEqual(f.writes[0][0].types,['text/html']);
+  assert.deepEqual(f.writes[0][0].types,['text/plain','text/html']);
+  assert.equal(await (await f.writes[0][0].getType('text/plain')).text(),'前文\n[图片]\n中间\n[图片]\n后文');
+  assert.equal(await (await f.writes[0][0].getType('text/html')).text(),payload.html);
   assert.equal(result.windowsHtml,true);assert.equal(result.native,false);assert.equal(result.images,2);
   const report=await inspectClipboard(f.clipboard,{platform:'win32'});
   assert.deepEqual(report.html[0].images.map(image=>image.source.kind),['file','file']);

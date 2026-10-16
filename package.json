@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "node scripts/serve.cjs",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check desktop/updates.cjs && node --check assets/updates.js && node --check assets/workbench.js && node --check assets/chat-targets.js && npm run seo:check && node --check desktop/wecom-segment.cjs && node --check assets/wecom-segments.js && node --check desktop/clipboard-diagnostics.cjs && node --check assets/clipboard-diagnostics.js && node --check desktop/clipboard-conversion.cjs && node --check assets/clipboard-source.js && node --check assets/clipboard-image.js && node --check desktop/menu-icons.cjs && node --check desktop/preferences.cjs && node --check desktop/preferences-preload.cjs && node --check assets/preferences.js && node --check scripts/render-menu-icons.cjs && node --check desktop/integration.cjs && node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/payload.cjs && node --check assets/chat-clipboard.js && node --check assets/app.js && node --check assets/code-images.js && node --check assets/renderers.js && node --check assets/chat-markdown.js && npm test",
+    "check": "node --check desktop/updates.cjs && node --check assets/updates.js && node --check assets/workbench.js && node --check assets/chat-targets.js && npm run seo:check && node --check desktop/wecom-segment.cjs && node --check assets/wecom-segments.js && node --check desktop/clipboard-write.cjs && node --check desktop/dingtalk-html-test.cjs && node --check desktop/windows-clipboard-smoke.cjs && node --check desktop/clipboard-diagnostics.cjs && node --check assets/clipboard-diagnostics.js && node --check desktop/clipboard-conversion.cjs && node --check assets/clipboard-source.js && node --check assets/clipboard-image.js && node --check desktop/menu-icons.cjs && node --check desktop/preferences.cjs && node --check desktop/preferences-preload.cjs && node --check assets/preferences.js && node --check scripts/render-menu-icons.cjs && node --check desktop/integration.cjs && node --check desktop/main.cjs && node --check desktop/preload.cjs && node --check desktop/payload.cjs && node --check assets/chat-clipboard.js && node --check assets/app.js && node --check assets/code-images.js && node --check assets/renderers.js && node --check assets/chat-markdown.js && npm test",
     "build": "node scripts/build.cjs",
     "release:prepare": "node scripts/release.cjs prepare",
     "release:verify": "node scripts/release.cjs verify",
@@ -19,6 +19,7 @@
     "desktop:pack": "electron-builder --mac dir --universal",
     "desktop:dist": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:test": "electron desktop/smoke.cjs",
+    "desktop:test:windows": "electron desktop/windows-clipboard-smoke.cjs --report release/qa/windows-clipboard.json",
     "desktop:dist:mac": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:dist:win": "electron-builder --win nsis --x64 --publish never",
     "seo:generate": "node scripts/seo.cjs --write",

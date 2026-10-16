@@ -4,16 +4,17 @@
 })(globalThis,root=>{
  'use strict';
  let nextId=0;
+ const targets=Object.freeze({wecom:'企微',dingtalk:'钉钉'});
  const imageSource=/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i;
  function snapshotParts(parts,clone=root.structuredClone){
-  if(!Array.isArray(parts)||!parts.length||parts.length>500)throw new Error('企微分段内容为空或段落过多。');
+  if(!Array.isArray(parts)||!parts.length||parts.length>500)throw new Error('分段内容为空或段落过多。');
   let size=0;
   for(const part of parts){
    if(part?.type==='text'&&typeof part.text==='string'&&part.text.length<=2*1024*1024)size+=part.text.length;
    else if(part?.type==='image'&&typeof part.src==='string'&&part.src.length<=15*1024*1024&&imageSource.test(part.src))size+=part.src.length;
-   else throw new Error('企微分段内容无效，请重新生成预览。');
+   else throw new Error('分段内容无效，请重新生成预览。');
   }
-  if(size>60*1024*1024)throw new Error('企微分段内容过大，请减少图片后重试。');
+  if(size>60*1024*1024)throw new Error('分段内容过大，请减少图片后重试。');
   const snapshot=clone(parts);
   // Separate text from adjacent image pastes without changing the editor's segments.
   snapshot.forEach((part,index)=>{
@@ -55,12 +56,12 @@
    view.status.textContent='正在复制第 '+(index+1)+'/'+view.parts.length+' 段…';
    try{
     // Invoke during the button click, before any await, to retain browser user activation.
-    const result=copySegment(view.parts[index]);
+    const result=copySegment(view.parts[index],view.target);
     await result;
     if(current!==view)return;
     view.buttons[index].textContent='已复制，可再复制';
     view.buttons[index].classList.add('is-copied');
-    view.status.textContent='已复制第 '+(index+1)+'/'+view.parts.length+' 段，请到企微粘贴后再继续。';
+    view.status.textContent='已复制第 '+(index+1)+'/'+view.parts.length+' 段，请到'+view.label+'粘贴后再继续。';
    }catch(error){
     if(current!==view)return;
     const reason=typeof error?.message==='string'?error.message.slice(0,500):'剪贴板访问未完成';
@@ -70,23 +71,25 @@
     if(current===view){view.busy=false;for(const button of view.buttons)button.disabled=false;}
    }
   }
-  function open(parts){
-   if(current)throw new Error('请先关闭当前企微分段窗口，再打开新的转换内容。');
+  function open(parts,target='wecom'){
+   if(typeof target!=='string'||!Object.hasOwn(targets,target))throw new Error('不支持的分段复制目标。');
+   if(current)throw new Error('请先关闭当前'+current.label+'分段窗口，再打开新的转换内容。');
+   const label=targets[target];
    const snapshot=snapshotParts(parts,env.structuredClone||root.structuredClone);
    const panel=element('dialog','wecom-segments-dialog');
-   const title=element('h2','','企微分段复制');title.id='wecom-segments-title-'+(++nextId);
+   const title=element('h2','',label+'分段复制');title.id='wecom-segments-title-'+(++nextId);
    panel.setAttribute('aria-labelledby',title.id);
    const heading=element('div','wecom-segments-heading');
    const closeButton=element('button','wecom-segments-close','关闭');closeButton.type='button';
-   closeButton.setAttribute('aria-label','关闭企微分段窗口');closeButton.addEventListener('click',()=>dispose(view));
+   closeButton.setAttribute('aria-label','关闭'+label+'分段窗口');closeButton.addEventListener('click',()=>dispose(view));
    heading.append(title,closeButton);
-   const instruction=element('p','wecom-segments-instruction','企微图文需按编号逐段复制，再到企微按顺序粘贴。文字保持可编辑；每粘贴一段后，再回来复制下一段。');
+   const instruction=element('p','wecom-segments-instruction',label+'图文需按编号逐段复制，再到'+label+'按顺序粘贴。文字保持可编辑；每粘贴一段后，再回来复制下一段。');
    instruction.id=title.id+'-instruction';panel.setAttribute('aria-describedby',instruction.id);
    const note=element('p','help wecom-segments-note','文字按纯文本粘贴，粗体等样式可能不保留。不自动发送消息。');
    const list=element('ol','wecom-segments-list');
    const status=element('p','wecom-segments-status','共 '+snapshot.length+' 段，请从第 1 段开始复制。');
    status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.setAttribute('aria-atomic','true');
-   const view={panel,parts:snapshot,buttons:[],status,busy:false};
+   const view={panel,parts:snapshot,buttons:[],status,busy:false,target,label};
    snapshot.forEach((part,index)=>{
     const kind=part.type==='text'?'文字':'图片';
     const card=element('li','wecom-segment-card'),header=element('div','wecom-segment-heading');

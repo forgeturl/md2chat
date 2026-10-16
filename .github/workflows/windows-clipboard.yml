@@ -1,0 +1,43 @@
+name: Windows clipboard validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'assets/app.js'
+      - 'assets/wecom-segments.js'
+      - 'scripts/inspect-windows-clipboard.ps1'
+      - 'package*.json'
+      - 'examples/windows-clipboard/**'
+      - '.github/workflows/windows-clipboard.yml'
+permissions:
+  contents: read
+concurrency:
+  group: windows-clipboard-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  clipboard:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Test real Electron clipboard and independent Win32 CF_HTML reader
+        run: npm run desktop:test:windows
+      - name: Upload evidence and manual DingTalk cases
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-clipboard-qa
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            release/qa/windows-clipboard.json
+            docs/windows-clipboard-qa.md
+            examples/windows-clipboard/

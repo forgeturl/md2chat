@@ -3,6 +3,8 @@ contextBridge.exposeInMainWorld('md2chatDesktop',Object.freeze({
  platform:process.platform,
  copy:(parts,target='dingtalk')=>ipcRenderer.invoke('md2chat:copy',parts,target),
  copyWecomSegment:segment=>ipcRenderer.invoke('md2chat:copy-wecom-segment',segment),
+ copyChatSegment:segment=>ipcRenderer.invoke('md2chat:copy-wecom-segment',segment),
+ testDingtalkHtml:mode=>ipcRenderer.invoke('md2chat:test-dingtalk-html',mode),
  inspect:()=>ipcRenderer.invoke('md2chat:inspect'),
  resolveClipboardHtml:html=>ipcRenderer.invoke('md2chat:resolve-clipboard-html',html),
  onConvertClipboard:callback=>{

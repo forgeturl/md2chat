@@ -9,6 +9,8 @@ const {createUpdates}=require('./updates.cjs');
 const {createClipboardConversion,createConversionBridge,makeClipboardImageData,resolveCachedHtmlImages}=require('./clipboard-conversion.cjs');
 const {profile}=require('../assets/chat-targets.js');
 const {inspectClipboard}=require('./clipboard-diagnostics.cjs');
+const {runDingtalkHtmlTest}=require('./dingtalk-html-test.cjs');
+const {writeClipboardPayload}=require('./clipboard-write.cjs');
 app.setName('md2chat');
 let win,copying=false,quitting=false,integration,updates,clipboardConversion,conversionBridge,preferences;
 const primaryInstance=app.requestSingleInstanceLock();
@@ -25,18 +27,7 @@ async function inspect(){
  return inspectClipboard(clipboard,{platform:process.platform,version:app.getVersion()});
 }
 async function writePayload(payload,target){
- // Match the Windows sample's HTML-only image entry. Keep plain text when
- // there are no images, and preserve every other platform's representations.
- const windowsHtml=process.platform==='win32'&&target==='dingtalk'&&payload.imageCount>0;
- const data=windowsHtml?{'text/html':payload.html}:{'text/plain':payload.plain,'text/html':payload.html};
- const native=process.platform==='darwin'&&target==='dingtalk';
- if(native)data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
- await clipboard.write([new ClipboardItem(data)]);
- if(native&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
- // Windows file references must survive restarting md2chat. Clean old cache
- // entries only after an explicit copy has replaced the previous clipboard.
- if(process.platform==='win32'&&target==='dingtalk')await pruneImages(path.join(app.getPath('userData'),'clipboard-images')).catch(()=>{});
- return {images:payload.imageCount,native,target,windowsHtml};
+ return writeClipboardPayload(payload,{target,platform:process.platform,clipboard,ClipboardItem,imageDirectory:path.join(app.getPath('userData'),'clipboard-images')});
 }
 if(primaryInstance)app.whenReady().then(async()=>{
  const {autoUpdater}=require('electron-updater');
@@ -91,6 +82,11 @@ if(primaryInstance)app.whenReady().then(async()=>{
   return resolveCachedHtmlImages(html,{imageDirectory:cache});
  });
  conversionBridge=createConversionBridge({ipcMain,trusted,getWebContents:()=>win?.webContents});
+ ipcMain.handle('md2chat:test-dingtalk-html',async(event,mode)=>{
+  trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');copying=true;
+  try{return await runDingtalkHtmlTest(mode,{clipboard,ClipboardItem,platform:process.platform});}
+  finally{copying=false;}
+ });
  clipboardConversion=createClipboardConversion({clipboard,imageDirectory:cache,render:async(content,target)=>{
   if(win?.webContents.isCrashed())await win.loadFile(entry);
   return conversionBridge.render(content,target);

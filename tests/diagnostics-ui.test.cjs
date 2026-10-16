@@ -30,6 +30,7 @@ test('desktop read and report copy use sanitized metadata and retain exactly the
  const writes=[],desktop={inspect:()=>inspectClipboard({read:async()=>[{types:['text/html'],getType:async()=>new Blob([html])}]},{platform:'win32',version:'0.6.2'}),copy:async parts=>writes.push(parts[0].text)};
  const f=fixture(desktop);
  await f.read();assert(f.report().includes('src=data'));assert(f.report().includes('Mac 钉钉专用格式图片：不适用'));
+ assert(f.report().includes('不代表 Windows 原生 CF_HTML 头'));
  html='<p><img src="https://example.com/PRIVATE"></p>';await f.read();
  html='<span><img src="file:///PRIVATE.png"></span>';await f.read();
  await f.copy();

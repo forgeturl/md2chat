@@ -33,18 +33,21 @@
 - 排查仅由点击或粘贴触发，不执行 HTML、不请求图片、不写回剪贴板、不上传或持久化正文。每次解析总量最多 8 MiB，最多检查 100 个格式、列出每份 HTML 的 20 张图片明细；超限或读取失败会明确提示。点击「复制排查报告」才会用报告替换当前剪贴板。
 - 对比时先读取 md2chat 的转换结果，再读取从钉钉复制的同一条图文，最后一次性复制最近两份报告。中间截图或复制其他内容会替换剪贴板。报告可缩小 Windows 实现差异，不能单凭格式和标签计数认定客户端粘贴成功。
 
-## Windows 钉钉兼容修复与待验收范围
+## Windows 钉钉兼容现状与验证
 
 用户提供的 Windows 0.6.3 脱敏样本只有 `text/html`，包含两张 HTTPS 图片，图片位于 `article > p > img`；没有独立 PNG 或额外媒体属性。它证明钉钉复制出口能提供这类 HTML，不能证明粘贴入口接受任意 HTTPS 或本机文件图片。
 
-- Windows 钉钉含图时仅写 HTML，文字和图片使用段落结构，排除含 `[图片]` 的纯文本副本。纯文字仍提供 HTML 与纯文本；Mac 钉钉和其他平台的表示保持原有方式。
-- 原图已有合规 HTTPS 地址且能正常读取时，保留原来源用于 Windows 复制；由表格、代码、公式和图表生成的 PNG 使用本机缓存文件引用。没有自动上传或创建公网地址。客户端是否导入这些图片仍需实测。
-- Windows 启动时保留缓存，在下次成功复制钉钉内容后清理超过 7 天的旧图。编辑器和托盘再导入这些引用时，仅回读本应用缓存内的有效 PNG，拒绝外部文件、符号链接和内容校验不符的缓存；剪贴板转换的前后指纹包含所用缓存图片数据。
-- 本地自动化验证覆盖两图与前后文字的顺序、段落与引用格式、原 HTTPS 来源保留、输入校验和其他平台隔离；模拟结果不能替代 Windows 钉钉的实际导入与发送验收。
+v0.6.4 按上述结构改为仅 HTML、本机 PNG 文件引用。用户反馈钉钉粘贴完全空白；报告确认 HTML 含两张 `file` 图片。这否定了该次兼容尝试的可用性，但仍不能区分 HTML 入口被忽略、本机图片引用受限或其他客户端条件。
 
-下一步在 Windows 使用内置“周末读书会”样本点击钉钉复制，立即读取排查报告，预期只有 `text/html`、两张 `src=file` 图片且祖先为 `p > article`。再粘贴到钉钉草稿，检查前后文字和两张图片；随后使用从钉钉复制的原图样本测试已有 HTTPS 引用。若失败，请同时提供 md2chat 刚复制后的报告及结果（完全无内容、只有文字或部分图片），复制报告前不要用截图替换剪贴板。
+- 已恢复 HTML 与纯文本并存，避免 HTML 未导入时没有文字回退。纯文本中的 `[图片]` 仅是占位，不能算图片粘贴成功。Mac 钉钉仍保留原生私有格式。
+- Windows 提供可选「钉钉分段复制（备用）」，分别写入可编辑纯文本和独立 PNG，按顺序粘贴。它不替代默认整段入口，不表示一次混排已修复，Windows 分段效果也需真机验证。
+- 「剪贴板排查」增加无图 HTML-only 与当前 HTML 原样重写两个显式实验，缩小入口、传输封装、结构和图源之间的差异。重写保持读取到的 HTML 字符串，不承诺原生 CF_HTML 字节相同。不上传、存盘或请求 HTML 引用的图片。
+- 原图已有合规 HTTPS 地址且能正常读取时仍保留原来源；表格、代码、公式和图表使用本机 PNG 缓存，没有自动上传或创建公网地址。Windows 下次成功复制钉钉内容后清理超过 7 天的旧图；编辑器/托盘只回读本应用缓存内内容校验通过的 PNG。
+- Windows 打包前使用真实 Electron 原生剪贴板读写和独立 Win32 CF_HTML 探针；另有独立验证工作流与脱敏逐项报告。它验证应用写入和系统读回，不代替钉钉粘贴验收。完整用例与人工结果模板见 [Windows 验证步骤](windows-clipboard-qa.md)。
 
-资料核对没有找到可直接复用并确认解决 Windows 钉钉混排的公开实现。[Microsoft Clipboard 样例](https://github.com/microsoft/Windows-universal-samples/blob/main/Samples/Clipboard/cs/CopyText.xaml.cs)同时提供 HTML、纯文本，并用 ResourceMap 处理本地图片；[Windows HTML Clipboard 规范](https://learn.microsoft.com/en-us/windows/win32/dataxchg/html-clipboard-format)定义 HTML 片段，但由接收应用决定如何解释。当前改动依据用户样本进行兼容尝试，不能以这些通用资料宣称钉钉已验证成功。
+核对当前依赖源码：[Electron 44.8.0 ClipboardItem](https://github.com/electron/electron/blob/v44.8.0/shell/browser/api/electron_api_clipboard_item.cc#L493-L498) 将 HTML 交给 WriteHTML；其 Chromium 152.0.7977.167 在 [Windows 写入路径](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_win.cc#L1050-L1058)调用 [HtmlToCFHtml](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_util_win.cc#L1256-L1372)，自动生成头部、UTF-8 字节偏移与片段标记。因此报告中解码 HTML 的 `StartFragment 无` 不能证明原生封装缺失，不应据此再嵌套手写头部。
+
+公开资料尚未找到可直接复用并确认解决 Windows 钉钉混排的实现。[Microsoft Clipboard 样例](https://github.com/microsoft/Windows-universal-samples/blob/main/Samples/Clipboard/cs/CopyText.xaml.cs)使用 HTML、纯文本及本地图片 ResourceMap；[Windows HTML Clipboard 规范](https://learn.microsoft.com/en-us/windows/win32/dataxchg/html-clipboard-format)定义通用片段格式，不能证明钉钉接受任意本机图片引用。
 
 ## 2026-10-16 macOS Chrome → 钉钉输入框实测
 

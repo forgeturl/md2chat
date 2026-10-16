@@ -1,12 +1,14 @@
 const message=document.getElementById('message');
 const copyButtons=[...document.querySelectorAll('[data-copy-target]')];
-const wecomSegments=WecomSegments.create({copySegment:segment=>{
- const result=window.md2chatDesktop?window.md2chatDesktop.copyWecomSegment(segment):ChatClipboard.writeSegment(segment);
- return Promise.resolve(result).then(value=>{lastCopyTarget='wecom';return value;});
+const wecomSegments=WecomSegments.create({copySegment:(segment,target='wecom')=>{
+ const result=window.md2chatDesktop?window.md2chatDesktop.copyChatSegment(segment):ChatClipboard.writeSegment(segment);
+ return Promise.resolve(result).then(value=>{lastCopyTarget=target;return value;});
 }});
 let copying=false,lastCopyTarget=null;
+const dingtalkSegmentsButton=document.getElementById('dingtalk-segments');
+dingtalkSegmentsButton.hidden=window.md2chatDesktop?.platform!=='win32';
 const desktopRequired=b=>b.dataset.copyTarget==='dingtalk'&&!window.md2chatDesktop;
-const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
+const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);dingtalkSegmentsButton.disabled=value||copying;}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
 let copyNoticeTimer;
@@ -263,7 +265,7 @@ if(window.md2chatDesktop){
  dingtalkWrapper.classList.remove('desktop-only-copy');
  for(const name of ['tabindex','aria-label','aria-describedby'])dingtalkWrapper.removeAttribute(name);
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
- document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；企微图文请按分段窗口的顺序逐段复制粘贴，文字保持可编辑。飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
+ document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；Windows 钉钉一次图文粘贴尚未解决，可用“钉钉分段复制（备用）”分别复制文字和图片。企微图文请逐段复制粘贴。飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
@@ -297,6 +299,13 @@ function nativeCopy(payload){
  try{sink.focus();const range=document.createRange();range.selectNodeContents(sink);selection.removeAllRanges();selection.addRange(range);return document.execCommand('copy');}
  finally{sink.remove();selection.removeAllRanges();for(const range of previous){try{selection.addRange(range);}catch(_){}}if(active&&active.focus)active.focus();}
 }
+dingtalkSegmentsButton.addEventListener('click',async()=>{
+ if(copying||window.md2chatDesktop?.platform!=='win32')return;
+ clearTimeout(previewTimer);
+ if(!cachedPayload||cachedSource!==serializeInput()){await updatePreview();status.textContent='预览已更新，请再次点击分段复制。';return;}
+ try{wecomSegments.open(cachedPayload.segments,'dingtalk');status.textContent='已打开钉钉分段复制：请逐段复制并到钉钉草稿粘贴，确认文字和图片；Windows 结果仍需实测。';}
+ catch(error){showCopyNotice(error.message,true);}
+});
 for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=>{
  if(copying||desktopRequired(copyButton))return;
  clearTimeout(previewTimer);
@@ -325,13 +334,29 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
    for(const b of copyButtons)b.setAttribute('aria-pressed',String(b===copyButton));
    message.innerHTML=target==='email'?ChatTargets.render(parts,target).html:payload.preview;
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
-   status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已使用 Windows 兼容图文，请到钉钉粘贴并确认图片完整；当前方案待实测。':profile.note);
+   status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已保留纯文本兜底；Windows 钉钉一次图文粘贴尚未解决。图片缺失时可使用“钉钉分段复制（备用）”。':profile.note);
   }
  }catch(error){showCopyNotice('复制失败，请查看下方提示后重试',true);status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
  finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();}
 });
 
 updatePreview();
+
+// Explicit Windows-only experiments isolate HTML acceptance from image handling.
+const dingtalkHtmlTests=document.getElementById('dingtalk-html-tests');
+dingtalkHtmlTests.hidden=window.md2chatDesktop?.platform!=='win32';
+for(const testButton of document.querySelectorAll('[data-dingtalk-html-test]'))testButton.addEventListener('click',async()=>{
+ if(copying||window.md2chatDesktop?.platform!=='win32')return;
+ copying=true;button.disabled=true;
+ const testButtons=[...document.querySelectorAll('[data-dingtalk-html-test]')];
+ for(const b of testButtons)b.disabled=true;
+ try{
+  const result=await window.md2chatDesktop.testDingtalkHtml(testButton.dataset.dingtalkHtmlTest);
+  lastCopyTarget='dingtalk';
+  document.getElementById('diagnostic-status').textContent=result.mode==='text'?'剪贴板已替换为无图片的 HTML 文字测试。请到钉钉草稿粘贴，记录是否出现“md2chat HTML 文字测试”，无需发送。':'已保持读取到的 HTML 文档内容不变并重新写入剪贴板。请粘贴到钉钉草稿，与直接从钉钉复制时的结果比较；无需发送。';
+ }catch(error){document.getElementById('diagnostic-status').textContent='HTML 测试未完成：'+error.message;}
+ finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();for(const b of testButtons)b.disabled=false;}
+});
 
 // Reports intentionally contain metadata only, never text, source HTML, or URLs.
 const diagnosticStatus=document.getElementById('diagnostic-status');
@@ -351,6 +376,7 @@ function desktopReportLines(report){
   'Mac 钉钉专用格式图片：'+nativeCount,'独立图片格式：'+report.imageFormats+' 种（同一图片可能有多种格式）',
   'HTML 图片标签：'+report.htmlImages+'；HTML 表格：'+report.htmlTables];
  report.html.forEach((summary,index)=>lines.push('HTML 样本 '+(index+1)+'：',...ClipboardDiagnostics.htmlLines(summary)));
+ if(report.platform==='win32'&&report.html.length)lines.push('以上为解码后的 HTML；片段标记统计不代表 Windows 原生 CF_HTML 头是否存在或有效。');
  if(report.truncated)lines.push('内容超过排查限额，以上仅为部分统计。');
  if(report.formats.some(format=>format.unreadable))lines.push('部分格式读取失败，图片统计可能不完整。');
  lines.push('结构按静态标签扫描，不执行 HTML，也不请求图片。','格式或标签存在不代表钉钉已成功导入图片。','报告不含正文、HTML 源码、图片内容、链接、文件路径或属性值。');
