@@ -246,12 +246,15 @@ async function buildPayload(source){
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 if(window.md2chatDesktop){
  document.getElementById('dingtalk-desktop-hint').hidden=true;
+ const dingtalkWrapper=document.getElementById('dingtalk-copy-wrapper');
+ dingtalkWrapper.classList.remove('desktop-only-copy');
+ for(const name of ['tabindex','aria-label','aria-describedby'])dingtalkWrapper.removeAttribute(name);
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
  document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；其他平台使用标准图文。飞书、企微、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
-function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'钉钉复制仅限桌面版，请下载桌面版':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
+function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
 async function updatePreview(){
  const source=serializeInput();const version=++renderVersion;
