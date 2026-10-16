@@ -102,13 +102,13 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 Actions 为每个工作流保留最近 10 次运行，较旧且已结束的运行自动清理；临时构建产物按仓库上限保留 3 天。
 
-推送 main 自动发布 Pages。发布桌面版时：
+提交 main 或发起 PR 仅运行 `npm run check`，不构建或部署官网。发布桌面版与官网时：
 
 1. 更新 `package.json` 和 `package-lock.json` 的版本，以及 `docs/release-notes.md`。
 2. 提交并推送代码，再推送同版本标签（例如 `v0.6.0`）。
-3. `Desktop release` 自动在 macOS / Windows runner 上检查并打包。Mac 通用版和 Windows x64 两个构建全部成功后，校验三个安装资产（Mac DMG、Mac ZIP、Windows EXE），生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest。
+3. `Desktop release` 为同一版本标签构建 Mac 通用版、Windows x64 安装包和官网静态产物。安装包与官网构建全部成功后，校验三个安装资产（Mac DMG、Mac ZIP、Windows EXE），生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest，随后部署官网。
 
-README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 workflow 仅生成构建产物，不发布 Release。
+README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 `Desktop release` 仅生成安装包构建产物供验证，不发布 Release 或更新官网。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
 
 0.6.0 发布流水线要求 Mac Developer ID 签名和 Apple 公证，缺少凭据会阻止发布；Windows 暂未接入代码签名。先按 [签名配置步骤](docs/auto-update.md) 添加 GitHub Secrets，再手动运行工作流验证。发布时会校验并上传两个平台的自动更新清单。源码实现和状态测试不代表跨版本安装已验收；不要在网站上宣称未验证的客户端已兼容。
 

@@ -2,7 +2,7 @@ name: Cleanup workflow runs
 
 on:
   workflow_run:
-    workflows: [Desktop release, Check and deploy Pages]
+    workflows: [Desktop release, Check]
     types: [completed]
   schedule:
     # Daily fallback at 02:23 Asia/Shanghai, including newly added workflows.

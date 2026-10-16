@@ -35,7 +35,8 @@
 - 发布必须包含 `latest.yml`、`latest-mac.yml`，Mac ZIP 和 DMG、Windows EXE、SHA256SUMS.txt；当前采用完整下载，不需要差分 blockmap。
 - 更新来源固定为 `forgeturl/md2chat` 的公开 GitHub Releases，无用户可配置下载 URL，无客户端 GitHub token。稳定版不接受预发布版或降级。
 - 更新说明来自 `docs/release-notes.md`，界面以纯文字显示，不执行远程 HTML。
-- 先通过 workflow_dispatch 验证签名构建，再推版本标签发布。手动构建仅上传 Actions 构建产物；只有版本标签推送触发的工作流才发布 Release。
+- 提交 main 或发起 PR 仅运行 `npm run check`，不构建或部署官网。先通过 workflow_dispatch 验证签名构建，再推 `v*` 版本标签发布；手动运行 `Desktop release` 仅上传安装包的 Actions 构建产物，不发布 Release 或更新官网。
+- 版本标签触发的工作流为同一标签构建 Mac / Windows 安装包和官网静态产物；全部构建成功后才发布 Release 并设为 Latest，随后部署官网。`github-pages` 环境需允许 `v*` 标签部署。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
 - 验收应从实际安装的旧签名版升级到同团队的新签名版，验证提醒、说明、下载、取消安装、重启安装、版本变化；M 系列和 Intel Mac 分别验证通用包运行与升级，Windows 在真实安装环境验证相同流程。开发环境或模拟状态测试不算安装验收，通用包构建成功也不代表 Intel Mac 或聊天客户端粘贴已实测。
 
 本地开发使用 `npm run desktop`；如需无证书的测试包，可显式覆盖 `-c.mac.identity=null -c.mac.notarize=false -c.mac.hardenedRuntime=false`。该包不能用于验证 Mac 自动安装，也不可替代正式发布包。

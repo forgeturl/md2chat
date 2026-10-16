@@ -6,7 +6,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: desktop-release-${{ github.ref }}
+  # Keep Release publication and its Pages deployment together across versions.
+  group: desktop-release
   cancel-in-progress: false
 jobs:
   build:
@@ -56,9 +57,26 @@ jobs:
             release/*.zip
             release/*.exe
             release/latest*.yml
+  build-site:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      # The default checkout uses the same version tag as the installers.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+          retention-days: 3
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, build-site]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -84,3 +102,34 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.zip release/*.exe release/latest.yml release/latest-mac.yml release/SHA256SUMS.txt --title "md2chat $GITHUB_REF_NAME · macOS / Windows" --notes-file docs/release-notes.md --draft --verify-tag
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+  deploy-pages:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [publish, build-site]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Check release is still Latest
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest_tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          if [ "$latest_tag" = "$GITHUB_REF_NAME" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping Pages deployment: this version is no longer Latest." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Deploy released website
+        if: steps.latest.outputs.deploy == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,5 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
+const readWorkflow=name=>require('js-yaml').load(fs.readFileSync(path.join(root,'.github/workflows',name),'utf8'));
+function matchesEvent(condition,eventName,ref){
+ assert.equal(typeof condition,'string');
+ return require('node:vm').runInNewContext(condition.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,''),{github:{event_name:eventName,ref},startsWith:(value,prefix)=>value.startsWith(prefix)});
+}
+function assertOnlyPushedVersionTags(condition){
+ for(const [eventName,ref,expected] of [['push','refs/tags/v0.6.1',true],['push','refs/heads/main',false],['push','refs/tags/test',false],['pull_request','refs/pull/1/merge',false],['workflow_dispatch','refs/tags/v0.6.1',false],['workflow_dispatch','refs/heads/main',false]]){
+  assert.equal(matchesEvent(condition,eventName,ref),expected,eventName+' '+ref);
+ }
+}
 test('static entry assets resolve under a project subdirectory',()=>{
  const html=fs.readFileSync(path.join(root,'editor.html'),'utf8');
  const refs=[...html.matchAll(/(?:src|href)="(\.\/[^"?#]+)"/g)].map(m=>m[1]);assert(refs.length>=4);
@@ -39,7 +49,7 @@ test('release checksums require all platform assets before publication',()=>{
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('desktop release builds one universal Mac package and publishes only pushed version tags',()=>{
- const workflow=require('js-yaml').load(fs.readFileSync(path.join(root,'.github/workflows/desktop-release.yml'),'utf8'));
+ const workflow=readWorkflow('desktop-release.yml');
  assert.deepEqual(workflow.on.push.tags,['v*']);
  assert(Object.hasOwn(workflow.on,'workflow_dispatch'));
  const matrix=workflow.jobs.build.strategy.matrix.include;
@@ -50,4 +60,75 @@ test('desktop release builds one universal Mac package and publishes only pushed
  const macStep=workflow.jobs.build.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac'));
  assert(macStep);
  for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
+});
+test('main, pull requests, and manual checks do not build or deploy the website',()=>{
+ const workflow=readWorkflow('pages.yml');
+ assert.equal(workflow.name,'Check');
+ assert.deepEqual(workflow.on.push.branches,['main']);
+ assert(Object.hasOwn(workflow.on,'pull_request'));
+ assert(Object.hasOwn(workflow.on,'workflow_dispatch'));
+ assert.equal(workflow.jobs.check.if,undefined);
+ assert(workflow.jobs.check.steps.some(step=>step.run==='npm run check'));
+ for(const job of Object.values(workflow.jobs))for(const step of job.steps||[]){
+  assert(!/\bnpm\s+run\s+build\b/.test(step.run||''),'website build belongs to the release workflow');
+  assert(!/^actions\/(?:upload-pages-artifact|deploy-pages)@/.test(step.uses||''),'checks must not upload or deploy Pages');
+ }
+});
+test('website artifacts are built from the pushed version tag before publishing installers',()=>{
+ const workflow=readWorkflow('desktop-release.yml'),site=workflow.jobs['build-site'];
+ assert(site);
+ assertOnlyPushedVersionTags(site.if);
+ assertOnlyPushedVersionTags(workflow.jobs.publish.if);
+ const checkout=site.steps.find(step=>step.uses?.startsWith('actions/checkout@'));
+ assert(checkout);
+ assert(!checkout.with?.ref||['${{ github.ref }}','${{ github.sha }}'].includes(checkout.with.ref),'website must use the release tag rather than main');
+ for(const command of ['npm ci --ignore-scripts','npm run check','npm run build'])assert(site.steps.some(step=>step.run===command),command);
+ const upload=site.steps.find(step=>step.uses?.startsWith('actions/upload-pages-artifact@'));
+ assert(upload);
+ assert.equal(upload.with.path,'dist');
+ assert.equal(upload.with['retention-days'],3);
+ assert.deepEqual([...workflow.jobs.publish.needs].sort(),['build','build-site']);
+});
+test('Pages deployment follows a successful complete release and serializes production changes',()=>{
+ const workflow=readWorkflow('desktop-release.yml'),deploy=workflow.jobs['deploy-pages'];
+ assert(deploy);
+ assert.deepEqual([...deploy.needs].sort(),['build-site','publish']);
+ assert(!/\b(?:always|failure|cancelled)\s*\(/.test(deploy.if||''),'failed releases must not deploy the website');
+ assert.equal(deploy.permissions.pages,'write');
+ assert.equal(deploy.permissions['id-token'],'write');
+ assert.equal(deploy.environment.name,'github-pages');
+ assert(deploy.steps.some(step=>step.uses?.startsWith('actions/deploy-pages@')));
+ assert.equal(workflow.concurrency.group,'desktop-release','different version tags must share the release lock');
+ assert.equal(workflow.concurrency['cancel-in-progress'],false);
+ assert.equal(deploy.concurrency.group,'pages');
+ assert.equal(deploy.concurrency['cancel-in-progress'],false);
+});
+test('Pages deployment gate accepts Latest, skips older versions, and fails closed on API errors',()=>{
+ const deploy=readWorkflow('desktop-release.yml').jobs['deploy-pages'];
+ const gate=deploy.steps.find(step=>step.run?.includes('gh release view'));
+ const action=deploy.steps.find(step=>step.uses?.startsWith('actions/deploy-pages@'));
+ assert(gate?.id);
+ assert.equal(deploy.permissions.contents,'read');
+ for(const [value,expected] of [['true',true],['false',false],['',false]]){
+  assert.equal(require('node:vm').runInNewContext(action.if,{steps:{[gate.id]:{outputs:{deploy:value}}}}),expected);
+ }
+ const dir=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'md2chat-pages-gate-'));
+ try{
+  fs.writeFileSync(path.join(dir,'gh'),['#!/bin/sh','printf \'%s\\n\' "$@" > "$STUB_GH_ARGS"','if [ "$STUB_GH_EXIT" != "0" ]; then exit "$STUB_GH_EXIT"; fi','printf \'%s\\n\' "$STUB_LATEST_TAG"',''].join('\n'),{mode:0o755});
+  for(const [latestTag,exitCode,expected] of [['v0.6.1',0,'deploy=true\n'],['v0.6.2',0,'deploy=false\n'],['v0.6.1',1,'']]){
+   fs.writeFileSync(path.join(dir,'output'),'');
+   fs.writeFileSync(path.join(dir,'summary'),'');
+   const result=require('node:child_process').spawnSync('bash',['-e','-c','export PATH="$PWD:$PATH"\n'+gate.run],{cwd:dir,encoding:'utf8',env:{...process.env,GH_TOKEN:'test-token',GITHUB_REPOSITORY:'forgeturl/md2chat',GITHUB_REF_NAME:'v0.6.1',GITHUB_OUTPUT:'output',GITHUB_STEP_SUMMARY:'summary',STUB_GH_ARGS:'args',STUB_LATEST_TAG:latestTag,STUB_GH_EXIT:String(exitCode)}});
+   assert.ifError(result.error);
+   assert.equal(result.status,exitCode,result.stderr);
+   assert.equal(fs.readFileSync(path.join(dir,'output'),'utf8'),expected);
+   assert.deepEqual(fs.readFileSync(path.join(dir,'args'),'utf8').trim().split(/\r?\n/),['release','view','--repo','forgeturl/md2chat','--json','tagName','--jq','.tagName']);
+   if(latestTag!=='v0.6.1')assert.match(fs.readFileSync(path.join(dir,'summary'),'utf8'),/no longer Latest/);
+  }
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('workflow cleanup follows the renamed check workflow and desktop releases',()=>{
+ const cleanup=readWorkflow('actions-cleanup.yml'),names=cleanup.on.workflow_run.workflows;
+ for(const file of ['pages.yml','desktop-release.yml'])assert(names.includes(readWorkflow(file).name));
+ assert(!names.includes('Check and deploy Pages'));
 });
