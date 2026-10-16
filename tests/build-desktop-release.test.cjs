@@ -27,7 +27,7 @@ function fixture(callback) {
   calls.push({command, args, options});
   if (command === 'openssl') return {stdout: developerCertificate};
   if (args[0] === 'notarytool') return {stdout: JSON.stringify({status: 'Accepted'})};
-  if (!args.includes('build')) return;
+  if (!args.includes('build')) return {status: 0};
   const updater = JSON.parse(args.at(-1)).bundle.createUpdaterArtifacts;
   const target = args[args.indexOf('--target') + 1], bundle = path.join(root, 'src-tauri/target', target, 'release/bundle');
   const files = target.startsWith('universal') ? ['macos/md2chat.app/Contents/MacOS/md2chat', 'dmg/md2chat_0.6.6_universal.dmg', ...(updater ? ['macos/md2chat.app.tar.gz'] : [])] : ['nsis/md2chat_0.6.6_x64-setup.exe'];
@@ -178,7 +178,65 @@ test('DMG stapling and ticket validation failures never copy publishable artifac
   assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
    if (args[0] === 'stapler' && args[1] === operation && args[2].endsWith('.dmg')) throw new Error('DMG ticket failed');
    return run(command, args, options);
-  }}), /DMG ticket failed/);
+  }}), /Mac ticket .* failed/);
   assert(!fs.existsSync(path.join(root, 'release')));
  }
 }));
+test('accepted Mac artifacts retry transient ticket network failures without rebuilding or resubmitting', () => {
+ for (const [operation, suffix] of [['validate', '.app'], ['staple', '.dmg'], ['validate', '.dmg']]) fixture(({root, env, calls, run}) => {
+  let attempts = 0;
+  const waits = [];
+  const assets = buildRelease('mac', 'universal', {root, env, sleep: milliseconds => waits.push(milliseconds), run(command, args, options) {
+   if (args[0] === 'stapler' && args[1] === operation && args[2].endsWith(suffix)) {
+    assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+    assert.equal(options.allowFailure, true);
+    if (++attempts < 3) return {status: 68, stderr: 'Error Domain=NSURLErrorDomain Code=-1005 "The network connection was lost."'};
+   }
+   return run(command, args, options);
+  }});
+  assert.equal(attempts, 3); assert.deepEqual(waits, [5000, 10000]);
+  assert.equal(calls.filter(call => call.args.includes('build')).length, 1);
+  assert.equal(calls.filter(call => call.args[0] === 'notarytool').length, 1);
+  assert(calls.some(call => call.args[0] === 'stapler' && call.args[1] === 'validate' && call.args[2].endsWith('.dmg')));
+  for (const name of assets) assert(fs.statSync(path.join(root, 'release', name)).size);
+ });
+});
+test('persistent ticket service failures exhaust bounded retries before copying any asset', () => fixture(({root, env, calls, run}) => {
+ let attempts = 0;
+ const waits = [];
+ const privateDiagnostic = 'private-ticket-service-diagnostic';
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, sleep: milliseconds => waits.push(milliseconds), run(command, args, options) {
+  if (args[0] === 'stapler' && args[1] === 'staple') {
+   attempts++;
+   return {status: 68, stdout: 'Error Domain=NSURLErrorDomain Code=-1001 "The request timed out." ' + privateDiagnostic};
+  }
+  return run(command, args, options);
+ }}), error => /Mac ticket stapling failed/.test(error.message) && !error.message.includes(privateDiagnostic));
+ assert.equal(attempts, 3); assert.deepEqual(waits, [5000, 10000]);
+ assert.equal(calls.filter(call => call.args[0] === 'notarytool').length, 1);
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('ticket failures without the matching transient network diagnosis fail immediately and hide diagnostics', () => {
+ const privateDiagnostic = 'private-ticket-service-diagnostic';
+ for (const failure of [
+  {status: 68, stderr: 'The path has not been previously notarized. ' + privateDiagnostic},
+  {status: 68, stderr: 'Error Domain=NSURLErrorDomain Code=-1200 ' + privateDiagnostic},
+  {status: 65, stderr: 'Error Domain=NSURLErrorDomain Code=-1005 ' + privateDiagnostic},
+  {status: 77, stderr: 'The ticket has been revoked. ' + privateDiagnostic},
+  {status: null, signal: 'SIGTERM', stderr: privateDiagnostic},
+  new Error(privateDiagnostic)
+ ]) fixture(({root, env, run}) => {
+  let attempts = 0;
+  const waits = [];
+  assert.throws(() => buildRelease('mac', 'universal', {root, env, sleep: milliseconds => waits.push(milliseconds), run(command, args, options) {
+   if (args[0] === 'stapler' && args[1] === 'staple') {
+    attempts++;
+    if (failure instanceof Error) throw failure;
+    return failure;
+   }
+   return run(command, args, options);
+  }}), error => /Mac ticket stapling failed/.test(error.message) && !error.message.includes(privateDiagnostic));
+  assert.equal(attempts, 1); assert.deepEqual(waits, []);
+  assert(!fs.existsSync(path.join(root, 'release')));
+ });
+});

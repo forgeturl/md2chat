@@ -9,7 +9,8 @@ license = "MIT"
 
 [lib]
 name = "md2chat_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# The desktop entrypoint links Rust directly; no C/foreign-library outputs are used.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

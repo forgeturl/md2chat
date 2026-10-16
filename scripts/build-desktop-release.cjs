@@ -7,6 +7,34 @@ const {verifyUpdaterSignature} = require('./update-manifests.cjs');
 const {nativeEnv} = require('./native-env.cjs');
 const developerId = /^Developer ID Application: .+\([A-Z0-9]{10}\)$/;
 
+function sleepSync(milliseconds) {
+ Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function checkedStapler(command, operation, artifact, sleep) {
+ for (let attempt = 0; attempt < 3; attempt++) {
+  let result;
+  try {
+   result = command('xcrun', ['stapler', operation, artifact], {
+    stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1024 * 1024,
+    timeout: 90_000, allowFailure: true
+   });
+  } catch {
+   // Do not expose service diagnostics or subprocess errors in release logs.
+  }
+  if (result?.status === 0) return;
+  const diagnostics = String(result?.stdout || '') + '\n' + String(result?.stderr || '');
+  // EX_NOHOST alone can also mean an unnotarized artifact. Retry only explicit
+  // transient URL loading errors after notarization has already been Accepted.
+  const transient = result?.status === 68 && /NSURLErrorDomain\b[^\r\n]*\bCode=-(1001|1003|1004|1005|1006|1009)\b/.test(diagnostics);
+  if (!transient || attempt === 2) {
+   throw new Error('Mac ticket ' + (operation === 'staple' ? 'stapling' : 'validation') + ' failed; no release artifacts were copied');
+  }
+  console.warn('Apple ticket service network error; retrying ' + operation + ' (' + (attempt + 2) + '/3)');
+  sleep((attempt + 1) * 5000);
+ }
+}
+
 function macSigningIdentity(env, root, run) {
  const explicit = env.APPLE_SIGNING_IDENTITY?.trim();
  if (explicit) {
@@ -47,7 +75,7 @@ function macSigningIdentity(env, root, run) {
  throw new Error('Cannot derive exactly one Developer ID Application identity from CSC_LINK; check the P12 certificate/password or set APPLE_SIGNING_IDENTITY');
 }
 
-function buildRelease(platform, arch, {env = process.env, root = path.resolve(__dirname, '..'), run = runCommand, testBuild = false} = {}) {
+function buildRelease(platform, arch, {env = process.env, root = path.resolve(__dirname, '..'), run = runCommand, testBuild = false, sleep = sleepSync} = {}) {
  if (!((platform === 'mac' && arch === 'universal') || (platform === 'win' && arch === 'x64'))) throw new Error('Invalid build target: use mac universal or win x64');
  if (testBuild && env.GITHUB_ACTIONS === 'true' && env.GITHUB_EVENT_NAME !== 'workflow_dispatch') throw new Error('--test-build is allowed only for workflow_dispatch in GitHub Actions');
  const required = testBuild ? [] : ['TAURI_SIGNING_PRIVATE_KEY', 'TAURI_UPDATER_PUBLIC_KEY'];
@@ -81,7 +109,7 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
   command('lipo', [path.join(app, 'Contents/MacOS/md2chat'), '-verify_arch', 'arm64', 'x86_64']);
   command('codesign', ['--verify', '--deep', '--strict', app]);
   command('spctl', ['--assess', '--type', 'execute', '--verbose', app]);
-  command('xcrun', ['stapler', 'validate', app]);
+  checkedStapler(command, 'validate', app, sleep);
   command('codesign', ['--verify', '--strict', dmg]);
   // Tauri notarizes and staples the .app, but only signs the enclosing DMG.
   // Capture notarytool output so credentials or service diagnostics never reach
@@ -97,8 +125,8 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
    throw new Error('DMG notarization failed; no release artifacts were copied');
   }
   if (notarization?.status !== 'Accepted') throw new Error('DMG notarization was not Accepted; no release artifacts were copied');
-  command('xcrun', ['stapler', 'staple', dmg]);
-  command('xcrun', ['stapler', 'validate', dmg]);
+  checkedStapler(command, 'staple', dmg, sleep);
+  checkedStapler(command, 'validate', dmg, sleep);
   assets.push([dmg, 'md2chat-mac-universal.dmg']);
   if (!testBuild) assets.push([one('macos', '.app.tar.gz'), 'md2chat-mac-universal.app.tar.gz']);
  } else assets.push([one('nsis', '-setup.exe'), 'md2chat-windows-x64-setup.exe']);
@@ -115,9 +143,10 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
  return assets.map(([, name]) => name);
 }
 function runCommand(command, args, options) {
- const result = spawnSync(command, args, options);
+ const {allowFailure = false, ...spawnOptions} = options;
+ const result = spawnSync(command, args, spawnOptions);
  if (result.error) throw result.error;
- if (result.status !== 0) throw new Error(command + ' failed with status ' + result.status);
+ if (result.status !== 0 && !allowFailure) throw new Error(command + ' failed with status ' + result.status);
  return result;
 }
 if (require.main === module) {

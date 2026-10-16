@@ -22,8 +22,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -33,6 +33,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # Consume the full release cache without replacing it with debug-only output.
+          shared-key: build
+          save-if: false
       - run: npm ci
       - run: npm run check
       - run: node scripts/build-desktop.cjs
@@ -44,7 +47,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload evidence and manual DingTalk cases
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-clipboard-qa
           retention-days: 3

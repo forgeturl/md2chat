@@ -24,8 +24,8 @@ jobs:
     timeout-minutes: 15
     steps:
       # workflow_run checks out the default branch, never the triggering run's code.
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Delete older completed runs
