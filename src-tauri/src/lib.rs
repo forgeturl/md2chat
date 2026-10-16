@@ -455,10 +455,13 @@ pub fn run() {
         ])
         .setup(|app| {
             let config = app.config().app.windows[0].clone();
-            tauri::WebviewWindowBuilder::from_config(app, &config)?
+            let _main_window = tauri::WebviewWindowBuilder::from_config(app, &config)?
                 .on_navigation(|url| local_url(url, "/editor.html"))
                 .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
                 .build()?;
+            #[cfg(windows)]
+            clipboard::register_app_owner(_main_window.hwnd()?.0 as usize)
+                .map_err(std::io::Error::other)?;
             shell::setup(app)?;
             updates::setup(app.handle());
             let handle = app.handle().clone();

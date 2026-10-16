@@ -33,6 +33,8 @@ mod platform;
 mod platform;
 #[cfg(all(test, any(target_os = "macos", windows)))]
 pub use platform::native_roundtrip;
+#[cfg(windows)]
+pub use platform::register_app_owner;
 #[cfg(any(target_os = "macos", windows))]
 pub use platform::{has_private, read, write_checked};
 #[cfg(not(any(target_os = "macos", windows)))]

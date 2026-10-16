@@ -10,6 +10,8 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 static CLIPBOARD: Mutex<()> = Mutex::new(());
+#[cfg(windows)]
+pub use native::register_app_owner;
 fn lock() -> Result<MutexGuard<'static, ()>, String> {
     CLIPBOARD
         .lock()

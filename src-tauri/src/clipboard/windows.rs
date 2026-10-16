@@ -1,7 +1,6 @@
 //! Native Windows clipboard formats. SetClipboardData transfers each allocation
 //! to the OS; all formats are installed during one open/empty/close transaction.
 use super::{Format, Snapshot};
-#[cfg(test)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{ffi::c_void, ptr, thread, time::Duration};
 type Handle = *mut c_void;
@@ -23,7 +22,6 @@ unsafe extern "system" {
     fn GetClipboardSequenceNumber() -> u32;
     #[cfg(test)]
     fn GetClipboardOwner() -> Hwnd;
-    #[cfg(test)]
     fn IsWindow(window: Hwnd) -> i32;
     fn CreateWindowExW(
         style: u32,
@@ -49,14 +47,14 @@ unsafe extern "system" {
     fn GlobalSize(memory: Handle) -> usize;
     fn GlobalFree(memory: Handle) -> Handle;
 }
-#[cfg(test)]
+// HWND wraps a raw pointer and is not Send/Sync. Store only its pointer-sized
+// value; the Tauri window manager keeps the registered main window alive.
 static APP_OWNER: AtomicUsize = AtomicUsize::new(0);
-#[cfg(test)]
 pub fn register_app_owner(window: usize) -> Result<(), String> {
-    if window == 0 {
-        return Err("Cannot register a null clipboard owner".into());
+    if window == 0 || unsafe { IsWindow(window as Hwnd) } == 0 {
+        return Err("无法注册剪贴板所有者窗口。".into());
     }
-    APP_OWNER.store(window, Ordering::SeqCst);
+    APP_OWNER.store(window, Ordering::Release);
     Ok(())
 }
 #[cfg(test)]
@@ -103,38 +101,58 @@ fn wide(value: &str) -> Vec<u16> {
 struct Clipboard {
     window: Hwnd,
     open: bool,
+    // Borrowed Tauri windows belong to the UI thread and must never be
+    // destroyed here. Only the fallback/test window is owned by this session.
+    owns_window: bool,
 }
 impl Clipboard {
     fn open(writing: bool) -> Result<Self, String> {
+        Self::open_with_owner(writing, None)
+    }
+    fn open_with_owner(writing: bool, owner: Option<Hwnd>) -> Result<Self, String> {
         unsafe {
-            let window = if writing {
-                CreateWindowExW(
-                    0,
-                    wide("STATIC").as_ptr(),
-                    wide("md2chat clipboard").as_ptr(),
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    -3isize as Hwnd,
-                    ptr::null_mut(),
-                    ptr::null_mut(),
-                    ptr::null(),
-                )
+            let (window, owns_window) = if writing {
+                if let Some(window) = owner {
+                    if window.is_null() || IsWindow(window) == 0 {
+                        return Err("剪贴板所有者窗口已失效，请重新打开 md2chat。".into());
+                    }
+                    (window, false)
+                } else {
+                    (
+                        CreateWindowExW(
+                            0,
+                            wide("STATIC").as_ptr(),
+                            wide("md2chat clipboard").as_ptr(),
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            -3isize as Hwnd,
+                            ptr::null_mut(),
+                            ptr::null_mut(),
+                            ptr::null(),
+                        ),
+                        true,
+                    )
+                }
             } else {
-                ptr::null_mut()
+                (ptr::null_mut(), false)
             };
             if writing && window.is_null() {
                 return Err("无法创建剪贴板所有者窗口。".into());
             }
             for _ in 0..10 {
                 if OpenClipboard(window) != 0 {
-                    return Ok(Self { window, open: true });
+                    return Ok(Self {
+                        window,
+                        open: true,
+                        owns_window,
+                    });
                 }
                 thread::sleep(Duration::from_millis(10));
             }
-            if !window.is_null() {
+            if owns_window {
                 DestroyWindow(window);
             }
             Err("剪贴板正被其他程序使用，请重试。".into())
@@ -154,7 +172,7 @@ impl Drop for Clipboard {
     fn drop(&mut self) {
         let _ = self.close();
         unsafe {
-            if !self.window.is_null() {
+            if self.owns_window && !self.window.is_null() {
                 DestroyWindow(self.window);
             }
         }
@@ -376,11 +394,30 @@ pub fn write(formats: Vec<(String, Vec<u8>)>) -> Result<(), String> {
     write_checked(formats, None)
 }
 pub fn write_checked(formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Result<(), String> {
-    write_owned(formats, sequence).map(|_| ())
+    let registered = APP_OWNER.load(Ordering::Acquire);
+    // Native tests do not boot Tauri, so an unregistered writer retains the
+    // self-owned message-only window fallback.
+    let owner = if registered == 0 {
+        None
+    } else {
+        let owner = registered as Hwnd;
+        if unsafe { IsWindow(owner) } == 0 {
+            return Err("剪贴板所有者窗口已失效，请重新打开 md2chat。".into());
+        }
+        Some(owner)
+    };
+    write_owned_with_owner(formats, sequence, owner).map(|_| ())
 }
 fn write_owned(
+    formats: Vec<(String, Vec<u8>)>,
+    sequence: Option<u64>,
+) -> Result<Clipboard, String> {
+    write_owned_with_owner(formats, sequence, None)
+}
+fn write_owned_with_owner(
     mut formats: Vec<(String, Vec<u8>)>,
     sequence: Option<u64>,
+    owner: Option<Hwnd>,
 ) -> Result<Clipboard, String> {
     // Windows consumers can choose the first supported representation.
     formats.sort_by_key(|(name, _)| if name == "text/plain" { 2 } else { 0 });
@@ -419,7 +456,7 @@ fn write_owned(
                 allocate(CF_DIBV5, &png_to_dib(&bytes)?, &mut allocated)?;
             }
         }
-        let mut clipboard = Clipboard::open(true)?;
+        let mut clipboard = Clipboard::open_with_owner(true, owner)?;
         if sequence
             .is_some_and(|expected| unsafe { GetClipboardSequenceNumber() } as u64 != expected)
         {
@@ -508,7 +545,7 @@ fn backup_all() -> Result<Vec<(u32, Vec<u8>)>, String> {
     Ok(formats)
 }
 #[cfg(test)]
-fn restore_all(formats: &[(u32, Vec<u8>)], owner: &Clipboard) -> Result<(), String> {
+fn restore_all(formats: &[(u32, Vec<u8>)], expected_owner: Hwnd) -> Result<(), String> {
     let mut allocated = Vec::new();
     let result = (|| {
         for (id, bytes) in formats {
@@ -517,7 +554,7 @@ fn restore_all(formats: &[(u32, Vec<u8>)], owner: &Clipboard) -> Result<(), Stri
         let _clipboard = Clipboard::open(true)?;
         // Check ownership while locked: sampling a sequence after closing could
         // adopt another application's update and later overwrite it.
-        if unsafe { GetClipboardOwner() } != owner.window {
+        if unsafe { GetClipboardOwner() } != expected_owner {
             return Err(super::CHANGED.into());
         }
         if unsafe { EmptyClipboard() } == 0 {
@@ -547,33 +584,29 @@ pub fn native_roundtrip() -> Result<(), String> {
     let app_owner = TestOwnerWindow::new()?;
     register_app_owner(app_owner.0 as usize)?;
     let mut owned_clipboard = None;
+    let mut restore_owner = None;
     let result = (|| {
-        let owner_probe = thread::spawn(|| {
-            write_checked(
-                vec![(
-                    "text/plain".into(),
-                    b"persistent clipboard owner probe".to_vec(),
-                )],
-                None,
-            )
-        })
-        .join()
-        .map_err(|_| "Cross-thread clipboard owner probe panicked".to_string())
-        .and_then(|result| result);
+        let probe_formats = test.clone();
+        let owner_probe = thread::spawn(move || write_checked(probe_formats, None))
+            .join()
+            .map_err(|_| "Cross-thread clipboard owner probe panicked".to_string())
+            .and_then(|result| result);
         let actual_owner = unsafe { GetClipboardOwner() };
-        let owner_probe = owner_probe.and_then(|_| {
-            if actual_owner != app_owner.0 {
-                return Err("Public write did not retain the registered application window as clipboard owner".into());
-            }
-            if unsafe { IsWindow(actual_owner) } == 0 {
-                return Err("Public write left an invalid clipboard owner window".into());
-            }
-            Ok(())
-        });
-        // Re-establish a separately owned test write before propagating the
-        // expected red assertion, so the original clipboard can still be restored.
-        owned_clipboard = Some(write_owned(test.clone(), None)?);
+        if actual_owner == app_owner.0 {
+            // From this point onward every failure path can safely attempt to
+            // restore only while this exact owner still holds the clipboard.
+            restore_owner = Some(app_owner.0);
+        }
         owner_probe?;
+        if actual_owner != app_owner.0 {
+            return Err(
+                "Public write did not retain the registered application window as clipboard owner"
+                    .into(),
+            );
+        }
+        if unsafe { IsWindow(actual_owner) } == 0 {
+            return Err("Public write left an invalid clipboard owner window".into());
+        }
         let snapshot = read()?;
         if snapshot.items.len() != 1 {
             return Err("Native write did not retain one item".into());
@@ -606,14 +639,21 @@ pub fn native_roundtrip() -> Result<(), String> {
         if read()?.sequence != sequence {
             return Err("Rejected write changed clipboard".into());
         }
+        if unsafe { GetClipboardOwner() } != app_owner.0
+            || APP_OWNER.load(Ordering::Acquire) != app_owner.0 as usize
+            || unsafe { IsWindow(app_owner.0) } == 0
+        {
+            return Err("Rejected write destroyed the borrowed application owner".into());
+        }
         // A subsequent writer must prevent restoration with the old owner.
         let newer_text = b"newer clipboard content";
         let newer = write_owned(
             vec![("text/plain".into(), newer_text.to_vec())],
             Some(sequence),
         )?;
-        let rejected = restore_all(&original, owned_clipboard.as_ref().unwrap());
         owned_clipboard = Some(newer);
+        restore_owner = Some(owned_clipboard.as_ref().unwrap().window);
+        let rejected = restore_all(&original, app_owner.0);
         if rejected != Err(super::CHANGED.into()) {
             return Err("Restoration did not reject a newer clipboard owner".into());
         }
@@ -624,7 +664,7 @@ pub fn native_roundtrip() -> Result<(), String> {
         }
         Ok(())
     })();
-    if let Some(owner) = &owned_clipboard {
+    if let Some(owner) = restore_owner {
         restore_all(&original, owner)
             .map_err(|error| format!("Could not restore original clipboard: {error}"))?;
     } else {
