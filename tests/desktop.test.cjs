@@ -114,7 +114,7 @@ test('Windows DingTalk compatibility does not change other platforms or other ta
    assert(!result.html.includes('<p>'));assert(result.html.includes('前</span></span><br><span'));
    assert(result.html.includes('<img src="data:image/png;base64,'));assert(!result.html.includes('https://example.invalid'));
   }
-  for(const target of ['wechat','feishu','wecom','email']){
+  for(const target of ['wechat','wecom','email']){
    const windows=await makePayload(parts,{directory:dir,nativeImage,target,platform:'win32'});
    const mac=await makePayload(parts,{directory:dir,nativeImage,target,platform:'darwin'});
    assert.deepEqual(windows,mac);assert(windows.html.includes('data:image/png;base64,'));

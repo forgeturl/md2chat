@@ -8,6 +8,7 @@ let copying=false,lastCopyTarget=null;
 const dingtalkSegmentsButton=document.getElementById('dingtalk-segments');
 dingtalkSegmentsButton.hidden=window.md2chatDesktop?.platform!=='win32';
 const desktopRequired=b=>b.dataset.copyTarget==='dingtalk'&&!window.md2chatDesktop;
+function copyTargetNote(target){return target==='feishu'&&window.md2chatDesktop?.platform==='darwin'?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);dingtalkSegmentsButton.disabled=value||copying;}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
@@ -264,12 +265,12 @@ if(window.md2chatDesktop){
  const dingtalkWrapper=document.getElementById('dingtalk-copy-wrapper');
  dingtalkWrapper.classList.remove('desktop-only-copy');
  for(const name of ['tabindex','aria-label','aria-describedby'])dingtalkWrapper.removeAttribute(name);
- document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
- document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；Windows 钉钉一次图文粘贴尚未解决，可用“钉钉分段复制（备用）”分别复制文字和图片。企微图文请逐段复制粘贴。飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
+ document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉、Mac 飞书复制所需图片临时保存在本机';
+ document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 飞书请先展开富文本输入框，再一次粘贴图文。Mac 钉钉使用原生图文；Windows 钉钉一次图文粘贴尚未解决，可用“钉钉分段复制（备用）”分别复制文字和图片。企微图文请逐段复制粘贴。Windows 飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
-function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
+function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+copyTargetNote(b.dataset.copyTarget);if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
 async function updatePreview(){
  const source=serializeInput();const version=++renderVersion;
@@ -320,21 +321,21 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  showCopyNotice('');status.textContent='正在复制到剪贴板…';
  const payload=cachedPayload,source=cachedSource,parts=target==='email'?payload.emailSegments:payload.segments;
  try{
-  let count,native=false,windowsHtml=false;
+  let count,native=false,windowsHtml=false,feishuNative=false;
   if(window.md2chatDesktop){
-   const result=await window.md2chatDesktop.copy(parts,target);count=result.images;native=result.native;windowsHtml=result.windowsHtml===true;
+   const result=await window.md2chatDesktop.copy(parts,target);count=result.images;native=result.native;windowsHtml=result.windowsHtml===true;feishuNative=result.feishuNative===true;
   }else{
    const adapted=ChatTargets.render(parts,target);adapted.plain=payload.plain;count=adapted.imageCount;
    if(navigator.clipboard?.write&&typeof ClipboardItem!=='undefined')await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([adapted.html],{type:'text/html'}),'text/plain':new Blob([adapted.plain],{type:'text/plain'})})]);
    else if(!nativeCopy(adapted))throw new Error('浏览器不支持自动复制');
   }
   lastCopyTarget=target;
-  showCopyNotice('✓ 已复制到剪贴板，请到'+profile.label+(target==='email'?'编辑器':'聊天框')+'粘贴');
+  showCopyNotice(feishuNative?'✓ 已复制，请先展开飞书富文本输入框，再一次粘贴图文':'✓ 已复制到剪贴板，请到'+profile.label+(target==='email'?'编辑器':'聊天框')+'粘贴');
   if(cachedSource===source){
    for(const b of copyButtons)b.setAttribute('aria-pressed',String(b===copyButton));
    message.innerHTML=target==='email'?ChatTargets.render(parts,target).html:payload.preview;
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
-   status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已保留纯文本兜底；Windows 钉钉一次图文粘贴尚未解决。图片缺失时可使用“钉钉分段复制（备用）”。':profile.note);
+   status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已保留纯文本兜底；Windows 钉钉一次图文粘贴尚未解决。图片缺失时可使用“钉钉分段复制（备用）”。':copyTargetNote(target));
   }
  }catch(error){showCopyNotice('复制失败，请查看下方提示后重试',true);status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
  finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();}

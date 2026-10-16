@@ -37,11 +37,11 @@ test('standard image HTML respects logical 2x sizing with safe fallback and no s
   assert.equal(output.plain,'[图片]');assert.equal(output.imageCount,1);
  }
 });
-test('non-DingTalk native payload carries no private data or cached files',async()=>{
+test('standard payloads carry no private data or cached files',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'md2chat-target-'));
  const nativeImage={createFromDataURL:()=>({isEmpty:()=>false,getSize:()=>({width:20,height:10}),toPNG:()=>Buffer.from('sample')})};
  try{
-  for(const target of ['wechat','feishu','wecom','email']){const p=await makePayload(parts,{directory:dir,nativeImage,target});assert.equal(p.rich,undefined);assert.equal(p.imageCount,1);assert.match(p.html,/<img/);}
+  for(const target of ['wechat','feishu','wecom','email']){const p=await makePayload(parts,{directory:dir,nativeImage,target,platform:'win32'});assert.equal(p.rich,undefined);assert.equal(p.feishuFragment,undefined);assert.equal(p.imageCount,1);assert.match(p.html,/<img/);}
   assert.deepEqual(await fs.readdir(dir),[]);
   const p=await makePayload(parts,{directory:dir,nativeImage,target:'dingtalk'});assert.equal(p.rich.contents[0].text.items.filter(x=>x.type==='image').length,1);assert.equal((await fs.readdir(dir)).length,1);
  }finally{await fs.rm(dir,{recursive:true,force:true});}
@@ -49,7 +49,7 @@ test('non-DingTalk native payload carries no private data or cached files',async
 test('desktop standard profiles receive the same logical image width as native payloads',async()=>{
  const nativeImage={createFromDataURL:()=>({isEmpty:()=>false,getSize:()=>({width:640,height:240}),toPNG:()=>Buffer.from('sample')})};
  for(const target of ['wechat','feishu','wecom','email']){
-  const result=await makePayload([{type:'image',src:png,displayWidth:320}],{directory:'/unused-by-standard-profiles',nativeImage,target});
+  const result=await makePayload([{type:'image',src:png,displayWidth:320}],{directory:'/unused-by-standard-profiles',nativeImage,target,platform:'win32'});
   assert.match(result.html,/<img [^>]*width="320"/);assert.equal(result.plain,'[图片]');
  }
 });

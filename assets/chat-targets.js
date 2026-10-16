@@ -3,7 +3,7 @@
  const profiles=Object.freeze({
   wechat:{label:'微信',note:'标准图文；请在聊天框确认图片完整。'},
   dingtalk:{label:'钉钉',note:'仅限桌面版。Mac 使用原生图文；Windows 一次图文粘贴尚未解决，已保留纯文本兜底，可尝试分段复制。'},
-  feishu:{label:'飞书',note:'实验性标准图文，尚未完成飞书客户端验证。'},
+  feishu:{label:'飞书',note:'Mac 桌面版请先展开飞书富文本输入框，再一次粘贴图文。网页与 Windows 标准图文仍待验证。'},
   wecom:{label:'企微',note:'图文请按顺序分段复制、粘贴；文字可编辑，强调样式不保证保留。Windows 待验证。'},
   email:{label:'邮件',note:'实验性邮件 HTML，表格可编辑；内嵌图片需确认客户端粘贴及发送后仍保留。'}
  });

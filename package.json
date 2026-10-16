@@ -19,6 +19,7 @@
     "desktop:pack": "electron-builder --mac dir --universal",
     "desktop:dist": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:test": "electron desktop/smoke.cjs",
+    "desktop:test:feishu": "electron desktop/feishu-smoke.cjs",
     "desktop:test:windows": "electron desktop/windows-clipboard-smoke.cjs --report release/qa/windows-clipboard.json",
     "desktop:dist:mac": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:dist:win": "electron-builder --win nsis --x64 --publish never",

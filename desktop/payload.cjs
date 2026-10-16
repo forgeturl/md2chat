@@ -3,6 +3,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const {pathToFileURL} = require('node:url');
 const targets = require('../assets/chat-targets.js');
+const {makeFragment}=require('./feishu.cjs');
 const FORMAT = 'com.dingtalk.richTextAttributedString';
 const RAW_FORMAT = `electron application/osclipboard;format="${FORMAT}"`;
 const esc = s => s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
@@ -32,13 +33,15 @@ function validateParts(parts, target='dingtalk') {
 async function makePayload(parts, {directory, nativeImage, target='dingtalk', platform=process.platform}) {
  validateParts(parts,target);
  const windowsDingtalk=target==='dingtalk'&&platform==='win32';
- const items=[],html=[],plain=[],normalized=[];let imageCount=0;
+ const macFeishu=target==='feishu'&&platform==='darwin';
+ const items=[],html=[],plain=[],normalized=[],feishuParts=[];let imageCount=0;
  const newline=()=>items.push({type:'newLine',data:{}});
  for(const [index,p] of parts.entries()) {
   if(index){newline();if(!windowsDingtalk)html.push('<br>');plain.push('\n');}
   if(p.type==='table'){normalized.push(p);continue;}
   if(p.type==='text') {
    normalized.push(p);
+   if(macFeishu)feishuParts.push(p);
    const runs=Array.isArray(p.runs)&&p.runs.length<10000&&p.runs.every(r=>r&&typeof r.text==='string')&&p.runs.map(r=>r.text).join('')===p.text?p.runs:[{text:p.text}];
    let paragraph=[];
    const finishParagraph=()=>{html.push('<p>'+(paragraph.length?paragraph.join(''):'<br>')+'</p>');paragraph=[];};
@@ -59,10 +62,11 @@ async function makePayload(parts, {directory, nativeImage, target='dingtalk', pl
    const bytes=img.toPNG();if(bytes.length>15*1024*1024)throw new Error('转换后的图片过大');
    const filename=crypto.createHash('sha256').update(bytes).digest('hex')+'.png';
    const file=path.join(directory,filename);
-   if(target==='dingtalk'){await fs.mkdir(directory,{recursive:true,mode:0o700});await fs.writeFile(file,bytes,{mode:0o600});}
+   if(target==='dingtalk'||macFeishu){await fs.mkdir(directory,{recursive:true,mode:0o700});await fs.writeFile(file,bytes,{mode:0o600});}
    const requestedWidth=Number.isFinite(p.displayWidth)&&p.displayWidth>0?p.displayWidth:width;
    const displayWidth=Math.min(width,1100,Math.max(1,requestedWidth)),displayHeight=Math.round(height*displayWidth/width);
    normalized.push({type:'image',src:'data:image/png;base64,'+bytes.toString('base64'),width:displayWidth,height:displayHeight});
+   if(macFeishu)feishuParts.push({type:'image',path:file,width:displayWidth,height:displayHeight});
    items.push({type:'image',data:{authMediaId:'',filename,path:file,text:'',url:''},style:{width:displayWidth,height:displayHeight,indent:0,mode:0}});
    const imageSource=windowsDingtalk?(httpsImageSource(p.sourceUrl)||pathToFileURL(file).href):'data:image/png;base64,'+bytes.toString('base64');
    const imageHtml=`<img src="${esc(imageSource)}" width="${displayWidth}" height="${displayHeight}">`;
@@ -70,7 +74,11 @@ async function makePayload(parts, {directory, nativeImage, target='dingtalk', pl
    plain.push('[图片]');imageCount++;
   }
  }
- if(target!=='dingtalk')return targets.render(normalized,target);
+ if(target!=='dingtalk'){
+  const payload=targets.render(normalized,target);
+  if(macFeishu)payload.feishuFragment=makeFragment(feishuParts);
+  return payload;
+ }
  return {rich:{contents:[{type:'markdown',text:{fallbackText:'',items,minSupportVersion:'1.2',version:'2.0'}}]},html:'<meta charset="utf-8"><article class="4ever-article">'+html.join('')+'</article>',plain:plain.join(''),imageCount};
 }
 async function pruneImages(directory, protectedFiles=new Set()) {

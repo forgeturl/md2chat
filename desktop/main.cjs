@@ -11,6 +11,7 @@ const {profile}=require('../assets/chat-targets.js');
 const {inspectClipboard}=require('./clipboard-diagnostics.cjs');
 const {runDingtalkHtmlTest}=require('./dingtalk-html-test.cjs');
 const {writeClipboardPayload}=require('./clipboard-write.cjs');
+const {RAW_FORMAT:FEISHU_RAW_FORMAT}=require('./feishu.cjs');
 app.setName('md2chat');
 let win,copying=false,quitting=false,integration,updates,clipboardConversion,conversionBridge,preferences;
 const primaryInstance=app.requestSingleInstanceLock();
@@ -55,9 +56,10 @@ if(primaryInstance)app.whenReady().then(async()=>{
  for(const action of ['check','download','install'])ipcMain.handle(`md2chat:update-${action}`,async event=>{trusted(event);return updates[action]();});
  ipcMain.handle('md2chat:update-status',event=>{trusted(event);return updates.snapshot();});
  const cache=path.join(app.getPath('userData'),'clipboard-images');
- // Do not read clipboard content on startup. Windows HTML may still refer to
- // cache files; its cleanup happens after the next successful DingTalk copy.
- if(process.platform!=='win32'&&!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
+ // Do not read clipboard content on startup. Native Mac fragments can still
+ // reference cached PNGs; defer cleanup while their representation is present.
+ // Windows cleanup happens after the next successful DingTalk copy.
+ if(process.platform!=='win32'&&!await clipboard.has(RAW_FORMAT)&&!await clipboard.has(FEISHU_RAW_FORMAT))await pruneImages(cache).catch(()=>{});
  session.defaultSession.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
  session.defaultSession.setPermissionCheckHandler(()=>false);
  ipcMain.handle('md2chat:copy',async(event,parts,target='dingtalk')=>{
@@ -110,7 +112,7 @@ if(primaryInstance)app.whenReady().then(async()=>{
   try{
    const result=await clipboardConversion.convert(target);
    if(result.segmented)return;
-   const body=target==='image'?'已转为图片并写入剪贴板，可以直接粘贴。':'已转为'+profile(target).label+'格式并写入剪贴板，请到'+(target==='email'?'邮件编辑器':'对应聊天框')+'粘贴。';
+   const body=target==='image'?'已转为图片并写入剪贴板，可以直接粘贴。':result.feishuNative?'已转为飞书图文，请先展开飞书富文本输入框，再一次粘贴。':'已转为'+profile(target).label+'格式并写入剪贴板，请到'+(target==='email'?'邮件编辑器':'对应聊天框')+'粘贴。';
    if(Notification.isSupported())new Notification({title:'剪贴板转换完成',body}).show();
    else await dialog.showMessageBox({type:'info',title:'剪贴板转换完成',message:body});
   }catch(error){await dialog.showMessageBox({type:'error',title:'剪贴板转换未完成',message:error.message});}
