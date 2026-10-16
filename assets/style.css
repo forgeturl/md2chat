@@ -67,6 +67,8 @@ footer{margin:18px 0 4px;font-size:12px;color:#617188}
 
 [hidden]{display:none!important}
 
+.copy-notice{position:fixed;top:24px;left:50%;transform:translate(-50%,-12px);z-index:1000;max-width:calc(100vw - 32px);width:max-content;box-sizing:border-box;padding:14px 22px;border:1px solid #a7dfc1;border-radius:12px;background:#effcf4;color:#146b3c;box-shadow:0 8px 32px #14233c26;font-size:15px;font-weight:600;line-height:1.6;pointer-events:none;opacity:0;transition:opacity .15s,transform .15s}.copy-notice.is-visible{opacity:1;transform:translate(-50%,0)}.copy-notice-error{background:#fff3f2;border-color:#f3bbb6;color:#a52c24}@media(prefers-reduced-motion:reduce){.copy-notice{transition:none}}
+
 #clear-input{background:#edf3fc;color:#47658a;padding:6px 12px}
 #clear-input:hover{background:#e0ebfc}
 @media(max-width:480px){.input-panel .panel-hint{display:none}}

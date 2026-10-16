@@ -3,6 +3,15 @@ const copyButtons=[...document.querySelectorAll('[data-copy-target]')];
 let copying=false,lastCopyTarget=null;
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying;}};
 const status=document.getElementById('status');
+const copyNotice=document.getElementById('copy-notice');
+let copyNoticeTimer;
+function showCopyNotice(text,error=false){
+ clearTimeout(copyNoticeTimer);
+ copyNotice.textContent=text;
+ copyNotice.classList.toggle('copy-notice-error',error);
+ copyNotice.classList.toggle('is-visible',!!text);
+ if(text)copyNoticeTimer=setTimeout(()=>{copyNotice.classList.remove('is-visible');copyNotice.textContent='';},5000);
+}
 const input=document.getElementById('markdown-input');
 const escapeHtml=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const assets=new Map();let nextAsset=1;let selectedImageId=null;let inputEpoch=0;
@@ -276,6 +285,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  const target=copyButton.dataset.copyTarget,profile=ChatTargets.profile(target);
  if(!cachedPayload||cachedSource!==serializeInput()){await updatePreview();status.textContent='预览已更新，请点击平台图标复制。';return;}
  copying=true;button.disabled=true;
+ showCopyNotice('');status.textContent='正在复制到剪贴板…';
  const payload=cachedPayload,source=cachedSource,parts=target==='email'?payload.emailSegments:payload.segments;
  try{
   let count,native=false;
@@ -287,13 +297,14 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
    else if(!nativeCopy(adapted))throw new Error('浏览器不支持自动复制');
   }
   lastCopyTarget=target;
+  showCopyNotice('✓ 已复制到剪贴板，请到'+profile.label+(target==='email'?'编辑器':'聊天框')+'粘贴');
   if(cachedSource===source){
    for(const b of copyButtons)b.setAttribute('aria-pressed',String(b===copyButton));
    message.innerHTML=target==='email'?ChatTargets.render(parts,target).html:payload.preview;
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
-   status.textContent='已为'+profile.label+'复制完整图文（'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':profile.note);
+   status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':profile.note);
   }
- }catch(error){status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
+ }catch(error){showCopyNotice('复制失败，请查看下方提示后重试',true);status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
  finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();}
 });
 
