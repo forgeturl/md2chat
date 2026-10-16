@@ -6,6 +6,7 @@ header>div{display:flex;align-items:baseline;gap:18px}
 h1{font-size:24px;letter-spacing:-.5px;margin:0}
 header p{margin:0;color:#617188;font-size:14px}
 header a,footer a{color:#1769df;text-decoration:none}
+.header-links{display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:wrap;flex-shrink:0}.header-links a{white-space:nowrap}
 a:hover{text-decoration:underline}
 .help{font-size:12px;color:#617188;margin:8px 0}
 .privacy-note{margin:0 0 16px;color:#547065}
@@ -51,7 +52,7 @@ footer{margin:18px 0 4px;font-size:12px;color:#617188}
  #message{flex:none;max-height:65dvh;min-height:240px}
 }
 @media(max-width:480px){
- main{padding:12px}h1{font-size:21px}header a{font-size:13px}
+ main{padding:12px}h1{font-size:21px}header{flex-wrap:wrap;gap:8px}header a{font-size:13px}
  .privacy-note{font-size:11px}
  .panel-heading{padding:12px 14px;gap:8px;min-height:62px}
  .panel-heading>div{gap:7px}.panel-hint{font-size:10px}

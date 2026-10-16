@@ -245,6 +245,7 @@ async function buildPayload(source){
 }
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 if(window.md2chatDesktop){
+ document.getElementById('back-home').hidden=true;
  document.getElementById('dingtalk-desktop-hint').hidden=true;
  const dingtalkWrapper=document.getElementById('dingtalk-copy-wrapper');
  dingtalkWrapper.classList.remove('desktop-only-copy');
