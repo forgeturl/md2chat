@@ -1,6 +1,8 @@
 //! Native Windows clipboard formats. SetClipboardData transfers each allocation
 //! to the OS; all formats are installed during one open/empty/close transaction.
 use super::{Format, Snapshot};
+#[cfg(test)]
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{ffi::c_void, ptr, thread, time::Duration};
 type Handle = *mut c_void;
 type Hwnd = *mut c_void;
@@ -21,6 +23,8 @@ unsafe extern "system" {
     fn GetClipboardSequenceNumber() -> u32;
     #[cfg(test)]
     fn GetClipboardOwner() -> Hwnd;
+    #[cfg(test)]
+    fn IsWindow(window: Hwnd) -> i32;
     fn CreateWindowExW(
         style: u32,
         class: *const u16,
@@ -44,6 +48,54 @@ unsafe extern "system" {
     fn GlobalUnlock(memory: Handle) -> i32;
     fn GlobalSize(memory: Handle) -> usize;
     fn GlobalFree(memory: Handle) -> Handle;
+}
+#[cfg(test)]
+static APP_OWNER: AtomicUsize = AtomicUsize::new(0);
+#[cfg(test)]
+pub fn register_app_owner(window: usize) -> Result<(), String> {
+    if window == 0 {
+        return Err("Cannot register a null clipboard owner".into());
+    }
+    APP_OWNER.store(window, Ordering::SeqCst);
+    Ok(())
+}
+#[cfg(test)]
+struct TestOwnerWindow(Hwnd);
+#[cfg(test)]
+impl TestOwnerWindow {
+    fn new() -> Result<Self, String> {
+        let window = unsafe {
+            CreateWindowExW(
+                0,
+                wide("STATIC").as_ptr(),
+                wide("md2chat external clipboard owner test").as_ptr(),
+                0,
+                0,
+                0,
+                0,
+                0,
+                -3isize as Hwnd,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null(),
+            )
+        };
+        if window.is_null() || unsafe { IsWindow(window) } == 0 {
+            return Err("Could not create external clipboard owner test window".into());
+        }
+        Ok(Self(window))
+    }
+}
+#[cfg(test)]
+impl Drop for TestOwnerWindow {
+    fn drop(&mut self) {
+        let _ = APP_OWNER.compare_exchange(self.0 as usize, 0, Ordering::SeqCst, Ordering::SeqCst);
+        // A window must be destroyed by the thread that created it. This guard
+        // is intentionally !Send because it retains the raw HWND.
+        unsafe {
+            DestroyWindow(self.0);
+        }
+    }
 }
 fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain([0]).collect()
@@ -492,9 +544,36 @@ fn restore_all(formats: &[(u32, Vec<u8>)], owner: &Clipboard) -> Result<(), Stri
 pub fn native_roundtrip() -> Result<(), String> {
     let original = backup_all()?;
     let test = super::super::roundtrip_formats();
+    let app_owner = TestOwnerWindow::new()?;
+    register_app_owner(app_owner.0 as usize)?;
     let mut owned_clipboard = None;
     let result = (|| {
+        let owner_probe = thread::spawn(|| {
+            write_checked(
+                vec![(
+                    "text/plain".into(),
+                    b"persistent clipboard owner probe".to_vec(),
+                )],
+                None,
+            )
+        })
+        .join()
+        .map_err(|_| "Cross-thread clipboard owner probe panicked".to_string())
+        .and_then(|result| result);
+        let actual_owner = unsafe { GetClipboardOwner() };
+        let owner_probe = owner_probe.and_then(|_| {
+            if actual_owner != app_owner.0 {
+                return Err("Public write did not retain the registered application window as clipboard owner".into());
+            }
+            if unsafe { IsWindow(actual_owner) } == 0 {
+                return Err("Public write left an invalid clipboard owner window".into());
+            }
+            Ok(())
+        });
+        // Re-establish a separately owned test write before propagating the
+        // expected red assertion, so the original clipboard can still be restored.
         owned_clipboard = Some(write_owned(test.clone(), None)?);
+        owner_probe?;
         let snapshot = read()?;
         if snapshot.items.len() != 1 {
             return Err("Native write did not retain one item".into());
