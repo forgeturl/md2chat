@@ -2,7 +2,7 @@
 // node node_modules/electron/cli.js desktop/windows-clipboard-smoke.cjs --report artifacts/windows-clipboard.json
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
-const {spawnSync}=require('node:child_process');
+const {execFile}=require('node:child_process');
 const {makePayload,RAW_FORMAT}=require('./payload.cjs');
 const {writeClipboardPayload}=require('./clipboard-write.cjs');
 const {makeWecomSegmentData}=require('./wecom-segment.cjs');
@@ -29,10 +29,15 @@ function probeMetadata(value={}){
   fragmentMarkersMatch:value.fragmentMarkersMatch===true,sourceUrlPresent:value.sourceUrlPresent===true};
 }
 
-function inspectCfHtml(selfTest=false){
- const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'../scripts/inspect-windows-clipboard.ps1'),...(selfTest?['-SelfTest']:[])],{encoding:'utf8',windowsHide:true,timeout:10000,maxBuffer:64*1024});
- if(result.error||result.status!==0)throw new Error('CF_HTML probe failed');
- try{return JSON.parse(result.stdout.replace(/^\uFEFF/,'').trim());}catch{throw new Error('CF_HTML probe returned invalid metadata');}
+function inspectCfHtml(selfTest=false,execute=execFile){
+ // Windows clipboard owners may need to dispatch messages while another process
+ // requests delayed data. Keep Electron's main loop running during the probe.
+ return new Promise((resolve,reject)=>{
+  execute('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'../scripts/inspect-windows-clipboard.ps1'),...(selfTest?['-SelfTest']:[])],{encoding:'utf8',windowsHide:true,timeout:15000,maxBuffer:64*1024},(error,stdout)=>{
+   if(error){reject(new Error('CF_HTML probe failed'));return;}
+   try{resolve(JSON.parse(stdout.replace(/^\uFEFF/,'').trim()));}catch{reject(new Error('CF_HTML probe returned invalid metadata'));}
+  });
+ });
 }
 
 async function snapshot(clipboard,nativeImage){
@@ -56,17 +61,24 @@ async function snapshot(clipboard,nativeImage){
  return {metadata,values};
 }
 
-async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage}){
- const report={schemaVersion:1,status:'failed',dingtalkClientTested:false,
+async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage},{onProgress}={}){
+ const report={schemaVersion:1,status:'running',dingtalkClientTested:false,
   runtime:{platform:process.platform,architecture:process.arch,osRelease:os.release(),electron:process.versions.electron,chromium:process.versions.chrome,node:process.versions.node},
   cases:[],clipboardRestored:false,temporaryFilesRemoved:false};
- if(process.platform!=='win32'){report.failure='windows_required';return report;}
+ if(process.platform!=='win32'){report.status='failed';report.failure='windows_required';return report;}
  let backup=[],captured=false,directory,phase='cf_html_probe_self_test';
+ async function progress(stage,record){
+  report.phase=stage;
+  if(onProgress)try{await onProgress(report,{phase:stage,...(record?{caseId:record.id,status:record.status,check:record.check}:{})});}
+  catch{report.progressFailure='progress_report_failed';report.status='failed';}
+ }
  async function observe(record,{html=false,plain=false,images=0,sourceKinds,pngSize}={}){
   record.expected={html,plain,images,sourceKinds,pngSize};record.check='native_read';
+  await progress('case_check',record);
   const current=await snapshot(clipboard,nativeImage);record.observed=current.metadata;
   record.check='cf_html_probe';
-  const cfHtml=probeMetadata(inspectCfHtml());record.observed.cfHtml=cfHtml;
+  await progress('case_check',record);
+  const cfHtml=probeMetadata(await inspectCfHtml());record.observed.cfHtml=cfHtml;
   record.check='representations';
   assert.equal(current.values['text/html']!==undefined,html);
   assert.equal(current.values['text/plain']!==undefined,plain);
@@ -86,21 +98,26 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
   return current;
  }
  async function run(id,operation){
-  const record={id,status:'failed',check:'write'};report.cases.push(record);
-  try{await operation(record);record.status='passed';delete record.check;}catch{record.failure='native_clipboard_case_failed';}
+  const record={id,status:'running',check:'write'};report.cases.push(record);await progress('case_start',record);
+  try{await operation(record);record.status='passed';delete record.check;}catch{record.status='failed';record.failure='native_clipboard_case_failed';}
+  await progress('case_complete',record);
  }
  try{
-  const probeSelfTest=inspectCfHtml(true);
+  await progress(phase);
+  const probeSelfTest=await inspectCfHtml(true);
   report.cfHtmlProbeSelfTest={passed:Number.isSafeInteger(probeSelfTest.passed)?probeSelfTest.passed:0};
   assert.equal(probeSelfTest.status,'self_test_passed');assert(report.cfHtmlProbeSelfTest.passed>=9);
+  await progress('cf_html_probe_self_test_complete');
   phase='clipboard_backup';
+  await progress(phase);
   // Abort before writing anything if every available representation cannot be saved.
   for(const item of await clipboard.read()){
    const data={};for(const type of item.types)data[type]=await item.getType(type);
    backup.push(new ClipboardItem(data));
   }
   captured=true;
-  phase='native_smoke_setup';
+  await progress('clipboard_backup_complete');
+  phase='image_setup';await progress(phase);
   directory=await fs.mkdtemp(path.join(os.tmpdir(),'md2chat-windows-native-'));
   const imageDirectory=path.join(directory,'clipboard cache & images');await fs.mkdir(imageDirectory);
   const first=nativeImage.createFromBitmap(Buffer.alloc(2*3*4,255),{width:2,height:3,scaleFactor:1});
@@ -109,6 +126,7 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
   const image={type:'image',src:first.toDataURL()},otherImage={type:'image',src:second.toDataURL()};
   const front='烟测前文🌿',middle='烟测中间',back='烟测后文';
   const parts=[{type:'text',text:front},image,{type:'text',text:middle},otherImage,{type:'text',text:back}];
+  await progress('image_setup_complete');
   const payload=selected=>makePayload(selected,{directory:imageDirectory,nativeImage,target:'dingtalk',platform:'win32'});
   const write=async(value,target='dingtalk')=>writeClipboardPayload(value,{target,platform:process.platform,clipboard,ClipboardItem,imageDirectory});
   const checkText=(value,expected)=>assert.equal(value.replace(/\r\n/g,'\n'),expected);
@@ -171,10 +189,13 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
   });
  }catch{report.failure=phase+'_failed';}
  finally{
+  await progress('clipboard_restore');
   try{if(captured){if(backup.length)await clipboard.write(backup);else clipboard.clear();report.clipboardRestored=true;}}catch{report.restoreFailure='clipboard_restore_failed';}
+  await progress('temporary_cleanup');
   try{if(directory)await fs.rm(directory,{recursive:true,force:true});report.temporaryFilesRemoved=true;}catch{report.cleanupFailure='temporary_cleanup_failed';}
  }
- report.status=!report.failure&&!report.restoreFailure&&!report.cleanupFailure&&report.cases.length===9&&report.cases.every(record=>record.status==='passed')?'passed':'failed';
+ report.status=!report.failure&&!report.progressFailure&&!report.restoreFailure&&!report.cleanupFailure&&report.cases.length===9&&report.cases.every(record=>record.status==='passed')?'passed':'failed';
+ await progress('complete');
  return report;
 }
 
@@ -183,8 +204,17 @@ async function main(){
  try{options=parseArguments(process.argv.slice(2));}catch{
   process.stdout.write(JSON.stringify({schemaVersion:1,status:'failed',failure:'invalid_arguments',dingtalkClientTested:false,cases:[]})+'\n');electron.app.exit(1);return;
  }
+ async function onProgress(report,progress){
+  report.phase=progress.phase;
+  process.stdout.write(JSON.stringify({smoke:'windows_clipboard',...progress})+'\n');
+  if(options.reportPath){await fs.mkdir(path.dirname(options.reportPath),{recursive:true});await fs.writeFile(options.reportPath,JSON.stringify(report,null,2)+'\n');}
+ }
+ const startup={schemaVersion:1,status:'running',dingtalkClientTested:false,cases:[]};
+ await onProgress(startup,{phase:'main_start'});
+ await onProgress(startup,{phase:'app_when_ready_wait'});
  await electron.app.whenReady();
- const report=await runWindowsClipboardSmoke(electron);
+ await onProgress(startup,{phase:'app_ready'});
+ const report=await runWindowsClipboardSmoke(electron,{onProgress});
  if(options.reportPath){
   try{await fs.mkdir(path.dirname(options.reportPath),{recursive:true});await fs.writeFile(options.reportPath,JSON.stringify(report,null,2)+'\n');}
   catch{report.status='failed';report.failure='report_write_failed';}
@@ -194,4 +224,4 @@ async function main(){
 }
 
 if(require.main===module)main().catch(()=>{process.stdout.write(JSON.stringify({schemaVersion:1,status:'failed',failure:'native_smoke_failed',dingtalkClientTested:false,cases:[]})+'\n');process.exitCode=1;require('electron').app.exit(1);});
-module.exports={parseArguments,probeMetadata,runWindowsClipboardSmoke};
+module.exports={parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke};

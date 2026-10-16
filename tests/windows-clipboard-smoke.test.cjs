@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
-const {parseArguments,probeMetadata,runWindowsClipboardSmoke}=require('../desktop/windows-clipboard-smoke.cjs');
+const {parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke}=require('../desktop/windows-clipboard-smoke.cjs');
 const {writeClipboardPayload}=require('../desktop/clipboard-write.cjs');
 const {RAW_FORMAT}=require('../desktop/payload.cjs');
 
@@ -19,6 +19,23 @@ test('native CF_HTML metadata projection excludes content, URLs, paths and arbit
  assert.equal(probeMetadata({byteLength:-1,contentByteLength:Infinity,present:'true'}).byteLength,null);
  assert.equal(probeMetadata({contentByteLength:Infinity}).contentByteLength,null);
  assert.equal(probeMetadata({present:'true'}).present,false);
+});
+
+test('the native probe executes asynchronously while the parent event loop continues running',async()=>{
+ const {execFile}=require('node:child_process');let ticks=0,options;
+ const timer=setInterval(()=>ticks++,5);
+ try{
+  const result=await inspectCfHtml(true,(_command,args,settings,callback)=>{
+   options=settings;assert(args.includes('-SelfTest'));
+   return execFile(process.execPath,['-e','setTimeout(()=>process.stdout.write(JSON.stringify({status:"self_test_passed",passed:9})),50)'],settings,callback);
+  });
+  assert.equal(result.passed,9);assert(ticks>0);assert.equal(options.timeout,15000);assert.equal(options.maxBuffer,64*1024);
+ }finally{clearInterval(timer);}
+});
+
+test('native probe failures and malformed output never expose subprocess text',async()=>{
+ await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(new Error('PRIVATE_SENTINEL'),'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe failed');
+ await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(null,'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe returned invalid metadata');
 });
 
 test('Windows native smoke refuses other platforms before touching a clipboard',async t=>{
