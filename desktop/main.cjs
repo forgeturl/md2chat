@@ -6,7 +6,7 @@ const {makeWecomSegmentData}=require('./wecom-segment.cjs');
 const {createIntegration,startHidden,loginState,setLogin}=require('./integration.cjs');
 const {createPreferences}=require('./preferences.cjs');
 const {createUpdates}=require('./updates.cjs');
-const {createClipboardConversion,createConversionBridge,makeClipboardImageData}=require('./clipboard-conversion.cjs');
+const {createClipboardConversion,createConversionBridge,makeClipboardImageData,resolveCachedHtmlImages}=require('./clipboard-conversion.cjs');
 const {profile}=require('../assets/chat-targets.js');
 const {inspectClipboard}=require('./clipboard-diagnostics.cjs');
 app.setName('md2chat');
@@ -25,12 +25,18 @@ async function inspect(){
  return inspectClipboard(clipboard,{platform:process.platform,version:app.getVersion()});
 }
 async function writePayload(payload,target){
- const data={'text/plain':payload.plain,'text/html':payload.html};
+ // Match the Windows sample's HTML-only image entry. Keep plain text when
+ // there are no images, and preserve every other platform's representations.
+ const windowsHtml=process.platform==='win32'&&target==='dingtalk'&&payload.imageCount>0;
+ const data=windowsHtml?{'text/html':payload.html}:{'text/plain':payload.plain,'text/html':payload.html};
  const native=process.platform==='darwin'&&target==='dingtalk';
  if(native)data[RAW_FORMAT]=new Blob([JSON.stringify(payload.rich)],{type:'application/json'});
  await clipboard.write([new ClipboardItem(data)]);
  if(native&&!await clipboard.has(RAW_FORMAT))throw new Error('系统未保留钉钉图文格式');
- return {images:payload.imageCount,native,target};
+ // Windows file references must survive restarting md2chat. Clean old cache
+ // entries only after an explicit copy has replaced the previous clipboard.
+ if(process.platform==='win32'&&target==='dingtalk')await pruneImages(path.join(app.getPath('userData'),'clipboard-images')).catch(()=>{});
+ return {images:payload.imageCount,native,target,windowsHtml};
 }
 if(primaryInstance)app.whenReady().then(async()=>{
  const {autoUpdater}=require('electron-updater');
@@ -58,15 +64,16 @@ if(primaryInstance)app.whenReady().then(async()=>{
  for(const action of ['check','download','install'])ipcMain.handle(`md2chat:update-${action}`,async event=>{trusted(event);return updates[action]();});
  ipcMain.handle('md2chat:update-status',event=>{trusted(event);return updates.snapshot();});
  const cache=path.join(app.getPath('userData'),'clipboard-images');
- // Do not inspect clipboard contents on startup. Keep image references alive while a DingTalk item exists.
- if(!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
+ // Do not read clipboard content on startup. Windows HTML may still refer to
+ // cache files; its cleanup happens after the next successful DingTalk copy.
+ if(process.platform!=='win32'&&!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
  session.defaultSession.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
  session.defaultSession.setPermissionCheckHandler(()=>false);
  ipcMain.handle('md2chat:copy',async(event,parts,target='dingtalk')=>{
   trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');copying=true;
   try{
    if(target==='wecom'&&Array.isArray(parts)&&parts.some(part=>part?.type==='image'))throw new Error('企微图文请使用分段复制，按顺序粘贴文字和图片。');
-   const payload=await makePayload(parts,{directory:cache,nativeImage,target});
+   const payload=await makePayload(parts,{directory:cache,nativeImage,target,platform:process.platform});
    return await writePayload(payload,target);
   }finally{copying=false;}
  });
@@ -79,15 +86,19 @@ if(primaryInstance)app.whenReady().then(async()=>{
   }finally{copying=false;}
  });
  ipcMain.handle('md2chat:inspect',async event=>{trusted(event);return inspect();});
+ ipcMain.handle('md2chat:resolve-clipboard-html',async(event,html)=>{
+  trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');
+  return resolveCachedHtmlImages(html,{imageDirectory:cache});
+ });
  conversionBridge=createConversionBridge({ipcMain,trusted,getWebContents:()=>win?.webContents});
- clipboardConversion=createClipboardConversion({clipboard,render:async(content,target)=>{
+ clipboardConversion=createClipboardConversion({clipboard,imageDirectory:cache,render:async(content,target)=>{
   if(win?.webContents.isCrashed())await win.loadFile(entry);
   return conversionBridge.render(content,target);
  },prepare:async(parts,target)=>{
   if(target==='image')return {imageData:await makeClipboardImageData(parts,{nativeImage})};
   validateParts(parts,target);
   if(target==='wecom'&&parts.some(part=>part.type==='image'))return {segments:parts};
-  return makePayload(parts,{directory:cache,nativeImage,target});
+  return makePayload(parts,{directory:cache,nativeImage,target,platform:process.platform});
  },write:async(payload,target)=>{
   if(target==='image'){
    await clipboard.write([new ClipboardItem(payload.imageData)]);

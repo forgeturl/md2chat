@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('md2chatDesktop',Object.freeze({
  copy:(parts,target='dingtalk')=>ipcRenderer.invoke('md2chat:copy',parts,target),
  copyWecomSegment:segment=>ipcRenderer.invoke('md2chat:copy-wecom-segment',segment),
  inspect:()=>ipcRenderer.invoke('md2chat:inspect'),
+ resolveClipboardHtml:html=>ipcRenderer.invoke('md2chat:resolve-clipboard-html',html),
  onConvertClipboard:callback=>{
   const listener=async(_event,request)=>{
    try{const parts=await callback(request.content,request.target);ipcRenderer.send('md2chat:conversion-result',request.id,{parts});}

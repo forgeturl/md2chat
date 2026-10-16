@@ -2,7 +2,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ChatTargets=api;})(globalThis,()=>{
  const profiles=Object.freeze({
   wechat:{label:'微信',note:'标准图文；请在聊天框确认图片完整。'},
-  dingtalk:{label:'钉钉',note:'仅限桌面版。Mac 支持原生图文；Windows 的图片可能被忽略。'},
+  dingtalk:{label:'钉钉',note:'仅限桌面版。Mac 使用原生图文；Windows 使用兼容图文，请确认图片完整，当前方案待实测。'},
   feishu:{label:'飞书',note:'实验性标准图文，尚未完成飞书客户端验证。'},
   wecom:{label:'企微',note:'图文请按顺序分段复制、粘贴；文字可编辑，强调样式不保证保留。Windows 待验证。'},
   email:{label:'邮件',note:'实验性邮件 HTML，表格可编辑；内嵌图片需确认客户端粘贴及发送后仍保留。'}

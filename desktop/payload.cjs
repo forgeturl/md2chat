@@ -1,11 +1,16 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {pathToFileURL} = require('node:url');
 const targets = require('../assets/chat-targets.js');
 const FORMAT = 'com.dingtalk.richTextAttributedString';
 const RAW_FORMAT = `electron application/osclipboard;format="${FORMAT}"`;
 const esc = s => s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const style = run => ({bold:run.bold===true,italic:run.italic===true,strikethrough:run.strikethrough===true,underLine:false,indent:0,lightColor:'#222222',darkColor:'#eeeeee'});
+function httpsImageSource(value) {
+ if(typeof value!=='string'||value.length>8192||!/^https:\/\//i.test(value))return '';
+ try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';}catch{return '';}
+}
 function validateParts(parts, target='dingtalk') {
  targets.profile(target);
  if (!Array.isArray(parts) || !parts.length || parts.length > 500) throw new Error('内容为空或段落过多');
@@ -24,23 +29,27 @@ function validateParts(parts, target='dingtalk') {
  }
  if(total>60*1024*1024)throw new Error('图文过大，请减少图片后重试');
 }
-async function makePayload(parts, {directory, nativeImage, target='dingtalk'}) {
+async function makePayload(parts, {directory, nativeImage, target='dingtalk', platform=process.platform}) {
  validateParts(parts,target);
+ const windowsDingtalk=target==='dingtalk'&&platform==='win32';
  const items=[],html=[],plain=[],normalized=[];let imageCount=0;
  const newline=()=>items.push({type:'newLine',data:{}});
  for(const [index,p] of parts.entries()) {
-  if(index){newline();html.push('<br>');plain.push('\n');}
+  if(index){newline();if(!windowsDingtalk)html.push('<br>');plain.push('\n');}
   if(p.type==='table'){normalized.push(p);continue;}
   if(p.type==='text') {
    normalized.push(p);
    const runs=Array.isArray(p.runs)&&p.runs.length<10000&&p.runs.every(r=>r&&typeof r.text==='string')&&p.runs.map(r=>r.text).join('')===p.text?p.runs:[{text:p.text}];
+   let paragraph=[];
+   const finishParagraph=()=>{html.push('<p>'+(paragraph.length?paragraph.join(''):'<br>')+'</p>');paragraph=[];};
    for(const run of runs)for(const [i,line] of run.text.split('\n').entries()) {
-    if(i){newline();html.push('<br>');}
+    if(i){newline();if(windowsDingtalk)finishParagraph();else html.push('<br>');}
     if(!line)continue;
     items.push({type:'text',data:{text:line},style:style(run)});
     let text=esc(line);if(run.bold)text='<strong>'+text+'</strong>';if(run.italic)text='<em>'+text+'</em>';if(run.strikethrough)text='<s>'+text+'</s>';
-    html.push('<span data-type="text"><span data-type="leaf">'+text+'</span></span>');
+    (windowsDingtalk?paragraph:html).push('<span data-type="text"><span data-type="leaf">'+text+'</span></span>');
    }
+   if(windowsDingtalk)finishParagraph();
    plain.push(p.text);
   } else {
    const img=nativeImage.createFromDataURL(p.src);
@@ -55,7 +64,9 @@ async function makePayload(parts, {directory, nativeImage, target='dingtalk'}) {
    const displayWidth=Math.min(width,1100,Math.max(1,requestedWidth)),displayHeight=Math.round(height*displayWidth/width);
    normalized.push({type:'image',src:'data:image/png;base64,'+bytes.toString('base64'),width:displayWidth,height:displayHeight});
    items.push({type:'image',data:{authMediaId:'',filename,path:file,text:'',url:''},style:{width:displayWidth,height:displayHeight,indent:0,mode:0}});
-   html.push(`<img src="data:image/png;base64,${bytes.toString('base64')}" width="${displayWidth}" height="${displayHeight}">`);
+   const imageSource=windowsDingtalk?(httpsImageSource(p.sourceUrl)||pathToFileURL(file).href):'data:image/png;base64,'+bytes.toString('base64');
+   const imageHtml=`<img src="${esc(imageSource)}" width="${displayWidth}" height="${displayHeight}">`;
+   html.push(windowsDingtalk?'<p>'+imageHtml+'</p>':imageHtml);
    plain.push('[图片]');imageCount++;
   }
  }

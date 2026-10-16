@@ -83,6 +83,28 @@ test('remote images load by default without credentials, unsafe schemes are reje
  await assert.rejects(()=>ctx.ensureImage({src:'https://example.com/photo.png'}),/HTTP 403/);assert.equal(requests.length,1);assert.equal(requests[0].url,'https://example.com/photo.png');assert.equal(requests[0].options.credentials,'omit');assert.equal(requests[0].options.referrerPolicy,'no-referrer');
  await assert.rejects(()=>ctx.ensureImage({src:'javascript:alert(1)'}),/不受支持/);assert.equal(requests.length,1);
 });
+test('remote image normalization preserves its existing HTTPS source for Windows copies',async()=>{
+ const requests=[],remote='https://example.com/original.png?size=large',data='data:image/png;base64,AAAA';
+ class Image{constructor(){this.naturalWidth=320;this.naturalHeight=200;}set src(_value){this.onload();}}
+ const ctx={AbortSignal,Image,fetch:async(url,options)=>{requests.push({url,options});return {ok:true,blob:async()=>new Blob(['PNG'],{type:'image/png'})};},blobToData:async()=>data};
+ vm.createContext(ctx);vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+ const asset={src:remote};await ctx.ensureImage(asset);
+ assert.equal(asset.src,data);assert.equal(asset.sourceUrl,remote);assert.equal(requests.length,1);
+ await ctx.ensureImage(asset);assert.equal(requests.length,1);assert.equal(asset.sourceUrl,remote);
+ const local={src:data};await ctx.ensureImage(local);assert.equal(local.sourceUrl,undefined);
+ const http={src:'http://example.com/image.png'};await ctx.ensureImage(http);assert.equal(http.sourceUrl,undefined);
+});
+test('only imported original images carry source URLs through generated segments',async()=>{
+ const ctx=payloadContext(),sourceUrl='https://example.com/original.png';
+ ctx.assets.get('1').sourceUrl=sourceUrl;
+ ctx.ChatRenderers={code:async()=>[{src:'data:image/png;base64,CODE',width:40,height:20,sourceUrl:'https://example.com/SHOULD-NOT-PROPAGATE'}]};
+ const result=await ctx.buildPayload('[[DING_IMAGE:1]]\n\n| A | B |\n|---|---|\n|1|2|\n\n```js\nconst x=1;\n```');
+ const images=result.segments.filter(part=>part.type==='image');
+ assert.equal(images.length,3);assert.equal(images[0].sourceUrl,sourceUrl);
+ assert(images.slice(1).every(part=>part.sourceUrl===undefined));
+ assert.equal(result.emailSegments.find(part=>part.type==='image').sourceUrl,sourceUrl);
+ assert(!result.preview.includes(sourceUrl));assert(!result.html.includes(sourceUrl));
+});
 test('diagnostic reports exclude clipboard text content',async()=>{
  const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};
  const ctx={lastCopyTarget:null,document:{getElementById:el},window:{isSecureContext:true},navigator:{clipboard:{}},Blob,ClipboardDiagnostics:require('../assets/clipboard-diagnostics.js')};vm.createContext(ctx);
