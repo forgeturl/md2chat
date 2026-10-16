@@ -16,8 +16,10 @@ test('build has a narrow public-file allowlist',()=>{
 });
 test('latest download links match the complete release asset contract',()=>{
  const {expectedAssets}=require('../scripts/release-assets.cjs');
+ assert.deepEqual(expectedAssets,['md2chat-mac-universal.dmg','md2chat-mac-universal.zip','md2chat-windows-x64-setup.exe']);
  const readme=fs.readFileSync(path.join(root,'README.md'),'utf8');
  for(const name of expectedAssets)assert(readme.includes('/releases/latest/download/'+name));
+ assert(!/\/releases\/latest\/download\/md2chat-mac-(?:arm64|x64)\./.test(readme));
  const pkg=require('../package.json');
  assert.equal(pkg.version,require('../package-lock.json').version);
  assert.equal(pkg.build.artifactName,'md2chat-${os}-${arch}.${ext}');
@@ -30,6 +32,22 @@ test('release checksums require all platform assets before publication',()=>{
   for(const name of expectedAssets.slice(0,-1))fs.writeFileSync(path.join(dir,name),'sample');
   assert.throws(()=>writeChecksums(dir));assert(!fs.existsSync(path.join(dir,'SHA256SUMS.txt')));
   fs.writeFileSync(path.join(dir,expectedAssets.at(-1)),'sample');writeChecksums(dir);
-  assert.equal(fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8').trim().split('\n').length,5);
+  const lines=fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8').trim().split('\n');
+  assert.equal(lines.length,3);
+  const digest=require('node:crypto').createHash('sha256').update('sample').digest('hex');
+  assert.deepEqual(lines,expectedAssets.map(name=>digest+'  '+name));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+test('desktop release builds one universal Mac package and publishes only pushed version tags',()=>{
+ const workflow=require('js-yaml').load(fs.readFileSync(path.join(root,'.github/workflows/desktop-release.yml'),'utf8'));
+ assert.deepEqual(workflow.on.push.tags,['v*']);
+ assert(Object.hasOwn(workflow.on,'workflow_dispatch'));
+ const matrix=workflow.jobs.build.strategy.matrix.include;
+ assert.deepEqual(matrix.map(({platform,arch})=>({platform,arch})),[{platform:'mac',arch:'universal'},{platform:'win',arch:'x64'}]);
+ assert.match(workflow.jobs.publish.if,/github\.event_name\s*==\s*'push'/);
+ assert.match(workflow.jobs.publish.if,/startsWith\(github\.ref,\s*'refs\/tags\/v'\)/);
+ assert.match(workflow.jobs.publish.if,/&&/);
+ const macStep=workflow.jobs.build.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac'));
+ assert(macStep);
+ for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
 });

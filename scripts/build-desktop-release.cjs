@@ -1,7 +1,8 @@
 const {spawnSync} = require('node:child_process');
 const fs = require('node:fs');
-const [platform, arch] = process.argv.slice(2);
-if (!['mac', 'win'].includes(platform) || !['arm64', 'x64'].includes(arch)) throw new Error('Invalid build target');
+const path = require('node:path');
+const [platform, arch, ...extra] = process.argv.slice(2);
+if (extra.length || !((platform === 'mac' && arch === 'universal') || (platform === 'win' && arch === 'x64'))) throw new Error('Invalid build target: use mac universal or win x64');
 function run(command, args) {
  const result = spawnSync(command, args, {stdio: 'inherit'});
  if (result.error) throw result.error;
@@ -14,9 +15,17 @@ if (platform === 'mac') {
 }
 run(process.execPath, ['node_modules/electron-builder/cli.js', '--' + platform, ...(platform === 'mac' ? ['dmg','zip'] : ['nsis']), '--' + arch, '--publish', 'never', ...(platform === 'mac' ? ['-c.forceCodeSigning=true'] : [])]);
 if (platform === 'mac') {
- const appPath = `release/${arch === 'arm64' ? 'mac-arm64' : 'mac'}/md2chat.app`;
+ const appPath = 'release/mac-universal/md2chat.app';
+ const frameworks = path.join(appPath, 'Contents', 'Frameworks');
+ const helpers = fs.readdirSync(frameworks).filter(name => name.endsWith('.app'));
+ if (!helpers.length) throw new Error('Missing Electron helper applications');
+ const binaries = [
+  path.join(appPath, 'Contents', 'MacOS', 'md2chat'),
+  path.join(frameworks, 'Electron Framework.framework', 'Electron Framework'),
+  ...helpers.map(name => path.join(frameworks, name, 'Contents', 'MacOS', name.slice(0, -4)))
+ ];
+ for (const binary of binaries) run('lipo', [binary, '-verify_arch', 'arm64', 'x86_64']);
  run('codesign', ['--verify','--deep','--strict',appPath]);
  run('spctl', ['--assess','--type','execute','--verbose',appPath]);
  run('xcrun', ['stapler','validate',appPath]);
- fs.renameSync('release/latest-mac.yml', `release/latest-mac-${arch}.yml`);
 }

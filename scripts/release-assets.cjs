@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 // These names are the public README download contract. Do not embed the version.
-const expectedAssets = ['md2chat-mac-arm64.dmg', 'md2chat-mac-arm64.zip', 'md2chat-mac-x64.dmg', 'md2chat-mac-x64.zip', 'md2chat-windows-x64-setup.exe'];
+const expectedAssets = ['md2chat-mac-universal.dmg', 'md2chat-mac-universal.zip', 'md2chat-windows-x64-setup.exe'];
 function writeChecksums(directory) {
  const lines = expectedAssets.map(name => {
   const data = fs.readFileSync(path.join(directory, name));

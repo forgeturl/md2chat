@@ -1,0 +1,34 @@
+name: Cleanup workflow runs
+
+on:
+  workflow_run:
+    workflows: [Desktop release, Check and deploy Pages]
+    types: [completed]
+  schedule:
+    # Daily fallback at 02:23 Asia/Shanghai, including newly added workflows.
+    - cron: '23 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: actions-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Keep latest 10 runs per workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # workflow_run checks out the default branch, never the triggering run's code.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Delete older completed runs
+        run: node scripts/cleanup-actions.cjs --keep 10 --delete
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

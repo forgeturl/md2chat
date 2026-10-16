@@ -5,7 +5,7 @@
   "description": "Markdown to editable chat messages — desktop and web",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "node scripts/serve.cjs",
@@ -14,10 +14,10 @@
     "build": "node scripts/build.cjs",
     "desktop": "electron .",
     "screenshots": "electron scripts/capture-preview.cjs",
-    "desktop:pack": "electron-builder --mac dir --arm64",
-    "desktop:dist": "electron-builder --mac dmg zip --arm64 --publish never",
+    "desktop:pack": "electron-builder --mac dir --universal",
+    "desktop:dist": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:test": "electron desktop/smoke.cjs",
-    "desktop:dist:mac": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
+    "desktop:dist:mac": "electron-builder --mac dmg zip --universal --publish never",
     "desktop:dist:win": "electron-builder --win nsis --x64 --publish never",
     "seo:generate": "node scripts/seo.cjs --write",
     "seo:check": "node scripts/seo.cjs"
@@ -26,6 +26,11 @@
     "electron": "44.8.0",
     "electron-builder": "26.15.3",
     "js-yaml": "4.1.1"
+  },
+  "overrides": {
+    "app-builder-lib": {
+      "@electron/notarize": "3.1.2"
+    }
   },
   "main": "desktop/main.cjs",
   "author": "md2chat contributors",

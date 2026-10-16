@@ -3,11 +3,10 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const yaml = require('js-yaml');
 const {expectedAssets} = require('./release-assets.cjs');
-function combineManifests(directory, version) {
+function validateManifests(directory, version) {
  const specs = [
-  ['latest-mac-arm64.yml', expectedAssets.slice(0, 2)],
-  ['latest-mac-x64.yml', expectedAssets.slice(2, 4)],
-  ['latest.yml', expectedAssets.slice(4)]
+  ['latest-mac.yml', expectedAssets.slice(0, 2)],
+  ['latest.yml', expectedAssets.slice(2)]
  ];
  const manifests = specs.map(([name, names]) => {
   const info = yaml.load(fs.readFileSync(path.join(directory, name), 'utf8'));
@@ -23,10 +22,7 @@ function combineManifests(directory, version) {
   return info;
  });
  if (manifests.some(info => typeof info.releaseNotes !== 'string' || info.releaseNotes !== manifests[0].releaseNotes)) throw new Error('Missing or inconsistent release notes');
- // Separate matrix builds write the same filename. Merge explicitly, never last-writer-wins.
- const mac = {...manifests[1], files: [...manifests[0].files, ...manifests[1].files]};
- fs.writeFileSync(path.join(directory, 'latest-mac.yml'), yaml.dump(mac));
- return mac;
+ return manifests;
 }
-if (require.main === module) combineManifests(process.argv[2] || 'release', require('../package.json').version);
-module.exports = {combineManifests};
+if (require.main === module) validateManifests(process.argv[2] || 'release', require('../package.json').version);
+module.exports = {validateManifests};
