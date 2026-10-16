@@ -16,14 +16,13 @@ AI 回答常用 Markdown，但并非所有输出或复制方式都相同。这�
 | 系统 | 安装包 | 备用归档 |
 | --- | --- | --- |
 | Windows x64（Intel / AMD） | [下载安装程序 EXE](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-windows-x64-setup.exe) | — |
-| macOS Apple Silicon（M 系列） | [下载 DMG](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-arm64.dmg) | [下载 ZIP](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-arm64.zip) |
-| macOS Intel | [下载 DMG](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-x64.dmg) | [下载 ZIP](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-x64.zip) |
+| macOS 通用版（M 系列 / Intel） | [下载 DMG](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-universal.dmg) | [下载 ZIP](https://github.com/forgeturl/md2chat/releases/latest/download/md2chat-mac-universal.zip) |
 
-链接始终指向最新发布版本，无需查找版本号。[版本说明](https://github.com/forgeturl/md2chat/releases/latest) · [SHA256 校验值](https://github.com/forgeturl/md2chat/releases/latest/download/SHA256SUMS.txt)。Windows ARM 暂无原生包。
+链接始终指向最新发布版本，无需查找版本号。Mac 的同一个 DMG 包含 Apple Silicon 和 Intel 两种架构，无需选择芯片类型；ZIP 同时供应用内更新使用。[版本说明](https://github.com/forgeturl/md2chat/releases/latest) · [SHA256 校验值](https://github.com/forgeturl/md2chat/releases/latest/download/SHA256SUMS.txt)。Windows ARM 暂无原生包。
 
 ## 桌面版
 
-提供 Windows x64、macOS Apple Silicon 和 Intel 安装包。使用 Electron，应用内包含转换器和原生剪贴板能力，不需要另装插件、Python、Node 或助手。
+提供 Windows x64 安装包和 macOS 通用安装包（Apple Silicon / Intel）。使用 Electron，应用内包含转换器和原生剪贴板能力，不需要另装插件、Python、Node 或助手。
 
 输入 Markdown（左侧「清空」可重新开始）→ 检查右侧预览 → 点击目标平台图标 → 到目标输入框粘贴。企微图文会打开分段面板，按顺序分别复制、粘贴文字和图片；纯文字可直接复制。其他目标默认整段复制。普通文字仍可编辑，图片能否保留取决于客户端兼容性。网页版钉钉按钮禁用，悬浮钉钉按钮后可通过提示中的下载入口获取桌面版。
 
@@ -76,7 +75,7 @@ npm run screenshots  # 使用虚构示例重拍当前桌面版与首屏对照图
 npm run check        # 语法与回归测试
 npm run build        # GitHub Pages 静态站点
 npm run desktop:test # macOS 原生剪贴板往返测试，结束后恢复原剪贴板
-npm run desktop:dist:mac # M 系列和 Intel Mac 的 DMG / ZIP
+npm run desktop:dist:mac # Mac 通用版 DMG / ZIP（M 系列 + Intel）
 npm run desktop:dist:win # Windows x64 安装程序 EXE
 ```
 
@@ -101,11 +100,13 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 ## 发布
 
+Actions 为每个工作流保留最近 10 次运行，较旧且已结束的运行自动清理；临时构建产物按仓库上限保留 3 天。
+
 推送 main 自动发布 Pages。发布桌面版时：
 
 1. 更新 `package.json` 和 `package-lock.json` 的版本，以及 `docs/release-notes.md`。
 2. 提交并推送代码，再推送同版本标签（例如 `v0.6.0`）。
-3. `Desktop release` 自动在 macOS / Windows runner 上检查并打包。三个构建全部成功后，校验五个发行文件，生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest。
+3. `Desktop release` 自动在 macOS / Windows runner 上检查并打包。Mac 通用版和 Windows x64 两个构建全部成功后，校验三个安装资产（Mac DMG、Mac ZIP、Windows EXE），生成 SHA256 校验值，上传到草稿 Release，再发布并设为 Latest。
 
 README 与宣传页使用 `releases/latest/download/固定文件名`，新版本发布后自动下载新版。历史版本仍保留在各自的 Release。Latest 表示当前下载版本，不代表安装包已签名或所有聊天客户端已验证。手动运行 workflow 仅生成构建产物，不发布 Release。
 

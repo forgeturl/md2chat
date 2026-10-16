@@ -31,12 +31,12 @@
 ## 发布验证
 
 - Mac 构建要求五项凭据齐全，强制 Developer ID 签名、公证，检查 `codesign`、`spctl` 和 stapler；缺失凭据或校验失败会阻止发布，不退回未签名包。
-- 三个构建任务分别产出 M 系列 Mac、Intel Mac、Windows x64。发布前验证五个安装资产，校验元数据中的 SHA-512、大小和版本，并合并两个 Mac 架构的清单。
+- 两个构建任务分别产出 Mac 通用版和 Windows x64。Mac 通用应用包含 arm64 与 x64，使用同一个 DMG 安装包，并保留通用 ZIP 供应用内更新。发布前验证三个安装资产，校验元数据中的 SHA-512、大小和版本；Mac 直接使用通用构建生成的 `latest-mac.yml`，无需合并架构清单。
 - 发布必须包含 `latest.yml`、`latest-mac.yml`，Mac ZIP 和 DMG、Windows EXE、SHA256SUMS.txt；当前采用完整下载，不需要差分 blockmap。
 - 更新来源固定为 `forgeturl/md2chat` 的公开 GitHub Releases，无用户可配置下载 URL，无客户端 GitHub token。稳定版不接受预发布版或降级。
 - 更新说明来自 `docs/release-notes.md`，界面以纯文字显示，不执行远程 HTML。
-- 先通过 workflow_dispatch 验证签名构建，再推版本标签发布。手动构建不会创建公开 Release。
-- 验收应从实际安装的旧签名版升级到同团队的新签名版，验证提醒、说明、下载、取消安装、重启安装、版本变化；Windows 在真实安装环境验证相同流程。开发环境或模拟状态测试不算安装验收。
+- 先通过 workflow_dispatch 验证签名构建，再推版本标签发布。手动构建仅上传 Actions 构建产物；只有版本标签推送触发的工作流才发布 Release。
+- 验收应从实际安装的旧签名版升级到同团队的新签名版，验证提醒、说明、下载、取消安装、重启安装、版本变化；M 系列和 Intel Mac 分别验证通用包运行与升级，Windows 在真实安装环境验证相同流程。开发环境或模拟状态测试不算安装验收，通用包构建成功也不代表 Intel Mac 或聊天客户端粘贴已实测。
 
 本地开发使用 `npm run desktop`；如需无证书的测试包，可显式覆盖 `-c.mac.identity=null -c.mac.notarize=false -c.mac.hardenedRuntime=false`。该包不能用于验证 Mac 自动安装，也不可替代正式发布包。
 

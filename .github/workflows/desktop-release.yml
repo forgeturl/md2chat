@@ -16,11 +16,7 @@ jobs:
         include:
           - os: macos-15
             platform: mac
-            arch: arm64
-            target: dmg zip
-          - os: macos-15
-            platform: mac
-            arch: x64
+            arch: universal
             target: dmg zip
           - os: windows-latest
             platform: win
@@ -40,7 +36,7 @@ jobs:
         run: node -e "if(process.env.GITHUB_REF_NAME !== 'v'+require('./package.json').version) process.exit(1)"
       - name: Build signed and notarized Mac installer
         if: matrix.platform == 'mac'
-        run: node scripts/build-desktop-release.cjs mac ${{ matrix.arch }}
+        run: node scripts/build-desktop-release.cjs mac universal
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -54,13 +50,14 @@ jobs:
         with:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: error
+          retention-days: 3
           path: |
             release/*.dmg
             release/*.zip
             release/*.exe
             release/latest*.yml
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
