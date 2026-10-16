@@ -62,7 +62,7 @@ async function snapshot(clipboard,nativeImage){
 }
 
 async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage},{onProgress}={}){
- const report={schemaVersion:1,status:'running',dingtalkClientTested:false,
+ const report={schemaVersion:1,status:'running',applicationVersion:require('../package.json').version,dingtalkClientTested:false,
   runtime:{platform:process.platform,architecture:process.arch,osRelease:os.release(),electron:process.versions.electron,chromium:process.versions.chrome,node:process.versions.node},
   cases:[],clipboardRestored:false,temporaryFilesRemoved:false};
  if(process.platform!=='win32'){report.status='failed';report.failure='windows_required';return report;}
@@ -223,5 +223,6 @@ async function main(){
  electron.app.exit(report.status==='passed'?0:1);
 }
 
-if(require.main===module)main().catch(()=>{process.stdout.write(JSON.stringify({schemaVersion:1,status:'failed',failure:'native_smoke_failed',dingtalkClientTested:false,cases:[]})+'\n');process.exitCode=1;require('electron').app.exit(1);});
+// Electron's default app imports CLI scripts, so it can retain require.main.
+if((process.versions.electron&&process.type==='browser')||require.main===module)main().catch(()=>{process.stdout.write(JSON.stringify({schemaVersion:1,status:'failed',failure:'native_smoke_failed',dingtalkClientTested:false,cases:[]})+'\n');process.exitCode=1;require('electron').app.exit(1);});
 module.exports={parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke};

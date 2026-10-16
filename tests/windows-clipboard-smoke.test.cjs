@@ -1,7 +1,24 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
+const fs=require('node:fs'),vm=require('node:vm');
 const {parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke}=require('../desktop/windows-clipboard-smoke.cjs');
 const {writeClipboardPayload}=require('../desktop/clipboard-write.cjs');
 const {RAW_FORMAT}=require('../desktop/payload.cjs');
+
+test('Electron browser bootstrap starts the smoke when the default app owns require.main',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../desktop/windows-clipboard-smoke.cjs'),'utf8');
+ const entry=source.slice(source.lastIndexOf('\nif('),source.lastIndexOf('\nmodule.exports='));
+ for(const [runtime,nodeEntry,expected] of [
+  [{versions:{electron:'44.8.0'},type:'browser'},false,1],
+  [{versions:{electron:'44.8.0'},type:'renderer'},false,0],
+  [{versions:{node:'22.12.0'}},false,0],
+  [{versions:{node:'22.12.0'}},true,1]
+ ]){
+  let starts=0;const module={exports:{}},require=()=>assert.fail('entry must not load Electron unless its startup fails');
+  require.main=nodeEntry?module:{id:'default_app/main'};
+  vm.runInNewContext(entry,{process:runtime,module,require,main:()=>{starts++;return Promise.resolve();}});
+  assert.equal(starts,expected);
+ }
+});
 
 test('native smoke report output is opt-in through one explicit CLI argument',()=>{
  assert.deepEqual(parseArguments([]),{reportPath:undefined});
