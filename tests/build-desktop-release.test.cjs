@@ -1,6 +1,6 @@
 const {test} = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
-const {buildRelease} = require('../scripts/build-desktop-release.cjs');
+const {buildMacBinary, buildRelease} = require('../scripts/build-desktop-release.cjs');
 const {signingFixture} = require('./helpers/updater.cjs');
 const appleSecrets = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'];
 // Public self-signed certificate used only to exercise CN extraction. Its private
@@ -27,9 +27,15 @@ function fixture(callback) {
   calls.push({command, args, options});
   if (command === 'openssl') return {stdout: developerCertificate};
   if (args[0] === 'notarytool') return {stdout: JSON.stringify({status: 'Accepted'})};
-  if (!args.includes('build')) return {status: 0};
+  if (args[1] !== 'build' && args[1] !== 'bundle') return {status: 0};
   const updater = JSON.parse(args.at(-1)).bundle.createUpdaterArtifacts;
-  const target = args[args.indexOf('--target') + 1], bundle = path.join(root, 'src-tauri/target', target, 'release/bundle');
+  const target = args[args.indexOf('--target') + 1];
+  if (args.includes('--no-bundle')) {
+   const binary = path.join(root, 'src-tauri/target', target, 'release/md2chat');
+   fs.mkdirSync(path.dirname(binary), {recursive: true}); fs.writeFileSync(binary, target);
+   return {status: 0};
+  }
+  const bundle = path.join(root, 'src-tauri/target', target, 'release/bundle');
   const files = target.startsWith('universal') ? ['macos/md2chat.app/Contents/MacOS/md2chat', 'dmg/md2chat_0.6.6_universal.dmg', ...(updater ? ['macos/md2chat.app.tar.gz'] : [])] : ['nsis/md2chat_0.6.6_x64-setup.exe'];
   for (const name of files) {
    const file = path.join(bundle, name), data = Buffer.from(name);
@@ -58,6 +64,61 @@ test('Mac release builds Tauri universal app, verifies signature and notarizatio
  assert.deepEqual(calls[7].args, ['stapler', 'staple', dmg]);
  assert.deepEqual(calls[8].args, ['stapler', 'validate', dmg]);
  for (const name of assets) assert(fs.statSync(path.join(root, 'release', name)).size);
+}));
+test('Mac release binaries compile independently with matching updater configuration and no bundle', () => fixture(({root, env, calls, run}) => {
+ const compileEnv = {TAURI_UPDATER_PUBLIC_KEY: env.TAURI_UPDATER_PUBLIC_KEY};
+ for (const [arch, target] of [['arm64', 'aarch64-apple-darwin'], ['x64', 'x86_64-apple-darwin']]) {
+  const binary = buildMacBinary(arch, {root, env: compileEnv, run});
+  assert.equal(binary, path.join(root, 'src-tauri/target', target, 'release/md2chat'));
+  assert(fs.statSync(binary).size);
+  const build = calls.at(-1);
+  assert.equal(build.args[1], 'build');
+  assert(build.args.includes('--no-bundle')); assert(build.args.includes('--no-sign'));
+  assert.equal(build.args[build.args.indexOf('--target') + 1], target);
+  assert.deepEqual(JSON.parse(build.args.at(-1)), {bundle: {createUpdaterArtifacts: true}, plugins: {updater: {pubkey: env.TAURI_UPDATER_PUBLIC_KEY}}});
+  for (const secret of ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'TAURI_SIGNING_PRIVATE_KEY']) assert.equal(build.options.env[secret], undefined);
+ }
+}));
+test('prebuilt Mac release bundles an existing universal binary without rebuilding Rust', () => fixture(({root, env, calls, run}) => {
+ const binary = path.join(root, 'src-tauri/target/universal-apple-darwin/release/md2chat');
+ fs.mkdirSync(path.dirname(binary), {recursive: true}); fs.writeFileSync(binary, 'universal-binary');
+ const assets = buildRelease('mac', 'universal', {root, env, run, prebuilt: true});
+ assert.deepEqual(assets, ['md2chat-mac-universal.dmg', 'md2chat-mac-universal.app.tar.gz', 'md2chat-mac-universal.app.tar.gz.sig']);
+ const tauri = calls.find(call => call.args[1] === 'bundle');
+ assert(tauri); assert(!calls.some(call => call.args[1] === 'build'));
+ assert.deepEqual(JSON.parse(tauri.args.at(-1)), {bundle: {createUpdaterArtifacts: true}, plugins: {updater: {pubkey: env.TAURI_UPDATER_PUBLIC_KEY}}});
+ assert(calls.some(call => call.command === 'lipo' && call.args[0] === binary && call.args.includes('-verify_arch')));
+ if (process.platform !== 'win32') assert(fs.statSync(binary).mode & 0o111);
+}));
+test('prebuilt Mac release refuses a missing or empty universal binary before bundling', () => fixture(({root, env, calls, run}) => {
+ const binary = path.join(root, 'src-tauri/target/universal-apple-darwin/release/md2chat');
+ for (const contents of [null, '']) {
+  fs.rmSync(binary, {force: true});
+  if (contents !== null) {fs.mkdirSync(path.dirname(binary), {recursive: true}); fs.writeFileSync(binary, contents);}
+  assert.throws(() => buildRelease('mac', 'universal', {root, env, run, prebuilt: true}), /prebuilt universal Mac binary/i);
+ }
+ assert(!calls.some(call => call.args[1] === 'bundle'));
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('prebuilt Mac release verifies both architectures before invoking the bundler', () => fixture(({root, env, calls, run}) => {
+ const binary = path.join(root, 'src-tauri/target/universal-apple-darwin/release/md2chat');
+ fs.mkdirSync(path.dirname(binary), {recursive: true}); fs.writeFileSync(binary, 'wrong-architecture');
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, prebuilt: true, run(command, args, options) {
+  if (command === 'lipo' && args[0] === binary) throw new Error('architecture mismatch');
+  return run(command, args, options);
+ }}), /architecture mismatch/);
+ assert(!calls.some(call => call.args[1] === 'bundle'));
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('manual Mac binary builds use the same disabled updater configuration as final packaging', () => fixture(({root, env, calls, run}) => {
+ const compileEnv = {GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'workflow_dispatch'};
+ buildMacBinary('arm64', {root, env: compileEnv, run, testBuild: true});
+ const binary = path.join(root, 'src-tauri/target/universal-apple-darwin/release/md2chat');
+ fs.mkdirSync(path.dirname(binary), {recursive: true}); fs.writeFileSync(binary, 'universal-binary');
+ buildRelease('mac', 'universal', {root, env: {...env, ...compileEnv}, run, testBuild: true, prebuilt: true});
+ const configs = calls.filter(call => ['build', 'bundle'].includes(call.args[1])).map(call => JSON.parse(call.args.at(-1)));
+ assert.equal(configs.length, 2); assert.deepEqual(configs[0], configs[1]);
+ assert.deepEqual(configs[0], {bundle: {createUpdaterArtifacts: false}, plugins: {updater: {pubkey: ''}}});
 }));
 test('Windows NSIS release uses the signed installer itself as updater artifact', () => fixture(({root, env, calls, run}) => {
  for (const name of appleSecrets) delete env[name];
@@ -135,14 +196,17 @@ test('Windows test builds require no Apple or updater credentials and emit only 
 }));
 test('test builds cannot downgrade a GitHub tag build and unknown CLI flags are rejected', () => fixture(({root, env, run, calls}) => {
  assert.throws(() => buildRelease('mac', 'universal', {root, env: {...env, GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push'}, run, testBuild: true}), /only for workflow_dispatch/);
+ assert.throws(() => buildMacBinary('arm64', {root, env: {GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'push'}, run, testBuild: true}), /only for workflow_dispatch/);
  assert.equal(calls.length, 0);
- for (const extra of [['--unknown'], ['--test-build', '--test-build']]) {
-  const result = require('node:child_process').spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/build-desktop-release.cjs'), 'win', 'x64', ...extra], {encoding: 'utf8'});
+ for (const args of [['win', 'x64', '--unknown'], ['win', 'x64', '--test-build', '--test-build'], ['win', 'x64', '--compile-only', '--test-build'], ['mac', 'universal', '--compile-only', '--prebuilt']]) {
+  const result = require('node:child_process').spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/build-desktop-release.cjs'), ...args], {encoding: 'utf8'});
   assert.notEqual(result.status, 0); assert.match(result.stderr, /Invalid build arguments/);
  }
 }));
 test('invalid targets, missing credentials, and ad hoc identities fail before building', () => fixture(({root, env, run, calls}) => {
  for (const [platform, arch] of [['mac', 'arm64'], ['win', 'arm64'], ['linux', 'x64'], []]) assert.throws(() => buildRelease(platform, arch, {root, env, run}), /Invalid build target/);
+ for (const arch of ['universal', 'x86', '', undefined]) assert.throws(() => buildMacBinary(arch, {root, env, run}), /Invalid Mac binary target/);
+ assert.throws(() => buildMacBinary('arm64', {root, env: {}, run}), /TAURI_UPDATER_PUBLIC_KEY/);
  for (const name of ['TAURI_SIGNING_PRIVATE_KEY', 'TAURI_UPDATER_PUBLIC_KEY', ...appleSecrets]) {
   const incomplete = {...env}; delete incomplete[name]; assert.throws(() => buildRelease('mac', 'universal', {root, env: incomplete, run}), new RegExp(name));
  }

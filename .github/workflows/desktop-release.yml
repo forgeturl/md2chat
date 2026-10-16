@@ -22,9 +22,9 @@ jobs:
         run: npm run release:verify -- --tag "$GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ github.token }}
-  build:
+  validate:
     needs: preflight
-    # Manual installer verification is allowed when tag-only preflight is skipped.
+    # Validation and packaging start together after tag preflight.
     if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
@@ -32,10 +32,10 @@ jobs:
         include:
           - os: macos-15
             platform: mac
-            arch: universal
+            target: aarch64-apple-darwin
           - os: windows-latest
             platform: win
-            arch: x64
+            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -43,15 +43,15 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.99.1
         with:
-          targets: ${{ matrix.platform == 'mac' && 'aarch64-apple-darwin,x86_64-apple-darwin' || 'x86_64-pc-windows-msvc' }}
+          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          # Keep the existing release cache key and share it with native validation.
-          # Save only successful jobs so an immutable key contains release artifacts.
-          shared-key: build
+          # Consume the matching release cache without replacing it with debug output.
+          shared-key: build-${{ matrix.target }}
+          save-if: false
       - run: npm ci
       - run: npm run check
       - run: node scripts/build-desktop.cjs
@@ -75,9 +75,83 @@ jobs:
             release/qa/windows-clipboard.txt
             docs/windows-clipboard-qa.md
             examples/windows-clipboard/
+  mac_binaries:
+    needs: preflight
+    if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+            lipo_arch: arm64
+            target: aarch64-apple-darwin
+          - os: macos-15
+            arch: x64
+            lipo_arch: x86_64
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          # Separate immutable caches prevent the parallel targets racing to save one key.
+          shared-key: build-${{ matrix.target }}
+      - run: npm ci
+      - name: Compile unsigned Mac binary
+        run: node scripts/build-desktop-release.cjs mac ${{ matrix.arch }} --compile-only${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
+        env:
+          # The public updater key is embedded at compile time; no signing secret is exposed here.
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+      - name: Verify thin binary architecture
+        run: lipo src-tauri/target/${{ matrix.target }}/release/md2chat -verify_arch ${{ matrix.lipo_arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac-binary-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+          path: src-tauri/target/${{ matrix.target }}/release/md2chat
+  mac_package:
+    needs: [preflight, mac_binaries]
+    if: ${{ !cancelled() && needs.mac_binaries.result == 'success' && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: mac-binary-arm64
+          path: release/mac-thin/aarch64-apple-darwin
+      - uses: actions/download-artifact@v8
+        with:
+          name: mac-binary-x64
+          path: release/mac-thin/x86_64-apple-darwin
+      - name: Create universal Mac binary
+        run: |
+          lipo release/mac-thin/aarch64-apple-darwin/md2chat -verify_arch arm64
+          lipo release/mac-thin/x86_64-apple-darwin/md2chat -verify_arch x86_64
+          mkdir -p src-tauri/target/universal-apple-darwin/release
+          lipo -create release/mac-thin/aarch64-apple-darwin/md2chat release/mac-thin/x86_64-apple-darwin/md2chat -output src-tauri/target/universal-apple-darwin/release/md2chat
+          chmod 755 src-tauri/target/universal-apple-darwin/release/md2chat
+          lipo src-tauri/target/universal-apple-darwin/release/md2chat -verify_arch arm64 x86_64
       - name: Build signed and notarized Mac installer
-        if: matrix.platform == 'mac'
-        run: node scripts/build-desktop-release.cjs mac universal${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
+        run: node scripts/build-desktop-release.cjs mac universal --prebuilt${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -88,25 +162,51 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-mac-universal
+          if-no-files-found: error
+          retention-days: 3
+          # DMG and tar.gz artifacts are already compressed.
+          compression-level: 0
+          path: |
+            release/*.dmg
+            release/*.app.tar.gz
+            release/*.sig
+  windows_package:
+    needs: preflight
+    if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: build-x86_64-pc-windows-msvc
+      - run: npm ci
       - name: Build Windows installer
-        if: matrix.platform == 'win'
-        run: node scripts/build-desktop-release.cjs win ${{ matrix.arch }}${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
+        run: node scripts/build-desktop-release.cjs win x64${{ github.event_name == 'workflow_dispatch' && ' --test-build' || '' }}
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - uses: actions/upload-artifact@v7
         with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          name: desktop-win-x64
           if-no-files-found: error
           retention-days: 3
-          # DMG, tar.gz and NSIS installers are already compressed.
+          # NSIS installers are already compressed.
           compression-level: 0
           path: |
-            release/*.dmg
-            release/*.app.tar.gz
-            release/*.sig
             release/*.exe
+            release/*.sig
   build-site:
     needs: preflight
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -128,7 +228,7 @@ jobs:
           retention-days: 3
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [build, build-site]
+    needs: [validate, mac_package, windows_package, build-site]
     runs-on: ubuntu-latest
     permissions:
       contents: write

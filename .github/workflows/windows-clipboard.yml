@@ -27,14 +27,14 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: x86_64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           # Consume the full release cache without replacing it with debug-only output.
-          shared-key: build
+          shared-key: build-x86_64-pc-windows-msvc
           save-if: false
       - run: npm ci
       - run: npm run check

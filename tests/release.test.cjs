@@ -49,29 +49,51 @@ test('release checksums require all platform assets before publication',()=>{
   assert.deepEqual(lines,expectedAssets.map(name=>digest+'  '+name));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
-test('desktop release builds one universal Mac package and publishes only pushed version tags',()=>{
+test('desktop release compiles Mac architectures in parallel and packages one universal app',()=>{
  const workflow=readWorkflow('desktop-release.yml');
  assert.deepEqual(workflow.on.push.tags,['v*']);
  assert(Object.hasOwn(workflow.on,'workflow_dispatch'));
- const matrix=workflow.jobs.build.strategy.matrix.include;
- assert.deepEqual(matrix.map(({platform,arch})=>({platform,arch})),[{platform:'mac',arch:'universal'},{platform:'win',arch:'x64'}]);
+ const binaries=workflow.jobs.mac_binaries;
+ assert.deepEqual(binaries.strategy.matrix.include.map(({arch,target})=>({arch,target})),[
+  {arch:'arm64',target:'aarch64-apple-darwin'},
+  {arch:'x64',target:'x86_64-apple-darwin'}
+ ]);
+ assert(binaries.strategy.matrix.include.every(({os})=>os==='macos-15'));
+ const compile=binaries.steps.find(step=>step.run?.includes('--compile-only'));
+ assert(compile); assert.equal(compile.env.TAURI_UPDATER_PUBLIC_KEY,'${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}');
+ for(const secret of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID','TAURI_SIGNING_PRIVATE_KEY'])assert(!JSON.stringify(binaries).includes(secret));
+ const binaryUpload=binaries.steps.find(step=>step.uses?.startsWith('actions/upload-artifact@'));
+ assert.equal(binaryUpload.with.name,'mac-binary-${{ matrix.arch }}');
+ assert.equal(binaryUpload.with['compression-level'],0);
+ const mac=workflow.jobs.mac_package;
+ const combine=mac.steps.find(step=>step.run?.includes('lipo -create'));
+ assert(combine); assert.match(combine.run,/aarch64-apple-darwin/); assert.match(combine.run,/x86_64-apple-darwin/); assert.match(combine.run,/chmod 755/);
+ const macStep=mac.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac universal'));
+ assert(macStep); assert.match(macStep.run,/--prebuilt/);
+ const macUpload=mac.steps.find(step=>step.with?.name==='desktop-mac-universal'); assert(macUpload);
+ const win=workflow.jobs.windows_package;
+ assert(win.steps.some(step=>step.run?.includes('scripts/build-desktop-release.cjs win x64')));
+ assert(win.steps.some(step=>step.with?.name==='desktop-win-x64'));
  assert.match(workflow.jobs.publish.if,/github\.event_name\s*==\s*'push'/);
  assert.match(workflow.jobs.publish.if,/startsWith\(github\.ref,\s*'refs\/tags\/v'\)/);
  assert.match(workflow.jobs.publish.if,/&&/);
- const macStep=workflow.jobs.build.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac'));
- assert(macStep);
  for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_SIGNING_IDENTITY','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID','TAURI_SIGNING_PRIVATE_KEY','TAURI_UPDATER_PUBLIC_KEY'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
 });
-test('release preflight gates both builds while skipped preflight preserves manual installer checks',()=>{
+test('release preflight gates parallel validation and packaging while preserving manual installer checks',()=>{
  const workflow=readWorkflow('desktop-release.yml'),preflight=workflow.jobs.preflight;
  assertOnlyPushedVersionTags(preflight.if);
- assert.equal(workflow.jobs.build.needs,'preflight');
- assert.equal(workflow.jobs['build-site'].needs,'preflight');
- const expression=workflow.jobs.build.if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
- for(const [eventName,result,cancelled,expected] of [
-  ['push','success',false,true],['push','failure',false,false],['push','skipped',false,false],
-  ['workflow_dispatch','skipped',false,true],['workflow_dispatch','skipped',true,false]
- ])assert.equal(require('node:vm').runInNewContext(expression,{github:{event_name:eventName},needs:{preflight:{result}},cancelled:()=>cancelled}),expected,eventName+' '+result);
+ for(const name of ['validate','mac_binaries','windows_package','build-site'])assert.equal(workflow.jobs[name].needs,'preflight',name);
+ for(const name of ['validate','mac_binaries','windows_package']){
+  const expression=workflow.jobs[name].if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
+  for(const [eventName,result,cancelled,expected] of [
+   ['push','success',false,true],['push','failure',false,false],['push','skipped',false,false],
+   ['workflow_dispatch','skipped',false,true],['workflow_dispatch','skipped',true,false]
+  ])assert.equal(require('node:vm').runInNewContext(expression,{github:{event_name:eventName},needs:{preflight:{result}},cancelled:()=>cancelled}),expected,name+' '+eventName+' '+result);
+ }
+ assert.deepEqual([...workflow.jobs.mac_package.needs].sort(),['mac_binaries','preflight']);
+ const macExpression=workflow.jobs.mac_package.if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
+ assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'workflow_dispatch'},needs:{preflight:{result:'skipped'},mac_binaries:{result:'success'}},cancelled:()=>false}),true);
+ assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'push'},needs:{preflight:{result:'success'},mac_binaries:{result:'failure'}},cancelled:()=>false}),false);
  for(const job of [preflight,workflow.jobs.publish]){
   const guard=job.steps.find(step=>step.run?.startsWith('npm run release:verify'));
   assert(guard,'validate the version before building and recheck before publishing');
@@ -80,6 +102,19 @@ test('release preflight gates both builds while skipped preflight preserves manu
  }
  const publish=workflow.jobs.publish.steps;
  assert(publish.findIndex(step=>step.run?.startsWith('npm run release:verify'))<publish.findIndex(step=>step.run?.includes('gh release create')));
+});
+test('desktop workflows pin Rust and isolate writable release caches by target',()=>{
+ const release=readWorkflow('desktop-release.yml'),windows=readWorkflow('windows-clipboard.yml');
+ const rustSteps=[...Object.values(release.jobs),...Object.values(windows.jobs)].flatMap(job=>job.steps||[]).filter(step=>step.uses?.startsWith('dtolnay/rust-toolchain@'));
+ assert(rustSteps.length>=5); for(const step of rustSteps)assert.equal(step.uses,'dtolnay/rust-toolchain@1.99.1');
+ const validateCache=release.jobs.validate.steps.find(step=>step.uses?.startsWith('Swatinem/rust-cache@'));
+ assert.equal(validateCache.with['save-if'],false);
+ const binaryCache=release.jobs.mac_binaries.steps.find(step=>step.uses?.startsWith('Swatinem/rust-cache@'));
+ assert.match(binaryCache.with['shared-key'],/matrix\.target/);
+ const windowsCache=release.jobs.windows_package.steps.find(step=>step.uses?.startsWith('Swatinem/rust-cache@'));
+ assert.equal(windowsCache.with['shared-key'],'build-x86_64-pc-windows-msvc');
+ const standaloneCache=windows.jobs.clipboard.steps.find(step=>step.uses?.startsWith('Swatinem/rust-cache@'));
+ assert.equal(standaloneCache.with['shared-key'],'build-x86_64-pc-windows-msvc'); assert.equal(standaloneCache.with['save-if'],false);
 });
 test('main, pull requests, and manual checks do not build or deploy the website',()=>{
  const workflow=readWorkflow('pages.yml');
@@ -107,7 +142,7 @@ test('website artifacts are built from the pushed version tag before publishing 
  assert(upload);
  assert.equal(upload.with.path,'dist');
  assert.equal(upload.with['retention-days'],3);
- assert.deepEqual([...workflow.jobs.publish.needs].sort(),['build','build-site']);
+ assert.deepEqual([...workflow.jobs.publish.needs].sort(),['build-site','mac_package','validate','windows_package']);
 });
 test('Pages deployment follows a successful complete release and serializes production changes',()=>{
  const workflow=readWorkflow('desktop-release.yml'),deploy=workflow.jobs['deploy-pages'];
