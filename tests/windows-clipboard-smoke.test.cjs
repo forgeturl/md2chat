@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
 const fs=require('node:fs'),vm=require('node:vm');
-const {parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke}=require('../desktop/windows-clipboard-smoke.cjs');
+const {parseArguments,probeMetadata,inspectCfHtml,captureClipboardBackup,errorMetadata,runWindowsClipboardSmoke}=require('../desktop/windows-clipboard-smoke.cjs');
 const {writeClipboardPayload}=require('../desktop/clipboard-write.cjs');
 const {RAW_FORMAT}=require('../desktop/payload.cjs');
 
@@ -53,6 +53,38 @@ test('the native probe executes asynchronously while the parent event loop conti
 test('native probe failures and malformed output never expose subprocess text',async()=>{
  await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(new Error('PRIVATE_SENTINEL'),'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe failed');
  await assert.rejects(()=>inspectCfHtml(false,(_command,_args,_settings,callback)=>callback(null,'PRIVATE_SENTINEL')),error=>error.message==='CF_HTML probe returned invalid metadata');
+});
+
+test('clipboard backup skips the empty read-side item returned by Electron 44 without constructing an empty item',async()=>{
+ let constructions=0;class ClipboardItem{constructor(data){constructions++;if(!Object.keys(data).length)throw new TypeError('an item needs a format');}}
+ for(const items of [[],[{types:[],getType:()=>assert.fail('empty items have no data to read')}]]){
+  const steps=[];
+  const backup=await captureClipboardBackup({read:async()=>items},ClipboardItem,{onProgress:metadata=>steps.push(metadata)});
+  assert.deepEqual(backup.items,[]);assert.equal(backup.metadata.itemCount,items.length);assert.equal(backup.metadata.formatCount,0);
+  assert.equal(constructions,0);assert.equal(steps[0].check,'read');
+ }
+});
+
+test('clipboard backup preserves all nonempty formats and does not swallow a failed getType',async()=>{
+ const blob=new Blob(['PRIVATE_SENTINEL']),steps=[];let constructions=0;
+ class ClipboardItem{constructor(data){constructions++;this.data=data;}}
+ const backup=await captureClipboardBackup({read:async()=>[{types:[]},{types:['text/plain'],getType:async()=>blob}]},ClipboardItem,{onProgress:metadata=>steps.push(metadata)});
+ assert.equal(backup.items.length,1);assert.equal(backup.items[0].data['text/plain'],blob);
+ assert.equal(backup.metadata.itemCount,2);assert.equal(backup.metadata.formatCount,1);
+ assert(steps.some(step=>step.check==='get_type'));assert(steps.some(step=>step.check==='construct'));
+ assert(!JSON.stringify(steps).includes('PRIVATE_SENTINEL'));assert(!JSON.stringify(steps).includes('text/plain'));
+ const failure=new TypeError('PRIVATE_SENTINEL');constructions=0;
+ await assert.rejects(()=>captureClipboardBackup({read:async()=>[{types:['text/plain'],getType:async()=>{throw failure;}}]},ClipboardItem),error=>error===failure);
+ assert.equal(constructions,0);
+ await assert.rejects(()=>captureClipboardBackup({read:async()=>{throw failure;}},ClipboardItem),error=>error===failure);
+ class FailedConstruction{constructor(){throw failure;}}
+ await assert.rejects(()=>captureClipboardBackup({read:async()=>[{types:['text/plain'],getType:async()=>blob}]},FailedConstruction),error=>error===failure);
+});
+
+test('smoke error metadata allowlists error classes and codes without exception text',()=>{
+ assert.deepEqual(errorMetadata(new TypeError('PRIVATE_SENTINEL')),{errorName:'TypeError',errorCode:null});
+ assert.deepEqual(errorMetadata({name:'PRIVATE_SENTINEL',code:'PRIVATE_SENTINEL',message:'PRIVATE_SENTINEL'}),{errorName:'OtherError',errorCode:null});
+ assert.deepEqual(errorMetadata({name:'Error',code:'ERR_ASSERTION'}),{errorName:'Error',errorCode:'ERR_ASSERTION'});
 });
 
 test('Windows native smoke refuses other platforms before touching a clipboard',async t=>{

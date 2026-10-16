@@ -40,6 +40,29 @@ function inspectCfHtml(selfTest=false,execute=execFile){
  });
 }
 
+function errorMetadata(error){
+ const names=new Set(['Error','TypeError','RangeError','SyntaxError','DOMException','NotAllowedError','NotFoundError','NotReadableError','DataError','InvalidStateError','AbortError','TimeoutError','AssertionError']);
+ const codes=new Set(['ERR_ASSERTION','ERR_INVALID_ARG_TYPE','ENOENT','EACCES','EPERM','ETIMEDOUT']);
+ return {errorName:names.has(error?.name)?error.name:'OtherError',errorCode:codes.has(error?.code)?error.code:null};
+}
+
+async function captureClipboardBackup(clipboard,ClipboardItem,{onProgress}={}){
+ const metadata={check:'read',itemCount:null,formatCount:0},items=[];
+ const progress=async()=>{if(onProgress)await onProgress({...metadata});};
+ await progress();
+ const original=await clipboard.read();metadata.itemCount=original.length;await progress();
+ for(const item of original){
+  const types=Array.from(item.types);metadata.formatCount+=types.length;
+  // Electron 44 returns a read-side item with no types for an empty clipboard.
+  // Constructing a write-side ClipboardItem({}) is invalid; there is nothing to save.
+  if(!types.length){await progress();continue;}
+  const data={};
+  for(const type of types){metadata.check='get_type';await progress();data[type]=await item.getType(type);}
+  metadata.check='construct';await progress();items.push(new ClipboardItem(data));
+ }
+ metadata.check='complete';await progress();return {items,metadata};
+}
+
 async function snapshot(clipboard,nativeImage){
  const items=await clipboard.read(),metadata={itemCount:items.length,formats:[]},values={};
  for(const item of items)for(const type of item.types){
@@ -99,7 +122,7 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
  }
  async function run(id,operation){
   const record={id,status:'running',check:'write'};report.cases.push(record);await progress('case_start',record);
-  try{await operation(record);record.status='passed';delete record.check;}catch{record.status='failed';record.failure='native_clipboard_case_failed';}
+  try{await operation(record);record.status='passed';delete record.check;}catch(error){record.status='failed';record.failure='native_clipboard_case_failed';record.error=errorMetadata(error);}
   await progress('case_complete',record);
  }
  try{
@@ -110,11 +133,11 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
   await progress('cf_html_probe_self_test_complete');
   phase='clipboard_backup';
   await progress(phase);
-  // Abort before writing anything if every available representation cannot be saved.
-  for(const item of await clipboard.read()){
-   const data={};for(const type of item.types)data[type]=await item.getType(type);
-   backup.push(new ClipboardItem(data));
-  }
+  // Abort before writing anything if any available representation cannot be saved.
+  const capturedBackup=await captureClipboardBackup(clipboard,ClipboardItem,{onProgress:async metadata=>{
+   report.backup=metadata;await progress('clipboard_backup_'+metadata.check);
+  }});
+  backup=capturedBackup.items;
   captured=true;
   await progress('clipboard_backup_complete');
   phase='image_setup';await progress(phase);
@@ -187,7 +210,7 @@ async function runWindowsClipboardSmoke({app,clipboard,ClipboardItem,nativeImage
    await clipboard.write([new ClipboardItem({'text/html':html})]);
    const current=await observe(record,{html:true,images:2,sourceKinds:['data','data']});checkOrder(current.values['text/html']);
   });
- }catch{report.failure=phase+'_failed';}
+ }catch(error){report.failure=phase+'_failed';report.error=errorMetadata(error);}
  finally{
   await progress('clipboard_restore');
   try{if(captured){if(backup.length)await clipboard.write(backup);else clipboard.clear();report.clipboardRestored=true;}}catch{report.restoreFailure='clipboard_restore_failed';}
@@ -225,4 +248,4 @@ async function main(){
 
 // Electron's default app imports CLI scripts, so it can retain require.main.
 if((process.versions.electron&&process.type==='browser')||require.main===module)main().catch(()=>{process.stdout.write(JSON.stringify({schemaVersion:1,status:'failed',failure:'native_smoke_failed',dingtalkClientTested:false,cases:[]})+'\n');process.exitCode=1;require('electron').app.exit(1);});
-module.exports={parseArguments,probeMetadata,inspectCfHtml,runWindowsClipboardSmoke};
+module.exports={parseArguments,probeMetadata,inspectCfHtml,captureClipboardBackup,errorMetadata,runWindowsClipboardSmoke};
