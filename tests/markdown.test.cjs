@@ -31,6 +31,12 @@ test('GFM tables, escaped pipes and inline images',()=>{
  assert.equal(chat.parse('\\|A\\|B\\|\n\\|---\\|---\\|\n\\|1\\|2\\|')[0].rows.length,1);
  assert.deepEqual(chat.parse('前文 [[DING_IMAGE:1]] 后文').map(b=>b.type),['text','image','text']);
  assert.equal(chat.parse('![图](https://example.com/a.png "说明")')[0].src,'https://example.com/a.png');
+ assert.equal(chat.parse('![图](https://example.com/a.png "说明")')[0].markdown,'![图](https://example.com/a.png "说明")');
+ const source='```md\n![假](http://example.com/same)\n```\n\n- ![真](http://example.com/same)';
+ const image=chat.parse(source).find(block=>block.type==='image');
+ assert.equal(source.slice(image.sourceStart,image.sourceEnd),'![真](http://example.com/same)');
+ const reference='![引用][asset]\n\n[asset]: https://example.com/ref.png';
+ const referenced=chat.parse(reference).find(block=>block.type==='image');assert.equal(reference.slice(referenced.sourceStart,referenced.sourceEnd),'![引用][asset]');
 });
 test('raw HTML and links cannot inject active markup',()=>{
  assert(!chat.runsHtml(chat.parse('<img src=x onerror=alert(1)>')[0].runs).includes('<img'));
@@ -93,6 +99,76 @@ test('remote image normalization preserves its existing HTTPS source for Windows
  await ctx.ensureImage(asset);assert.equal(requests.length,1);assert.equal(asset.sourceUrl,remote);
  const local={src:data};await ctx.ensureImage(local);assert.equal(local.sourceUrl,undefined);
  const http={src:'http://example.com/image.png'};await ctx.ensureImage(http);assert.equal(http.sourceUrl,undefined);
+});
+test('desktop Markdown local images are embedded in preview and copy segments in source order',async()=>{
+ const ctx=payloadContext(),requests=[],filename='/private/tmp/md2chat-local.png',data='data:image/png;base64,AAAA';
+ ctx.window={md2chatDesktop:{readLocalImage:async src=>{requests.push(src);return data;}}};
+ ctx.Image=class{constructor(){this.naturalWidth=320;this.naturalHeight=200;}set src(value){assert.equal(value,data);this.onload();}};
+ ctx.fetch=()=>assert.fail('local images must not use network fetch');
+ vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+ const result=await ctx.buildPayload('前文\n\n![游戏实际效果]('+filename+')\n\n后文');
+ assert.deepEqual(requests,[filename]);
+ assert.deepEqual(Array.from(result.segments,part=>part.type),['text','image','text']);
+ assert.equal(result.segments[1].src,data);assert.equal(result.segments[1].displayWidth,320);
+ assert.equal(result.segments[1].sourceUrl,undefined);assert.equal(result.originalImages,1);
+ assert(result.preview.includes('<img src="'+data+'"'));assert(!result.html.includes(filename));
+});
+test('local image paths require the desktop Markdown path, never HTML or browser fetch',async()=>{
+ const requests=[],ctx={window:{},fetch:()=>assert.fail('local paths must not be fetched'),assets:new Map(),nextAsset:1};vm.createContext(ctx);
+ vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function htmlToSource('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+ for(const src of ['/tmp/image.png','file:///tmp/image.png','C:\\Pictures\\image.png']){
+  await assert.rejects(()=>ctx.ensureImage({src},{allowLocal:true}),/桌面版.*网页版/);
+ }
+ ctx.window.md2chatDesktop={readLocalImage:async src=>{requests.push(src);return 'data:image/png;base64,AAAA';}};
+ await assert.rejects(()=>ctx.ensureImage({src:'/tmp/image.png'}),/不受支持/);
+ assert.throws(()=>ctx.registerImage('file:///tmp/image.png'),/无法读取/);
+ assert.equal(requests.length,0);
+});
+test('local image failures identify the file with a short reason',async()=>{
+ const ctx=payloadContext();ctx.URL=URL;
+ ctx.window={md2chatDesktop:{readLocalImage:async()=>{throw new Error('不支持的图片格式。');}}};
+ vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+ for(const source of ['/tmp/theme-plaques.provenance.json','file:///tmp/%E7%94%9F%E6%88%90%20%E8%AE%B0%E5%BD%95.json','C:\\Pictures\\记录.json']){
+  const filename=source.startsWith('file:')?'生成 记录.json':source.split(/[\\/]/).at(-1);
+  await assert.rejects(()=>ctx.buildPayload('![记录]('+source+')'),{message:source+'：不支持的图片格式。'});
+ }
+ ctx.window.md2chatDesktop.readLocalImage=async()=>{throw new Error('文件不存在。');};
+ await assert.rejects(()=>ctx.buildPayload('![图](/tmp/missing.png)'),{message:'/tmp/missing.png：文件不存在。'});
+ ctx.window.md2chatDesktop.readLocalImage=async()=>'<invalid image>';
+ await assert.rejects(()=>ctx.buildPayload('![图](/tmp/invalid.png)'),{message:'/tmp/invalid.png：图片数据无效。'});
+ ctx.window.md2chatDesktop.readLocalImage=async()=>'data:image/png;base64,AAAA';
+ ctx.Image=class{set src(_value){this.onerror();}};
+ await assert.rejects(()=>ctx.buildPayload('![图](/tmp/broken.png)'),{message:'/tmp/broken.png：图片无法解码。'});
+});
+test('Markdown image failures retain the complete resource and source markup',async()=>{
+ const ctx=payloadContext(),resource='http://127.0.0.1:54847/index.html',markup='![本地试玩]('+resource+')';
+ ctx.ensureImage=async()=>{throw new Error('返回的不是图片。');};
+ await assert.rejects(()=>ctx.buildPayload('前文\n\n'+markup+'\n\n后文'),error=>{
+  assert.equal(error.message,resource+'：返回的不是图片。');
+  assert.equal(error.sourceMarkup,markup);assert.equal(('前文\n\n'+markup+'\n\n后文').slice(error.sourceStart,error.sourceEnd),markup);return true;
+ });
+ const embedded='data:image/png;base64,'+'A'.repeat(10000);ctx.ensureImage=async()=>{const error=new Error('The operation timed out');error.name='TimeoutError';throw error;};
+ await assert.rejects(()=>ctx.buildPayload('![图]('+embedded+')'),error=>error.message==='内嵌图片：读取超时。'&&!error.message.includes('AAAA'));
+});
+test('source error ranges target the complete failing Markdown image reference',()=>{
+ const markup='![本地试玩](http://127.0.0.1:54847/index.html)',source='```md\n'+markup+'\n```\n\n'+markup+'\n\n后文',start=source.lastIndexOf(markup);
+ const ctx={};vm.createContext(ctx);
+ vm.runInContext(code.slice(code.indexOf('function sourceErrorRange('),code.indexOf('function clearInputError(')),ctx);
+ const range=ctx.sourceErrorRange(source,{sourceMarkup:markup,sourceStart:start,sourceEnd:start+markup.length});
+ assert.equal(range.start,start);assert.equal(source.slice(range.start,range.end),markup);
+ assert.equal(ctx.sourceErrorRange(source,{sourceMarkup:'不存在'}),null);
+});
+test('editing invalidates an in-flight preview before the debounce fires',()=>{
+ let inputHandler;
+ const ctx={renderVersion:4,clearInputError(){},button:{},cachedPayload:{},previewTimer:1,status:{},
+  input:{addEventListener:(name,handler)=>{assert.equal(name,'input');inputHandler=handler;}},
+  clearTimeout(){},setTimeout(){return 2;},updatePreview(){}};
+ vm.createContext(ctx);
+ vm.runInContext(code.slice(code.indexOf("input.addEventListener('input'"),code.indexOf('function nativeCopy(')),ctx);
+ inputHandler();
+ assert.equal(ctx.renderVersion,5);
+ assert.equal(ctx.cachedPayload,null);
+ assert.equal(ctx.previewTimer,2);
 });
 test('only imported original images carry source URLs through generated segments',async()=>{
  const ctx=payloadContext(),sourceUrl='https://example.com/original.png';

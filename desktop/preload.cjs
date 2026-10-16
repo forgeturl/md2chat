@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld('md2chatDesktop',Object.freeze({
  copyChatSegment:segment=>ipcRenderer.invoke('md2chat:copy-wecom-segment',segment),
  testDingtalkHtml:mode=>ipcRenderer.invoke('md2chat:test-dingtalk-html',mode),
  inspect:()=>ipcRenderer.invoke('md2chat:inspect'),
+ readLocalImage:async source=>{
+  try{return await ipcRenderer.invoke('md2chat:read-local-image',source);}
+  catch(error){throw new Error(error.message.replace(/^Error invoking remote method 'md2chat:read-local-image':\s*(?:Error:\s*)?/,''));}
+ },
  resolveClipboardHtml:html=>ipcRenderer.invoke('md2chat:resolve-clipboard-html',html),
  onConvertClipboard:callback=>{
   const listener=async(_event,request)=>{

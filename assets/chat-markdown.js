@@ -37,7 +37,18 @@
   }).join('\n');
  }
  function parse(source){
-  const blocks=[];
+  const blocks=[],normalized=normalize(source),tokens=lexer.lexer(normalized);
+  function locate(list,container,base){
+   let cursor=0;
+   for(const token of list||[]){
+    if(!token||typeof token.raw!=='string')continue;
+    let relative=container.indexOf(token.raw,cursor);if(relative<0)relative=container.indexOf(token.raw);
+    if(relative<0)continue;
+    token.sourceStart=base+relative;token.sourceEnd=token.sourceStart+token.raw.length;cursor=relative+token.raw.length;
+    locate(token.items,token.raw,token.sourceStart);locate(token.tokens,token.raw,token.sourceStart);
+   }
+  }
+  locate(tokens,normalized,0);
   const append=(text,style={})=>({type:'run',text,...style});
   function inline(tokens,style={}){
    const out=[];
@@ -49,8 +60,8 @@
      case 'del':out.push(...inline(t.tokens,{...style,strikethrough:true}));break;
      case 'codespan':out.push(append(t.text,{...style,code:true}));break;
      case 'br':out.push(append('\n',style));break;
-     case 'chatImage':out.push({type:'image',id:t.id});break;
-     case 'image':out.push({type:'image',src:t.href});break;
+     case 'chatImage':out.push({type:'image',id:t.id,sourceStart:t.sourceStart,sourceEnd:t.sourceEnd});break;
+     case 'image':out.push({type:'image',src:t.href,markdown:t.raw,sourceStart:t.sourceStart,sourceEnd:t.sourceEnd});break;
      case 'link':{
       const label=inline(t.tokens,style);out.push(...label);
       const text=label.filter(p=>p.type==='run').map(p=>p.text).join('');
@@ -107,7 +118,7 @@
     }
    }
   }
-  walk(lexer.lexer(normalize(source)));return blocks;
+  walk(tokens);return blocks;
  }
  function compactImages(blocks){
   return blocks.map((block,index)=>{

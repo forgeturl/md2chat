@@ -11,6 +11,7 @@ const {profile}=require('../assets/chat-targets.js');
 const {inspectClipboard}=require('./clipboard-diagnostics.cjs');
 const {runDingtalkHtmlTest}=require('./dingtalk-html-test.cjs');
 const {writeClipboardPayload}=require('./clipboard-write.cjs');
+const {readLocalImage}=require('./local-images.cjs');
 const {RAW_FORMAT:FEISHU_RAW_FORMAT}=require('./feishu.cjs');
 app.setName('md2chat');
 let win,copying=false,quitting=false,integration,updates,clipboardConversion,conversionBridge,preferences;
@@ -79,6 +80,9 @@ if(primaryInstance)app.whenReady().then(async()=>{
   }finally{copying=false;}
  });
  ipcMain.handle('md2chat:inspect',async event=>{trusted(event);return inspect();});
+ ipcMain.handle('md2chat:read-local-image',async(event,source)=>{
+  trusted(event);return readLocalImage(source,{nativeImage});
+ });
  ipcMain.handle('md2chat:resolve-clipboard-html',async(event,html)=>{
   trusted(event);if(copying||clipboardConversion?.busy)throw new Error('正在转换或复制，请稍候');
   return resolveCachedHtmlImages(html,{imageDirectory:cache});

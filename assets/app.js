@@ -22,8 +22,43 @@ function showCopyNotice(text,error=false){
 }
 const input=document.getElementById('markdown-input');
 const escapeHtml=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const assets=new Map();let nextAsset=1;let selectedImageId=null;let inputEpoch=0;
 function safeImageSource(src){return /^data:image\/(png|jpe?g|gif|webp|bmp);base64,/i.test(src)||/^https?:\/\//i.test(src)||/^blob:/i.test(src);}
+function localImageSource(src){return typeof src==='string'&&/^(?:\/(?!\/)|[a-z]:[\\/]|file:)/i.test(src);}
+function shortImageError(error){
+ const message=String(error?.message||'读取失败。').replace(/^Error invoking remote method '[^']+':\s*(?:Error:\s*)?/,'');
+ if(error?.name==='TimeoutError'||error?.name==='AbortError'||/timed out|timeout/i.test(message))return '读取超时。';
+ if(message==='Failed to fetch')return '无法访问。';
+ if(message==='图片地址未返回图片数据')return '返回的不是图片。';
+ if(message==='图片数据无法解码')return '图片无法解码。';
+ const http=/^图片服务返回 HTTP (\d+)$/.exec(message);if(http)return 'HTTP '+http[1]+'。';
+ return /[。！？]$/.test(message)?message:message+'。';
+}
+function imageResourceLabel(source){return /^data:/i.test(source)?'内嵌图片':/^blob:/i.test(source)?'临时图片':source;}
+const assets=new Map();let nextAsset=1;let selectedImageId=null;let inputEpoch=0;
+function sourceErrorRange(source,error){
+ const markup=typeof error?.sourceMarkup==='string'?error.sourceMarkup:'';
+ if(!markup)return null;
+ if(Number.isInteger(error.sourceStart)&&Number.isInteger(error.sourceEnd)&&error.sourceStart>=0&&error.sourceEnd<=source.length&&source.slice(error.sourceStart,error.sourceEnd)===markup)return {start:error.sourceStart,end:error.sourceEnd};
+ const start=source.indexOf(markup);return start<0?null:{start,end:start+markup.length};
+}
+const inputErrorHighlight='md2chat-source-error';
+function clearInputError(){
+ globalThis.CSS?.highlights?.delete(inputErrorHighlight);input.classList.remove('source-error-fallback');input.removeAttribute('aria-invalid');
+}
+function markInputError(snapshot,error){
+ clearInputError();input.setAttribute('aria-invalid','true');
+ let sourceRange=sourceErrorRange(snapshot.source,error);
+ if(!sourceRange&&typeof error?.resource==='string'){const start=snapshot.source.indexOf(error.resource);if(start>=0)sourceRange={start,end:start+error.resource.length};}
+ if(!sourceRange){input.classList.add('source-error-fallback');return;}
+ const startEntry=snapshot.textSpans.find(span=>span.start<=sourceRange.start&&sourceRange.start<span.end);
+ const endEntry=snapshot.textSpans.find(span=>span.start<sourceRange.end&&sourceRange.end<=span.end);
+ if(!startEntry||!endEntry){input.classList.add('source-error-fallback');return;}
+ const range=document.createRange();range.setStart(startEntry.node,sourceRange.start-startEntry.start);range.setEnd(endEntry.node,sourceRange.end-endEntry.start);
+ if(globalThis.CSS?.highlights&&typeof globalThis.Highlight==='function')globalThis.CSS.highlights.set(inputErrorHighlight,new Highlight(range));
+ else{input.classList.add('source-error-fallback');return;}
+ const rect=range.getBoundingClientRect(),box=input.getBoundingClientRect();
+ if(rect.top<box.top||rect.bottom>box.bottom)input.scrollTop+=rect.top-box.top-input.clientHeight/3;
+}
 function registerImage(src){
  if(!safeImageSource(src))throw new Error('粘贴的图片只有应用专有地址，网页无法读取。请从钉钉复制图片本身，再粘贴到原位置。');
  const id=String(nextAsset++);assets.set(id,{src});return '\n[[DING_IMAGE:'+id+']]\n';
@@ -62,21 +97,25 @@ function sourceFragment(source){
  }
  fragment.appendChild(document.createTextNode(source.slice(last)));return fragment;
 }
-function serializeInput(){
+function inputSnapshot(){
+ let source='';const textSpans=[];
  function walk(node){
-  if(node.nodeType===3)return node.textContent;
+  if(node.nodeType===3){const start=source.length;source+=node.textContent;textSpans.push({node,start,end:source.length});return node.textContent;}
   if(node.nodeType!==1)return '';
-  if(node.tagName==='IMG')return '\n[[DING_IMAGE:'+node.dataset.assetId+']]\n';
-  if(node.tagName==='BR')return '\n';
+  if(node.tagName==='IMG'){const value='\n[[DING_IMAGE:'+node.dataset.assetId+']]\n';source+=value;return value;}
+  if(node.tagName==='BR'){source+='\n';return '\n';}
   let result=[...node.childNodes].map(walk).join('');
-  if(['DIV','P','LI'].includes(node.tagName)&&result&&!result.endsWith('\n'))result+='\n';
+  if(['DIV','P','LI'].includes(node.tagName)&&result&&!result.endsWith('\n')){source+='\n';result+='\n';}
   return result;
  }
- return [...input.childNodes].map(walk).join('');
+ [...input.childNodes].forEach(walk);return {source,textSpans};
 }
+function serializeInput(){return inputSnapshot().source;}
 function blobToData(blob){if(blob.size>10*1024*1024)return Promise.reject(new Error('单张图片不能超过 10 MB'));return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('无法读取粘贴的图片'));reader.readAsDataURL(blob);});}
-async function ensureImage(asset){
- if(!asset||!safeImageSource(asset.src))throw new Error('图片地址格式不受支持，请粘贴图片本身。');
+async function ensureImage(asset,{allowLocal=false}={}){
+ const local=allowLocal&&localImageSource(asset?.src);
+ if(local&&!window.md2chatDesktop?.readLocalImage)throw new Error('请使用桌面版读取，网页版请粘贴图片。');
+ if(!asset||(!local&&!safeImageSource(asset.src)))throw new Error('图片地址格式不受支持，请粘贴图片本身。');
  // Preserve an existing source before decoding; generated images stay local.
  if(!asset.sourceUrl&&asset.src.length<=8192&&/^https:\/\//i.test(asset.src))asset.sourceUrl=asset.src;
  if(asset.ready)return asset;
@@ -85,7 +124,10 @@ async function ensureImage(asset){
  if(asset.src.length>15*1024*1024)throw new Error('单张图片数据过大');
  asset.pending=(async()=>{
   try{
-   if(!asset.src.startsWith('data:')){
+   if(local){
+    asset.src=await window.md2chatDesktop.readLocalImage(asset.src);
+    if(!/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(asset.src)||asset.src.length>15*1024*1024)throw new Error('图片数据无效。');
+   }else if(!asset.src.startsWith('data:')){
     const response=await fetch(asset.src,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(12000)});
     if(!response.ok)throw new Error('图片服务返回 HTTP '+response.status);
     const blob=await response.blob();if(!blob.type.startsWith('image/'))throw new Error('图片地址未返回图片数据');
@@ -95,8 +137,7 @@ async function ensureImage(asset){
    await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{if(image.naturalWidth*image.naturalHeight>20000000){reject(new Error('图片不能超过 2000 万像素'));return;}asset.width=image.naturalWidth;asset.height=image.naturalHeight;resolve();};image.onerror=()=>reject(new Error('图片数据无法解码'));image.src=asset.src;});
    asset.ready=true;return asset;
   }catch(error){
-   const reason=error.message==='Failed to fetch'?'网页无法直接读取该图片地址（可能是跨域、登录权限或网络限制）':error.message;
-   asset.failed='原图未能读取：'+reason+'。请从钉钉复制图片本身，再粘贴到输入框；只有一张缺图时会自动原位替换。';
+   asset.failed=shortImageError(error);
    throw new Error(asset.failed);
   }finally{asset.pending=null;}
  })();
@@ -251,7 +292,11 @@ async function buildPayload(source,imageAssets=assets){
   }else{
    const asset=block.id?imageAssets.get(block.id):{src:block.src};
    if(!asset)throw new Error('原文图片引用已失效，请重新粘贴完整图文。');
-   const image=await ensureImage(asset);originalImages++;appendImage(image,image.sourceUrl);plain.push('[图片]');
+   try{const image=await ensureImage(asset,{allowLocal:!block.id});originalImages++;appendImage(image,image.sourceUrl);plain.push('[图片]');}
+   catch(error){
+    if(block.id)throw error;
+    const failure=new Error(imageResourceLabel(block.src)+'：'+shortImageError(error));failure.resource=block.src;failure.sourceMarkup=block.markdown;failure.sourceStart=block.sourceStart;failure.sourceEnd=block.sourceEnd;throw failure;
+   }
   }
  }
  const cleanSegment=s=>{if(s.type!=='text')return s;const runs=s.runs.map(r=>({...r}));while(runs.length&&!runs[0].text.replace(/^\n+/,''))runs.shift();while(runs.length&&!runs.at(-1).text.replace(/\n+$/,''))runs.pop();if(runs.length){runs[0].text=runs[0].text.replace(/^\n+/,'');runs.at(-1).text=runs.at(-1).text.replace(/\n+$/,'');}return {...s,text:runs.map(r=>r.text).join(''),runs};};
@@ -273,7 +318,7 @@ function conversionSummary(payload){return '原文图片 '+payload.originalImage
 function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+copyTargetNote(b.dataset.copyTarget);if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
 async function updatePreview(){
- const source=serializeInput();const version=++renderVersion;
+ const snapshot=inputSnapshot(),source=snapshot.source;const version=++renderVersion;clearInputError();
  button.disabled=true;
  if(source===cachedSource&&cachedPayload){button.disabled=false;return cachedPayload;}
  cachedPayload=null;
@@ -284,13 +329,13 @@ async function updatePreview(){
   message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;updateCopyControls(true);
   document.getElementById('conversion-info').textContent=conversionSummary(payload);
   status.textContent='图文已准备好，点击目标平台图标复制。';return payload;
- }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}return null;}
+ }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;markInputError(snapshot,error);document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}return null;}
 }
 document.getElementById('clear-input').addEventListener('click',()=>{
  inputEpoch++;clearTimeout(previewTimer);input.replaceChildren();assets.clear();selectedImageId=null;cachedSource=null;cachedPayload=null;
  updateCopyControls(true);updatePreview();status.textContent='已清空，请粘贴新内容。';input.focus();
 });
-input.addEventListener('input',()=>{button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
+input.addEventListener('input',()=>{renderVersion++;clearInputError();button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
 function nativeCopy(payload){
  const sink=document.createElement('div');sink.contentEditable='true';sink.setAttribute('aria-hidden','true');sink.style.cssText='position:fixed;left:-100000px;top:0;width:1100px;background:white;';
  sink.innerHTML=payload.html;document.body.appendChild(sink);
