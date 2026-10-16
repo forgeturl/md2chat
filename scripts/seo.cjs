@@ -1,6 +1,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const {origin,guides}=require('./site-content.cjs');
 const root=path.resolve(__dirname,'..');
+const version=require('../package.json').version;
 const esc=s=>s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 function metadata(title,description,url,schema){return `<!-- seo:start -->
 <link rel="canonical" href="${url}">
@@ -21,6 +22,7 @@ function files(){
   let page=original.replace(/<title>.*?<\/title>/,`<title>${title}</title>`).replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${description}">`);
   const meta=metadata(title,description,url,schema);
   page=page.includes('<!-- seo:start -->')?page.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/,()=>meta):page.replace('</head>',meta+'\n</head>');
+  page=page.replace(/((?:src|href)=".\/assets\/[^"?]+\.(?:js|css))(?:\?v=[^"]*)?"/g,'$1?v='+version+'"');
   output[file]=page;
  }
  for(const g of guides){
