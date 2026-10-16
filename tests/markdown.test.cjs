@@ -6,11 +6,19 @@ test('headings, emphasis, tasks, nested lists and references',()=>{
  assert.equal(plain('# 标题'),'【标题】');assert.equal(plain('标题\n==='),'【标题】');
  const runs=chat.parse('**粗 *粗斜*** ~~删除~~ `a_b`')[0].runs;
  assert(runs.some(r=>r.text==='粗斜'&&r.bold&&r.italic));assert(runs.some(r=>r.strikethrough));assert(runs.some(r=>r.text==='a_b'&&r.code));
- assert.equal(plain('- [x] 完成\n- [ ] 待办'),'☑ 完成\n☐ 待办');
+ assert.equal(plain('- [x] 完成\n- [ ] 待办'),'✅ 完成\n⬜ 待办');
  assert.equal(plain('3. 三\n4. 四\n   - 子项'),'3. 三\n4. 四\n  • 子项');
  assert(plain('> 外层\n>\n>> 内层').includes('│ │ 内层'));
  assert.equal(plain('[文档][site]\n\n[site]: https://example.com'),'文档（https://example.com）');
  assert.equal(plain('https://example.com'),'https://example.com');
+});
+test('task emojis remain editable with emphasis, nesting and uppercase checked markers',()=>{
+ const blocks=chat.parse('- [X] **完成**\n  - [ ] 待办\n\n> - [x] 引用');
+ assert.equal(blocks.map(block=>block.text).join('\n'),'✅ 完成\n  ⬜ 待办\n\n✅ │ 引用');
+ assert(blocks.every(block=>block.type==='text'&&block.runs.map(run=>run.text).join('')===block.text));
+ assert(blocks[0].runs.some(run=>run.text==='完成'&&run.bold));
+ assert.equal(plain('`- [x] 原样`'),'- [x] 原样');
+ assert.equal(plain('```text\n- [ ] 原样\n```'),'- [ ] 原样');
 });
 test('code, escapes and paragraph spacing are preserved',()=>{
  const code='  const a = "**literal**";\n\n  <script>x</script>\n  [[DING_IMAGE:9]]';
@@ -44,6 +52,24 @@ function payloadContext(){
  const ctx={ChatMarkdown:chat,assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
  vm.runInContext(code.slice(code.indexOf('const escapeHtml='),code.indexOf('const assets='))+code.slice(code.indexOf('function parseMarkdown('),code.indexOf('function renderTable('))+code.slice(code.indexOf('async function buildPayload('),code.indexOf('let cachedSource=')),ctx);return ctx;
 }
+test('task emojis survive chat, email, plaintext and WeCom segments without becoming images',async()=>{
+ const {render,profiles}=require('../assets/chat-targets.js');
+ const {snapshotParts}=require('../assets/wecom-segments.js');
+ const result=await payloadContext().buildPayload('- [x] **完成**\n- [ ] 待办\n\n[[DING_IMAGE:1]]\n\n- [X] 后续');
+ assert.equal(result.imageCount,1);assert.equal(result.originalImages,1);
+ assert.equal(result.plain,'✅ 完成\n⬜ 待办\n[图片]\n✅ 后续');
+ assert(result.html.includes('✅ <strong>完成</strong>'));assert(result.preview.includes('⬜ 待办'));
+ for(const target of Object.keys(profiles)){
+  const parts=target==='email'?result.emailSegments:result.segments;
+  const output=render(parts,target);
+  assert.equal(output.plain,result.plain);assert.equal(output.imageCount,1);
+  assert(output.html.includes('✅ <strong>完成</strong>'));assert(output.html.includes('⬜ 待办'));
+ }
+ const segments=snapshotParts(result.segments);
+ assert.deepEqual(Array.from(segments,part=>part.type),['text','image','text']);
+ assert.equal(segments[0].text,'✅ 完成\n⬜ 待办\n');assert.equal(segments[2].text,'\n✅ 后续');
+ assert(segments.filter(part=>part.type==='text').every(part=>part.runs.map(run=>run.text).join('')===part.text));
+});
 test('payload retains table contents in text fallback and images in HTML order',async()=>{
  const ctx=payloadContext(),result=await ctx.buildPayload('# 示例\n\n**文字**\n\n|A|B|\n|---|---|\n|1|2|\n\n[[DING_IMAGE:1]]\n\n尾文');
  assert.equal(result.tableCount,1);assert.equal(result.imageCount,2);assert(result.html.includes('<strong>文字</strong>'));

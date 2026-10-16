@@ -162,3 +162,7 @@ release/
 *.pfx
 *.key
 *.mobileprovision
+
+# Local browser QA artifacts
+.playwright-cli/
+output/playwright/

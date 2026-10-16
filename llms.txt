@@ -1,12 +1,13 @@
 # md2chat
 
-> Free, open-source Markdown-to-chat converter. Keeps editable text and turns complex blocks into images. Local processing, macOS / Windows desktop app and web editor.
+> Free, open-source Markdown-to-chat converter. Turn Markdown copied from AI tools such as DeepSeek, Codex, Cursor, ChatGPT and Claude into chat-ready content. Keeps editable text and turns complex blocks into images. Local processing, macOS / Windows desktop app and web editor. AI tools are content source examples, not verified integrations.
 
 ## Product and evidence
 
 - [Home](https://forgeturl.github.io/md2chat/): Features and latest downloads.
 - [Editor](https://forgeturl.github.io/md2chat/editor.html): Local conversion; browser clipboard limitations apply.
 - [Source and compatibility](https://github.com/forgeturl/md2chat): MIT license, tests, releases and evidence.
+- [DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？](https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html): 将 AI 工具中复制到的 Markdown 转成聊天图文：文字保持可编辑，表格、代码、公式和 Mermaid 转图片；了解复制方式与客户端兼容边界。
 - [Markdown 怎么发到钉钉？保留文字、表格和图片](https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html): 解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。
 - [Markdown 转微信图文：文字可编辑，表格转图片](https://forgeturl.github.io/md2chat/guides/markdown-to-wechat.html): 使用 md2chat 将 Markdown、彩色代码、公式和表格转换成微信图文，了解标准 HTML 复制的适用范围和图片排查步骤。
 - [钉钉、微信、飞书、企业微信与邮件的图文复制兼容性](https://forgeturl.github.io/md2chat/guides/chat-compatibility.html): md2chat 各平台复制入口、企微分段复制、原生与标准 HTML 的区别，以及已实测范围和客户端兼容性边界。

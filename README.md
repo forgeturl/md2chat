@@ -1,6 +1,8 @@
 # md2chat · 贴贴 Markdown
 
-让 Markdown 更适合聊天。保留可编辑文字，把表格、代码、公式和 Mermaid 转成图片，再按原文顺序组合。
+让 Markdown 更适合聊天。把从 DeepSeek、Codex、Cursor、ChatGPT、Claude 等 AI 工具复制的 Markdown，或自己写的文档，转成适合聊天的图文。保留可编辑文字，把表格、代码、公式和 Mermaid 转成图片，再按原文顺序组合。
+
+AI 回答常用 Markdown，但并非所有输出或复制方式都相同。这些名称表示内容来源，不代表官方集成或已逐一实测；转换后请检查预览和目标客户端粘贴结果。[AI 内容转换说明与官方资料](https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html)。任务列表使用 ✅ / ⬜，文字仍可编辑。
 
 - [产品主页](https://forgeturl.github.io/md2chat/)
 - [最新版本与更新说明](https://github.com/forgeturl/md2chat/releases/latest)
@@ -70,6 +72,7 @@ Node.js 22+。macOS 安装包在 macOS 构建，Windows 安装包在 Windows 构
 npm ci
 npm run dev          # 宣传页及网页版：http://127.0.0.1:18768/md2chat/
 npm run desktop      # 桌面编辑器
+npm run screenshots  # 使用虚构示例重拍当前桌面版与首屏对照图，不改剪贴板
 npm run check        # 语法与回归测试
 npm run build        # GitHub Pages 静态站点
 npm run desktop:test # macOS 原生剪贴板往返测试，结束后恢复原剪贴板

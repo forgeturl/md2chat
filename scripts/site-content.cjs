@@ -1,6 +1,18 @@
 // Keep public compatibility claims and useful, crawlable answers together.
 const origin='https://forgeturl.github.io/md2chat/';
 const guides=[
+ {slug:'ai-markdown-to-chat',title:'DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？',description:'将 AI 工具中复制到的 Markdown 转成聊天图文：文字保持可编辑，表格、代码、公式和 Mermaid 转图片；了解复制方式与客户端兼容边界。',sections:[
+ ['AI 回答都一定是 Markdown 吗？','不一定。Markdown 是 AI 工具常用的内容表达方式：标题、列表、表格、代码块都可以用它组织。DeepSeek、Codex、Cursor、ChatGPT、Claude 等工具中的 Markdown 内容可以作为 md2chat 输入；实际输出随提示、模式和工具而变，也可能是纯文本、JSON 或文件。这里列举的是内容来源，不代表 md2chat 与这些产品有官方集成或已逐一完成复制链路测试。'],
+ ['为什么 AI 界面里整齐，复制后却变了？','AI 界面可以把 Markdown 渲染成标题、表格和代码。复制按钮和选中文字复制，可能给出不同的剪贴板格式；接收应用也有自己的解析规则。Cursor 的官方更新说明已介绍将 Agent 回复中的 Markdown 表格复制为富表格，纯文本目标则仍得到 Markdown。因此不能认为所有 AI 内容复制后都会丢格式。'],
+ ['怎么用 md2chat 转换？','从 AI 工具中复制 Markdown，粘贴到 md2chat 左侧，检查右侧预览。普通段落、列表和 ✅ / ⬜ 待办仍为可编辑文字；表格、代码、公式和 Mermaid 图转成图片。确认顺序后，按微信、钉钉、飞书、企微或邮件入口复制，再到目标输入框粘贴。无需连接 AI 账号，也不会读取你的 AI 聊天记录。'],
+ ['公式、图表或图片要注意什么？','公式需要保留 LaTeX 源码，Mermaid 需要保留 mermaid 代码块。如果来源只复制了渲染后的文字、丢失了公式源码或图片，md2chat 不能自动恢复缺失内容。请先核对预览，必要时补充原始 Markdown 或图片。'],
+ ['这些 AI 工具都已经兼容测试了吗？','本页说明 Markdown 来源与转换方法，不是 AI 工具兼容性测试表。实际粘贴效果还取决于目标客户端：Mac 钉钉有已验证的原生图文格式，企微有图时逐段复制粘贴，其他范围请看平台兼容性指南。复制成功和预览正常不代表发送后也完整。']
+ ],sources:[
+ ['Cursor 官方更新说明：表格复制与纯文本目标','https://prod.cursor.com/docs/release-notes'],
+ ['OpenAI 官方提示指南：Markdown、列表和代码块','https://developers.openai.com/api/docs/guides/prompt-engineering'],
+ ['DeepSeek 官方文档：以代码围栏引导回答','https://api-docs.deepseek.com/guides/chat_prefix_completion/'],
+ ['Claude 官方提示指南：控制 Markdown 输出','https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices']
+ ]},
  {slug:'markdown-to-dingtalk',title:'Markdown 怎么发到钉钉？保留文字、表格和图片',description:'解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。',sections:[
  ['直接回答','用 md2chat 桌面版粘贴 Markdown，在预览区点击钉钉图标，再到钉钉输入框粘贴。普通文字保留为可编辑文字，表格、代码、公式和 Mermaid 图转成图片。macOS 钉钉使用专用图文剪贴板结构，M 系列 Mac 已实测文字、图片、文字的顺序。'],
  ['为什么直接粘贴 Markdown 没有表格？','聊天输入框与 Markdown 编辑器的渲染规则不同。发送竖线表格源码，不代表客户端会解析成表格。md2chat 将表格渲染为 PNG，与前后的文字按原文顺序组合。'],

@@ -78,7 +78,11 @@ test('damaged or invalid saved preferences warn and safely use defaults; IO fail
   }
  } finally { console.warn = original; }
  assert.equal(warnings.length, 12);
- await assert.rejects(createPreferences({...f.options, app: {getPath: () => f.file}}), {code: 'ENOTDIR'});
+ // A file used as a parent can report ENOENT on Windows, which means defaults.
+ // Reading a directory instead gives a real I/O error on every supported OS.
+ await fs.rm(f.file);
+ await fs.mkdir(f.file);
+ await assert.rejects(createPreferences(f.options), {code: 'EISDIR'});
 });
 
 test('invalid patches and unsupported login changes cannot change preferences', async t => {

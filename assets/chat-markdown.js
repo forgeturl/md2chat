@@ -90,7 +90,7 @@
      case 'blockquote':walk(t.tokens,depth,quote+'│ ');break;
      case 'list':
       t.items.forEach((item,i)=>{
-       const prefix='  '.repeat(depth)+(item.task?(item.checked?'☑ ':'☐ '):t.ordered?(Number(t.start)+i)+'. ':'• ');
+       const prefix='  '.repeat(depth)+(item.task?(item.checked?'✅ ':'⬜ '):t.ordered?(Number(t.start)+i)+'. ':'• ');
        const start=blocks.length;walk(item.tokens,depth+1,quote);
        const first=blocks[start];
        if(first?.type==='text'){first.text=prefix+first.text;first.runs.unshift({text:prefix});}
