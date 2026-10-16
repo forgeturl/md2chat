@@ -8,6 +8,7 @@ const {createPreferences}=require('./preferences.cjs');
 const {createUpdates}=require('./updates.cjs');
 const {createClipboardConversion,createConversionBridge,makeClipboardImageData}=require('./clipboard-conversion.cjs');
 const {profile}=require('../assets/chat-targets.js');
+const {inspectClipboard}=require('./clipboard-diagnostics.cjs');
 app.setName('md2chat');
 let win,copying=false,quitting=false,integration,updates,clipboardConversion,conversionBridge,preferences;
 const primaryInstance=app.requestSingleInstanceLock();
@@ -21,13 +22,7 @@ app.on('will-quit',()=>{integration?.destroy();updates?.destroy();conversionBrid
 const entry=path.join(__dirname,'../editor.html'),entryURL=pathToFileURL(entry).href;
 function trusted(event){if(!win||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==entryURL)throw new Error('不允许的调用来源');}
 async function inspect(){
- const formats=[];let images=0,htmlImages=0,htmlTables=0;
- for(const item of await clipboard.read())for(const type of item.types){
-  const blob=await item.getType(type);formats.push({type,bytes:blob.size||0});
-  if(type==='text/html'&&blob.size<=60*1024*1024){const html=await blob.text();htmlImages+=(html.match(/<img\b/gi)||[]).length;htmlTables+=(html.match(/<table\b/gi)||[]).length;}
-  if(type===RAW_FORMAT){try{const data=JSON.parse(await blob.text());for(const c of data.contents||[])images+=(c.text?.items||[]).filter(i=>i.type==='image').length;}catch{}}
- }
- return {formats,images,htmlImages,htmlTables,platform:process.platform};
+ return inspectClipboard(clipboard,{platform:process.platform,version:app.getVersion()});
 }
 async function writePayload(payload,target){
  const data={'text/plain':payload.plain,'text/html':payload.html};

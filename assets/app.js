@@ -257,7 +257,7 @@ if(window.md2chatDesktop){
  for(const name of ['tabindex','aria-label','aria-describedby'])dingtalkWrapper.removeAttribute(name);
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉复制所需图片临时保存在本机';
  document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 钉钉使用原生图文；企微图文请按分段窗口的顺序逐段复制粘贴，文字保持可编辑。飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
- document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
+ document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
 function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+ChatTargets.profile(b.dataset.copyTarget).note;if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby','dingtalk-desktop-hint');}else b.removeAttribute('aria-describedby');}}
@@ -329,57 +329,71 @@ updatePreview();
 // Reports intentionally contain metadata only, never text, source HTML, or URLs.
 const diagnosticStatus=document.getElementById('diagnostic-status');
 const sampleHistory=[];
-function sourceKind(src){
- if(/^data:/i.test(src))return '内嵌图片';
- if(/^https?:/i.test(src))return '远程图片地址';
- if(/^file:/i.test(src))return '本地文件引用';
- if(/^blob:/i.test(src))return '临时 blob 引用';
- return '其他引用';
+function rememberReport(lines){
+ const text=lines.join('\n');sampleHistory.push(text);if(sampleHistory.length>2)sampleHistory.shift();
+ document.getElementById('diagnostic-report').textContent=text;
+ document.getElementById('copy-report').disabled=false;
+ diagnosticStatus.textContent='排查完成。最近两份脱敏报告仅保留在页面内存中。';
+}
+function recentCopyLine(){return '最近复制目标：'+(lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无')+'（仅记录本页操作，不代表当前剪贴板来源）';}
+function desktopReportLines(report){
+ const native=report.macDingtalk;
+ const nativeCount=!native.applicable?'不适用（仅 macOS）':!native.present?'未发现该格式':native.images===null?'未能统计':native.images;
+ const lines=['md2chat 桌面剪贴板报告','报告版本：2','应用版本：'+report.version,'系统：'+report.platform,recentCopyLine(),
+  ...report.formats.map(format=>format.type+'：'+(format.bytes===null?'大小未知':format.bytes+' 字节')+(format.unreadable?'；读取失败':'')+(format.skipped?'；超过排查限额，未解析':'')),
+  'Mac 钉钉专用格式图片：'+nativeCount,'独立图片格式：'+report.imageFormats+' 种（同一图片可能有多种格式）',
+  'HTML 图片标签：'+report.htmlImages+'；HTML 表格：'+report.htmlTables];
+ report.html.forEach((summary,index)=>lines.push('HTML 样本 '+(index+1)+'：',...ClipboardDiagnostics.htmlLines(summary)));
+ if(report.truncated)lines.push('内容超过排查限额，以上仅为部分统计。');
+ if(report.formats.some(format=>format.unreadable))lines.push('部分格式读取失败，图片统计可能不完整。');
+ lines.push('结构按静态标签扫描，不执行 HTML，也不请求图片。','格式或标签存在不代表钉钉已成功导入图片。','报告不含正文、HTML 源码、图片内容、链接、文件路径或属性值。');
+ return lines;
 }
 async function showSample(origin,entries,declaredTypes=[]){
- const lines=['md2chat 浏览器剪贴板报告','最近复制目标：'+(lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无'),'入口：'+origin,'可见格式：'+[...new Set([...declaredTypes,...entries.map(e=>e.type)])].join(', ')];
- let images=0,files=0;
- for(const entry of entries){
-  if(entry.error){lines.push(entry.type+'：读取失败（'+entry.error+'）');continue;}
-  lines.push(entry.type+'：'+entry.blob.size+' 字节');
+ const lines=['md2chat 浏览器剪贴板报告','报告版本：2',recentCopyLine(),'入口：'+origin,'可见格式：'+[...new Set([...declaredTypes,...entries.map(e=>e.type)].slice(0,100).map(ClipboardDiagnostics.formatName))].join(', ')];
+ let images=0,files=0,decodedBytes=0,incomplete=false;
+ for(const entry of entries.slice(0,100)){
+  const type=ClipboardDiagnostics.formatName(entry.type);
+  if(entry.error){lines.push(type+'：读取失败');incomplete=true;continue;}
+  lines.push(type+'：'+entry.blob.size+' 字节');
   if(entry.type==='text/html'){
-   const template=document.createElement('template');template.innerHTML=await entry.blob.text();
-   const list=[...template.content.querySelectorAll('img')];images+=list.length;
-   lines.push('HTML 图片标签：'+list.length+'；表格标签：'+template.content.querySelectorAll('table').length);
-   list.forEach((img,i)=>lines.push('图片 '+(i+1)+'：'+sourceKind(img.getAttribute('src')||'')));
+   if(decodedBytes+entry.blob.size>8*1024*1024){lines.push('HTML 超过排查限额，未解析。');incomplete=true;continue;}
+   decodedBytes+=entry.blob.size;
+   const summary=ClipboardDiagnostics.summarizeHtml(await entry.blob.text());images+=summary.imageCount;
+   incomplete||=summary.truncated;
+   lines.push(...ClipboardDiagnostics.htmlLines(summary));
   }else if(entry.type.startsWith('image/'))files++;
  }
- lines.push('HTML 图片 '+images+' 个；独立图片数据 '+files+' 份。');
+ if(entries.length>100||declaredTypes.length>100){lines.push('格式超过排查限额，以上仅为部分统计。');incomplete=true;}
+ lines.push('HTML 图片 '+images+' 个；独立图片格式 '+files+' 种（同一图片可能有多种格式）。');
  if(images&&!files)lines.push('图片只在 HTML 中引用；本报告不代表图片已能读取或粘贴。');
- if(!images&&!files)lines.push('浏览器没有收到图片；不代表原生应用的专有剪贴板中没有图片。');
+ if(incomplete)lines.push('图片统计不完整，请缩小样本后重试。');
+ else if(!images&&!files)lines.push('浏览器可见格式中未发现图片；不代表原生应用的专有剪贴板中没有图片。');
  lines.push('安全上下文：'+window.isSecureContext+'；Clipboard.read：'+!!navigator.clipboard?.read);
- lines.push('报告不包含正文、HTML 源码或图片地址；未读取原生私有格式。');
- sampleHistory.push(lines.join('\n'));if(sampleHistory.length>2)sampleHistory.shift();
- document.getElementById('diagnostic-report').textContent=lines.join('\n');
- document.getElementById('copy-report').disabled=false;
- diagnosticStatus.textContent='排查完成。最近两份元数据报告仅保留在页面内存中。';
+ lines.push('结构按静态标签扫描，不执行 HTML，也不请求图片。','报告不含正文、HTML 源码、图片内容、链接、文件路径或属性值；未读取原生私有格式。');
+ rememberReport(lines);
 }
 document.getElementById('read-clipboard').addEventListener('click',async()=>{
  const readButton=document.getElementById('read-clipboard');readButton.disabled=true;
- diagnosticStatus.textContent='正在读取浏览器可见的剪贴板格式…';
+ diagnosticStatus.textContent='正在读取剪贴板格式与脱敏结构…';
  try{
   if(window.md2chatDesktop){
    const report=await window.md2chatDesktop.inspect();
-   const text=['md2chat 桌面剪贴板报告','系统：'+report.platform,'最近复制目标：'+(lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无'),...report.formats.map(f=>f.type+'：'+f.bytes+' 字节'),'钉钉原生图片数量：'+report.images,'HTML 图片标签：'+report.htmlImages+'；HTML 表格：'+report.htmlTables,'格式存在不代表目标客户端已成功导入。','报告不含正文、图片内容和文件路径。'].join('\n');
-   sampleHistory.push(text);if(sampleHistory.length>2)sampleHistory.shift();document.getElementById('diagnostic-report').textContent=text;document.getElementById('copy-report').disabled=false;diagnosticStatus.textContent='系统剪贴板排查完成。';return;
+   rememberReport(desktopReportLines(report));return;
   }
   if(!navigator.clipboard?.read)throw new Error('Clipboard.read unavailable');
   let timer;
-  const items=await Promise.race([navigator.clipboard.read(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('读取超时，请手动粘贴')),10000);})]).finally(()=>clearTimeout(timer)),entries=[];
-  for(const item of items)for(const type of item.types){try{entries.push({type,blob:await item.getType(type)});}catch(error){entries.push({type,error:error.name});}}
-  await showSample('读取按钮',entries);
+  const items=await Promise.race([navigator.clipboard.read(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('读取超时，请手动粘贴')),10000);})]).finally(()=>clearTimeout(timer)),entries=[],declaredTypes=[];
+  for(const item of items){for(const type of item.types){declaredTypes.push(type);if(declaredTypes.length>100)break;}if(declaredTypes.length>100)break;}
+  outer:for(const item of items)for(const type of item.types){if(entries.length>=100)break outer;try{entries.push({type,blob:await item.getType(type)});}catch{entries.push({type,error:true});}}
+  await showSample('读取按钮',entries,declaredTypes);
  }catch(error){diagnosticStatus.textContent='无法直接读取（'+error.name+'），请在排查框按 ⌘V / Ctrl+V 粘贴。';}
  finally{readButton.disabled=false;}
 });
 document.getElementById('clipboard-paste').addEventListener('paste',async event=>{
  event.preventDefault();const data=event.clipboardData,types=[...data.types],entries=[];
- for(const type of types){if(type==='Files')continue;const value=data.getData(type);if(value)entries.push({type,blob:new Blob([value],{type})});}
- for(const file of data.files)entries.push({type:file.type||'application/octet-stream',blob:file});
+ for(const type of types.slice(0,100)){if(type==='Files')continue;const value=data.getData(type);if(value)entries.push({type,blob:new Blob([value],{type})});}
+ for(const file of data.files){if(entries.length>=100)break;entries.push({type:file.type||'application/octet-stream',blob:file});}
  event.currentTarget.textContent='已接收样本，仅显示格式统计。';await showSample('原生粘贴事件',entries,types);
 });
 document.getElementById('copy-report').addEventListener('click',async()=>{

@@ -7,7 +7,7 @@
 <meta name="referrer" content="no-referrer">
 <link rel="icon" type="image/png" href="./assets/favicon.png">
 <title>Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat</title>
-<link rel="stylesheet" href="./assets/style.css?v=0.6.2">
+<link rel="stylesheet" href="./assets/style.css?v=0.6.3">
 <!-- seo:start -->
 <link rel="canonical" href="https://forgeturl.github.io/md2chat/editor.html">
 <meta property="og:type" content="website"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
@@ -78,7 +78,7 @@ console.log(greeting);
 <dialog id="diagnostic-dialog" class="utility-dialog" aria-labelledby="diagnostic-title">
 <div class="dialog-heading"><h2 id="diagnostic-title">剪贴板排查</h2><button type="button" class="dialog-close" data-close-dialog aria-label="关闭剪贴板排查">关闭</button></div>
 <div class="dialog-content"><section class="diagnostics" id="diagnostics">
-<p id="diagnostic-help">只在你点击或粘贴时读取浏览器开放的格式，不读取原生应用专有格式。报告仅含格式、大小及图片数量，不包含正文和图片地址。</p>
+<p id="diagnostic-help">仅在点击或粘贴时读取浏览器开放的格式，报告包含图片引用类型和脱敏结构。请分别读取转换器与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、链接或文件路径，不上传内容。</p>
 <div class="diagnostic-actions"><button id="read-clipboard">读取当前剪贴板</button><button id="copy-report" disabled>复制排查报告</button></div>
 <div id="clipboard-paste" class="paste-zone" contenteditable="true" role="textbox" aria-label="粘贴剪贴板样本" data-placeholder="在这里按 ⌘V / Ctrl+V 粘贴样本"></div>
 <p id="diagnostic-status" role="status" aria-live="polite">不会自动读取、上传或保存内容。</p>
@@ -86,7 +86,7 @@ console.log(greeting);
 </section></div>
 </dialog>
 <div id="copy-notice" class="copy-notice" role="status" aria-live="polite" aria-atomic="true"></div>
-<script src="./assets/vendor/marked.js?v=0.6.2"></script><script src="./assets/chat-markdown.js?v=0.6.2"></script><script src="./assets/code-images.js?v=0.6.2"></script><script src="./assets/renderers.js?v=0.6.2"></script><script src="./assets/chat-clipboard.js?v=0.6.2"></script><script src="./assets/chat-targets.js?v=0.6.2"></script><script src="./assets/clipboard-source.js?v=0.6.2"></script><script src="./assets/clipboard-image.js?v=0.6.2"></script><script src="./assets/wecom-segments.js?v=0.6.2"></script><script src="./assets/app.js?v=0.6.2"></script>
-<script src="./assets/workbench.js?v=0.6.2"></script>
-<script src="./assets/updates.js?v=0.6.2"></script>
+<script src="./assets/vendor/marked.js?v=0.6.3"></script><script src="./assets/chat-markdown.js?v=0.6.3"></script><script src="./assets/code-images.js?v=0.6.3"></script><script src="./assets/renderers.js?v=0.6.3"></script><script src="./assets/chat-clipboard.js?v=0.6.3"></script><script src="./assets/chat-targets.js?v=0.6.3"></script><script src="./assets/clipboard-source.js?v=0.6.3"></script><script src="./assets/clipboard-image.js?v=0.6.3"></script><script src="./assets/wecom-segments.js?v=0.6.3"></script><script src="./assets/clipboard-diagnostics.js?v=0.6.3"></script><script src="./assets/app.js?v=0.6.3"></script>
+<script src="./assets/workbench.js?v=0.6.3"></script>
+<script src="./assets/updates.js?v=0.6.3"></script>
 </body></html>
