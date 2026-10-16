@@ -60,3 +60,7 @@ footer{margin:18px 0 4px;font-size:12px;color:#617188}
  #markdown-input,#message{padding:16px}
  .preview-status,.panel-footer{padding:10px 14px}
 }
+
+.copy-options{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 20px 0;font-size:12px;color:#617188}
+.copy-options select{min-width:0;max-width:100%;font:inherit;padding:6px;border:1px solid #dce3ed;border-radius:6px;background:#fff;color:#253247}
+.copy-options select:focus-visible{outline:2px solid #74a7f0;outline-offset:2px}

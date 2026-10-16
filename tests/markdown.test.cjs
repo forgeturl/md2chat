@@ -99,3 +99,9 @@ test('code payload uses colored image parts in order and retains complete source
  assert.equal(chat.parse('```JavaScript title=test\nconst x=1;\n```')[0].language,'javascript');
  ctx.ChatRenderers.code=async()=>{throw new Error('测试错误')};await assert.rejects(()=>ctx.buildPayload('```js\na\n```'),/第 1 个代码块：测试错误/);
 });
+test('DingTalk segments preserve editable text around each real image without table fallback duplication',async()=>{
+ const result=await payloadContext().buildPayload('开头 **文字**\n\n| 项目 | 数量 |\n|---|---|\n| 苹果 | 2 |\n\n结束文字');
+ assert.deepEqual(Array.from(result.segments||[],s=>s.type),['text','image','text']);
+ assert.equal(result.segments[0].text,'开头 文字');assert.equal(result.segments[1].src,'data:image/png;base64,TABLE');assert.equal(result.segments[2].text,'结束文字');
+ const only=await payloadContext().buildPayload('只有文字\n\n下一段');assert.equal(only.segments.length,1);assert.equal(only.segments[0].text,'只有文字\n\n下一段');
+});
