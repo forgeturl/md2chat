@@ -1,0 +1,41 @@
+[package]
+name = "md2chat"
+version = "0.6.6"
+description = "Markdown to editable chat messages"
+authors = ["md2chat contributors"]
+edition = "2021"
+rust-version = "1.90"
+license = "MIT"
+
+[lib]
+name = "md2chat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "tiff"] }
+sha2 = "0.10"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+libc = "0.2"
+tokio = { version = "1", features = ["sync", "time"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

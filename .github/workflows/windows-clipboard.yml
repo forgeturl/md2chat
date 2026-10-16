@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'desktop/**'
+      - 'src-tauri/**'
+      - 'assets/tauri-bridge.js'
       - 'assets/app.js'
       - 'assets/wecom-segments.js'
       - 'scripts/inspect-windows-clipboard.ps1'
@@ -19,17 +20,28 @@ concurrency:
 jobs:
   clipboard:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
       - run: npm ci
       - run: npm run check
-      - name: Test real Electron clipboard and independent Win32 CF_HTML reader
-        run: npm run desktop:test:windows
+      - run: node scripts/build-desktop.cjs
+      - name: Test native Rust clipboard and CF_HTML reader
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release/qa | Out-Null
+          npm run desktop:test:windows 2>&1 | Tee-Object -FilePath release/qa/windows-clipboard.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload evidence and manual DingTalk cases
         if: always()
         uses: actions/upload-artifact@v4
@@ -38,6 +50,6 @@ jobs:
           retention-days: 3
           if-no-files-found: error
           path: |
-            release/qa/windows-clipboard.json
+            release/qa/windows-clipboard.txt
             docs/windows-clipboard-qa.md
             examples/windows-clipboard/

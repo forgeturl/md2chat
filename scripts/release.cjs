@@ -33,10 +33,19 @@ function nextVersion(current, increment) {
 }
 function readState(root) {
  const names = ['package.json', 'package-lock.json', 'docs/release-notes.md'];
+ for (const name of ['src-tauri/Cargo.toml', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json']) {
+  if (fs.existsSync(path.join(root, name))) names.push(name);
+ }
  const originals = new Map(names.map(name => [path.join(root, name), fs.readFileSync(path.join(root, name), 'utf8')]));
  const pkg = JSON.parse(originals.get(path.join(root, names[0]))), lock = JSON.parse(originals.get(path.join(root, names[1])));
  parseVersion(pkg.version);
  if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('package.json and both root package-lock.json versions must match.');
+ const cargo = originals.get(path.join(root, 'src-tauri/Cargo.toml'));
+ if (cargo && cargo.match(/\[package\][\s\S]*?^version\s*=\s*"([^"]+)"/m)?.[1] !== pkg.version) throw new Error('Cargo.toml and package.json versions must match.');
+ const cargoLock = originals.get(path.join(root, 'src-tauri/Cargo.lock'));
+ if (cargoLock && cargoLock.match(/\[\[package\]\]\s*\nname = "md2chat"\s*\nversion = "([^"]+)"/)?.[1] !== pkg.version) throw new Error('Cargo.lock and package.json versions must match.');
+ const tauri = originals.get(path.join(root, 'src-tauri/tauri.conf.json'));
+ if (tauri && JSON.parse(tauri).version !== '../package.json') throw new Error('Tauri must read its version from ../package.json.');
  const publish = pkg.build?.publish;
  if (publish?.provider !== 'github' || !/^[\w.-]+$/.test(publish.owner || '') || !/^[\w.-]+$/.test(publish.repo || '')) throw new Error('Configure the GitHub update repository in package.json build.publish.');
  return {pkg, lock, originals, notes: originals.get(path.join(root, names[2])), repository: publish.owner + '/' + publish.repo};
@@ -143,6 +152,10 @@ async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = glob
    [path.join(root, 'package-lock.json'), JSON.stringify(state.lock, null, 2) + '\n'],
    [path.join(root, 'docs/release-notes.md'), '# v' + version + '\n\n' + body + '\n\n' + state.notes]
   ]);
+  const cargoPath = path.join(root, 'src-tauri/Cargo.toml');
+  if (state.originals.has(cargoPath)) contents.set(cargoPath, state.originals.get(cargoPath).replace(/(\[package\][\s\S]*?^version\s*=\s*")[^"]+(".*$)/m, '$1' + version + '$2'));
+  const cargoLockPath = path.join(root, 'src-tauri/Cargo.lock');
+  if (state.originals.has(cargoLockPath)) contents.set(cargoLockPath, state.originals.get(cargoLockPath).replace(/(\[\[package\]\]\s*\nname = "md2chat"\s*\nversion = ")[^"]+(".*)/, '$1' + version + '$2'));
   writePreparedFiles(state.originals, contents);
  }
  log((command === 'prepare' ? 'Prepared' : 'Verified') + ' v' + version + ' (GitHub Latest: ' + (latestVersion === null ? 'no stable release' : 'v' + latestVersion) + ').');

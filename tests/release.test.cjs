@@ -24,16 +24,17 @@ test('first-party frontend has no persistence or native API dependency',()=>{
 test('build has a narrow public-file allowlist',()=>{
  const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','guides','sitemap.xml','llms.txt','LICENSE','THIRD_PARTY_NOTICES.md']"));
 });
-test('latest download links match the complete release asset contract',()=>{
- const {expectedAssets}=require('../scripts/release-assets.cjs');
- assert.deepEqual(expectedAssets,['md2chat-mac-universal.dmg','md2chat-mac-universal.zip','md2chat-windows-x64-setup.exe']);
+test('latest download links and Tauri configuration match the public release asset contract',()=>{
+ const {expectedAssets,installerAssets}=require('../scripts/release-assets.cjs');
+ assert.deepEqual(expectedAssets,['md2chat-mac-universal.dmg','md2chat-mac-universal.app.tar.gz','md2chat-mac-universal.app.tar.gz.sig','md2chat-windows-x64-setup.exe','md2chat-windows-x64-setup.exe.sig','latest.json']);
  const readme=fs.readFileSync(path.join(root,'README.md'),'utf8');
- for(const name of expectedAssets)assert(readme.includes('/releases/latest/download/'+name));
- assert(!/\/releases\/latest\/download\/md2chat-mac-(?:arm64|x64)\./.test(readme));
- const pkg=require('../package.json');
+ for(const name of installerAssets)assert(readme.includes('/releases/latest/download/'+name));
+ const pkg=require('../package.json'), config=require('../src-tauri/tauri.conf.json');
  assert.equal(pkg.version,require('../package-lock.json').version);
- assert.equal(pkg.build.artifactName,'md2chat-${os}-${arch}.${ext}');
- assert.equal(pkg.build.nsis.artifactName,'md2chat-windows-${arch}-setup.${ext}');
+ assert.equal(config.version,'../package.json');
+ assert(config.plugins.updater.endpoints.includes('https://github.com/forgeturl/md2chat/releases/latest/download/latest.json'));
+ assert.equal(config.bundle.createUpdaterArtifacts,true);
+ assert(!pkg.dependencies?.['electron-updater']);assert(!pkg.devDependencies?.electron);
 });
 test('release checksums require all platform assets before publication',()=>{
  const {expectedAssets,writeChecksums}=require('../scripts/release-assets.cjs');
@@ -43,7 +44,7 @@ test('release checksums require all platform assets before publication',()=>{
   assert.throws(()=>writeChecksums(dir));assert(!fs.existsSync(path.join(dir,'SHA256SUMS.txt')));
   fs.writeFileSync(path.join(dir,expectedAssets.at(-1)),'sample');writeChecksums(dir);
   const lines=fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8').trim().split('\n');
-  assert.equal(lines.length,3);
+  assert.equal(lines.length,expectedAssets.length);
   const digest=require('node:crypto').createHash('sha256').update('sample').digest('hex');
   assert.deepEqual(lines,expectedAssets.map(name=>digest+'  '+name));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
@@ -59,7 +60,7 @@ test('desktop release builds one universal Mac package and publishes only pushed
  assert.match(workflow.jobs.publish.if,/&&/);
  const macStep=workflow.jobs.build.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac'));
  assert(macStep);
- for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
+ for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_SIGNING_IDENTITY','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID','TAURI_SIGNING_PRIVATE_KEY','TAURI_UPDATER_PUBLIC_KEY'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
 });
 test('release preflight gates both builds while skipped preflight preserves manual installer checks',()=>{
  const workflow=readWorkflow('desktop-release.yml'),preflight=workflow.jobs.preflight;

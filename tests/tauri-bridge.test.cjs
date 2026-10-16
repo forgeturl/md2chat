@@ -1,0 +1,63 @@
+const {test} = require('node:test'), assert = require('node:assert/strict');
+const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '../assets/tauri-bridge.js'), 'utf8');
+const tick = () => new Promise(resolve => setImmediate(resolve));
+function fixture({native = true, hint = 'MacIntel', listenerGate = Promise.resolve(), invoke} = {}) {
+ const calls = [], listeners = new Map(), documentListeners = new Map(), stopped = [];
+ const window = {location: {href: 'tauri://localhost/editor.html', origin: 'tauri://localhost'}};
+ if (native) window.__TAURI__ = {
+  core: {invoke: async (command, args) => {calls.push({command, args}); return invoke?.(command, args);}},
+  event: {listen: async (name, callback) => {await listenerGate; listeners.set(name, callback); return () => {stopped.push(name); listeners.delete(name);};}}
+ };
+ const context = {window, navigator: {platform: hint}, document: {addEventListener(name, callback) {documentListeners.set(name, callback);}}, URL, Error, console};
+ vm.runInNewContext(source, context);
+ return {window, bridge: window.md2chatDesktop, preferences: window.md2chatPreferences, calls, listeners, documentListeners, stopped};
+}
+test('website remains independent of Tauri and desktop platform is available synchronously', () => {
+ assert.equal(fixture({native: false}).bridge, undefined);
+ for (const [hint, platform] of [['MacIntel', 'darwin'], ['Win32', 'win32'], ['Linux x86_64', 'linux']]) assert.equal(fixture({hint}).bridge.platform, platform);
+});
+test('ready waits for both conversion callbacks and the native listener registration', async () => {
+ let resolveListener; const listenerGate = new Promise(resolve => {resolveListener = resolve;});
+ const state = fixture({listenerGate});
+ state.bridge.onConvertClipboard(() => []); await tick(); assert.equal(state.calls.length, 0);
+ state.bridge.onWecomSegments(() => {}); await tick(); assert.equal(state.calls.length, 0);
+ resolveListener(); await tick(); assert.equal(state.calls[0].command, 'conversion_ready');
+ assert(state.listeners.has('md2chat:conversion-request'));
+ await state.bridge.ready(); assert.equal(state.calls.filter(call => call.command === 'conversion_ready').length, 1);
+});
+test('conversion event carries only ID and kind; content is taken through the authorized native command', async () => {
+ const state = fixture({invoke: async command => command === 'conversion_take' ? {content: 'private body', target: 'feishu', kind: 'render'} : undefined});
+ const seen = [];
+ state.bridge.onWecomSegments(() => {}); state.bridge.onConvertClipboard((content, target) => {seen.push({content, target}); return [{type: 'text', text: 'converted'}];});
+ await tick(); state.listeners.get('md2chat:conversion-request')({payload: {id: 1, kind: 'render', content: 'forged event body'}}); await tick();
+ assert.equal(seen[0].content, 'private body'); assert.equal(seen[0].target, 'feishu');
+ const take = state.calls.find(call => call.command === 'conversion_take'); assert.equal(take.args.id, 1); assert.equal(Object.keys(take.args).length, 1);
+ const result = state.calls.find(call => call.command === 'conversion_result'); assert.equal(result.args.result.parts[0].text, 'converted');
+});
+test('render errors and segment opening report completion without leaking unhandled rejections', async () => {
+ let kind = 'render';
+ const state = fixture({invoke: async command => command === 'conversion_take' ? {kind, parts: [{type: 'text', text: 'segment'}]} : undefined});
+ let opened;
+ state.bridge.onConvertClipboard(() => {throw new Error('图片读取失败');}); state.bridge.onWecomSegments(parts => {opened = parts;});
+ await tick(); const deliver = payload => state.listeners.get('md2chat:conversion-request')({payload});
+ deliver({id: 2, kind}); await tick(); assert.equal(state.calls.find(call => call.command === 'conversion_result').args.result.error, '图片读取失败');
+ kind = 'segments'; deliver({id: 3, kind}); await tick(); assert.equal(opened[0].text, 'segment');
+ assert.equal(state.calls.filter(call => call.command === 'conversion_result').at(-1).args.result.parts.length, 0);
+});
+test('native failures are normalized as Error and preferences use narrow commands', async () => {
+ const state = fixture({invoke: async command => {if (command === 'desktop_copy') throw '读取失败'; return {saved: true};}});
+ await assert.rejects(() => state.bridge.copy([], 'wechat'), /读取失败/);
+ await state.preferences.set({openAtLogin: true}); const call = state.calls.at(-1); assert.equal(call.command, 'preferences_set'); assert.equal(call.args.patch.openAtLogin, true);
+ assert(Object.isFrozen(state.bridge)); assert(Object.isFrozen(state.preferences));
+});
+test('disposing a subscription before asynchronous registration releases its listener', async () => {
+ const state = fixture(); const dispose = state.bridge.updates.subscribe(() => {}); dispose(); await tick();
+ assert(state.stopped.includes('md2chat:update-state')); assert(!state.listeners.has('md2chat:update-state'));
+});
+test('external links invoke the restricted native opener instead of navigating the WebView', async () => {
+ const state = fixture(); let prevented = false;
+ state.documentListeners.get('click')({target: {closest: () => ({href: 'https://github.com/forgeturl/md2chat'})}, preventDefault() {prevented = true;}});
+ await tick(); assert(prevented); assert.equal(state.calls.at(-1).command, 'desktop_open_external');
+ assert.equal(state.calls.at(-1).args.url, 'https://github.com/forgeturl/md2chat');
+});

@@ -29,9 +29,11 @@ The renderer bundles are unmodified and served from the same static site. No con
   - Source: https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js
   - Served locally and loaded only when rendering code blocks; source code is not uploaded.
 
-- **electron-updater 6.8.9**, MIT License.
-  - Upstream: https://github.com/electron-userland/electron-builder
-  - Bundled in the desktop app with its dependency licenses; checks and downloads releases from GitHub.
+- **Tauri 2.12.4** and **Tauri updater 2.14.0**, MIT OR Apache-2.0.
+  - Upstream: https://github.com/tauri-apps/tauri and https://github.com/tauri-apps/plugins-workspace
+  - License texts: `assets/licenses/tauri-MIT.txt`, `assets/licenses/tauri-plugins-MIT.txt`, and `assets/licenses/tauri-Apache-2.0.txt`.
+  - The desktop shell uses system WebViews. Rust dependency versions are recorded in `src-tauri/Cargo.lock`; updater checks and downloads releases from GitHub.
+  - Electron and electron-updater are not included in Tauri desktop packages.
 
 ## Platform identifiers
 

@@ -166,3 +166,8 @@ release/
 # Local browser QA artifacts
 .playwright-cli/
 output/playwright/
+
+# Tauri build outputs (Cargo.lock is tracked)
+src-tauri/target/
+src-tauri/gen/
+dist-desktop/

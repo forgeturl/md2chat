@@ -1,5 +1,15 @@
 # 兼容性与证据范围
 
+当前源码使用 Tauri 2。下文注明 Electron 的记录属于历史版本证据，目标客户端的粘贴和发送结果需在 Tauri 版重新验收。
+
+## 2026-10-17 Tauri 迁移验证
+
+- macOS 15.7.4 Intel 本机：27 项 Rust 单元测试、308 项 JavaScript 回归及 Clippy 静态检查通过。
+- 显式原生剪贴板测试通过，确认纯文字、HTML、PNG、钉钉和飞书原生表示可写入并读回；测试恢复原剪贴板。这是系统传输证据，不是客户端粘贴证据。
+- 直接运行通用包中的应用二进制，隐藏的真实 WKWebView 通过表格、代码、公式、Mermaid、后台转换保留编辑器内容，以及命令窗口隔离共 6 项检查。可用 `npm run desktop:test:render` 重跑渲染测试，虚构图片和报告写入 `release/qa/`。
+- Mac 通用 DMG 为 14,939,583 字节，应用二进制含 `arm64` 与 `x86_64`；本次仅在 Intel Mac 运行。测试包使用本地临时签名，未公证，未正式发布。
+- Windows 原生剪贴板核心的跨目标类型检查通过；完整 Tauri 构建被本机缺少 Windows SDK/CRT 阻塞，Windows 安装、运行和聊天客户端粘贴尚未验收。Apple Silicon 运行和所有 Tauri 客户端粘贴也需分别验收。
+
 ## 纯前端版本
 
 | 能力 | 范围 |
@@ -43,9 +53,9 @@ v0.6.4 按上述结构改为仅 HTML、本机 PNG 文件引用。用户反馈钉
 - Windows 提供可选「钉钉分段复制（备用）」，分别写入可编辑纯文本和独立 PNG，按顺序粘贴。它不替代默认整段入口，不表示一次混排已修复，Windows 分段效果也需真机验证。
 - 「剪贴板排查」增加无图 HTML-only 与当前 HTML 原样重写两个显式实验，缩小入口、传输封装、结构和图源之间的差异。重写保持读取到的 HTML 字符串，不承诺原生 CF_HTML 字节相同。不上传、存盘或请求 HTML 引用的图片。
 - 原图已有合规 HTTPS 地址且能正常读取时仍保留原来源；表格、代码、公式和图表使用本机 PNG 缓存，没有自动上传或创建公网地址。Windows 下次成功复制钉钉内容后清理超过 7 天的旧图；编辑器/托盘只回读本应用缓存内内容校验通过的 PNG。
-- Windows 打包前使用真实 Electron 原生剪贴板读写和独立 Win32 CF_HTML 探针；另有独立验证工作流与脱敏逐项报告。它验证应用写入和系统读回，不代替钉钉粘贴验收。完整用例与人工结果模板见 [Windows 验证步骤](windows-clipboard-qa.md)。
+- Windows 打包流程已改为 Rust 原生剪贴板读写与 CF_HTML 字节校验；另有独立验证工作流和原生测试日志。它验证应用写入和系统读回，不代替钉钉粘贴验收。完整用例与人工结果模板见 [Windows 验证步骤](windows-clipboard-qa.md)。
 
-核对当前依赖源码：[Electron 44.8.0 ClipboardItem](https://github.com/electron/electron/blob/v44.8.0/shell/browser/api/electron_api_clipboard_item.cc#L493-L498) 将 HTML 交给 WriteHTML；其 Chromium 152.0.7977.167 在 [Windows 写入路径](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_win.cc#L1050-L1058)调用 [HtmlToCFHtml](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_util_win.cc#L1256-L1372)，自动生成头部、UTF-8 字节偏移与片段标记。因此报告中解码 HTML 的 `StartFragment 无` 不能证明原生封装缺失，不应据此再嵌套手写头部。
+历史 Electron 版的依赖源码：[Electron 44.8.0 ClipboardItem](https://github.com/electron/electron/blob/v44.8.0/shell/browser/api/electron_api_clipboard_item.cc#L493-L498) 将 HTML 交给 WriteHTML；其 Chromium 152.0.7977.167 在 [Windows 写入路径](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_win.cc#L1050-L1058)调用 [HtmlToCFHtml](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_util_win.cc#L1256-L1372)，自动生成头部、UTF-8 字节偏移与片段标记。当前 Tauri 版由 Rust 原生层生成 CF_HTML，并测试 UTF-8 字节偏移；不能把解码 HTML 中的 `StartFragment 无` 当成原生封装缺失的证据。
 
 公开资料尚未找到可直接复用并确认解决 Windows 钉钉混排的实现。[Microsoft Clipboard 样例](https://github.com/microsoft/Windows-universal-samples/blob/main/Samples/Clipboard/cs/CopyText.xaml.cs)使用 HTML、纯文本及本地图片 ResourceMap；[Windows HTML Clipboard 规范](https://learn.microsoft.com/en-us/windows/win32/dataxchg/html-clipboard-format)定义通用片段格式，不能证明钉钉接受任意本机图片引用。
 

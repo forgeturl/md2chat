@@ -7,7 +7,7 @@
 1. 修改功能后更新相关指南、`docs/compatibility.md` 和 README。区分代码实现、剪贴板验证、目标输入框实测与发送后验收。
 2. 运行 `npm run seo:generate`，审阅生成的指南、首页/编辑器 metadata、`sitemap.xml`、`llms.txt`。
 3. 运行 `npm run check` 与 `npm run build`。CI 在 Pages 和桌面发布前检查生成内容、canonical、站点地图覆盖、站内链接和 JSON-LD。内容过期或链接文件不存在时阻止发布。
-4. 如更新产品界面，运行 `npm run screenshots`，以虚构项目小结在当前 Electron 应用中更新完整界面与首屏两张面板截图（不写剪贴板）；如新增页面，加入内容清单，自动进入 sitemap 和 llms.txt。
+4. 如更新产品界面，以虚构项目小结在当前 Tauri 测试包中手工更新完整界面与首屏两张面板截图，不写入或上传私人剪贴板内容；旧 Electron 截图脚本不再适用。如新增页面，加入内容清单，自动进入 sitemap 和 llms.txt。
 5. 发布后检查线上页面和下载入口；根据公开 issue、实际查询与用户反馈迭代问答。不能把构建成功写成已收录或排名提升。
 
 ## 已实现

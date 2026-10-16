@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "md2chat",
+  "version": "../package.json",
+  "identifier": "io.github.forgeturl.md2chat",
+  "build": {
+    "beforeDevCommand": "node scripts/build-desktop.cjs",
+    "beforeBuildCommand": "node scripts/build-desktop.cjs",
+    "frontendDist": "../dist-desktop"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [{
+      "label": "main",
+      "create": false,
+      "title": "md2chat · 贴贴 Markdown",
+      "url": "editor.html",
+      "width": 1320,
+      "height": 880,
+      "minWidth": 760,
+      "minHeight": 560,
+      "visible": false,
+      "backgroundThrottling": "disabled",
+      "backgroundColor": "#f4f6f4"
+    }],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src ipc: http://ipc.localhost https: http:; object-src 'none'; frame-src 'none'; base-uri 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "nsis"],
+    "category": "Productivity",
+    "shortDescription": "Markdown to editable chat messages",
+    "copyright": "Copyright md2chat contributors",
+    "icon": ["../assets/app-icon.png", "../desktop/icon.icns", "../desktop/icon.ico"],
+    "createUpdaterArtifacts": true,
+    "macOS": {"minimumSystemVersion": "11.0"},
+    "windows": {
+      "webviewInstallMode": {"type": "downloadBootstrapper"},
+      "nsis": {"installMode": "currentUser", "languages": ["SimpChinese", "English"], "displayLanguageSelector": false}
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": ["https://github.com/forgeturl/md2chat/releases/latest/download/latest.json"],
+      "windows": {"installMode": "passive"}
+    }
+  }
+}

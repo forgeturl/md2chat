@@ -1,45 +1,53 @@
-# 桌面自动更新与签名发布
+# Tauri 桌面自动更新与签名发布
 
-从 0.6.0 起实现应用内更新：启动约 15 秒后及每 6 小时检查 GitHub Releases；发现稳定版后展示版本和更新说明。用户点击下载后显示进度，下载完成后点击「重启并安装」，再次确认未保存输入后安装。不自动下载，不在普通退出时自动安装，不上传正文或图片。下载的安装包会缓存在本机。
+桌面版使用 Tauri 2、Rust 和系统 WebView，不捆绑 Electron 或 Node.js。应用内更新读取固定 GitHub Releases `latest.json`，展示版本与纯文字更新说明；下载、安装由用户主动触发。安装前提示输入正文会清空，不在普通退出时自动安装。更新请求不包含输入正文或图片。
 
-0.5.1 及更早版本不包含此更新模块，必须手动安装首次带更新功能的版本。Mac 需使用签名版并放入「应用程序」。仅完成源码和状态测试不能证明真实升级成功；首次发布需要两份同一团队签名的版本验证升级。Windows 使用 NSIS 安装器，尚未配置 Windows 签名证书。
+Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer ID 代码签名是两件事，两者都要配置。当前迁移不提供 Electron 自动换装或旧数据迁移。
 
 ## GitHub Actions Secrets
 
-打开仓库 Settings → Secrets and variables → Actions → New repository secret。使用 Repository secrets，不使用 Variables。不要把证书、私钥或密码提交到 Git、Issues 或聊天。
+在仓库 Settings → Secrets and variables → Actions 中配置。证书、私钥和密码不能提交到 Git、Issues 或聊天。
 
 | 名称 | 内容 |
 | --- | --- |
 | CSC_LINK | Developer ID Application 证书及对应私钥导出的 .p12 文件的 Base64 |
 | CSC_KEY_PASSWORD | 导出 .p12 时设置的密码 |
-| APPLE_ID | 用于公证、具有相应团队权限的 Apple 账户邮箱 |
-| APPLE_APP_SPECIFIC_PASSWORD | Apple 账户生成的 App 专用密码，不是登录密码 |
+| APPLE_SIGNING_IDENTITY | 完整签名名称，例如 `Developer ID Application: Your Name (TEAMID1234)` |
+| APPLE_ID | 用于公证、具有团队权限的 Apple 账户邮箱 |
+| APPLE_APP_SPECIFIC_PASSWORD | Apple 账户生成的 App 专用密码 |
 | APPLE_TEAM_ID | 证书所属团队的 10 位 Team ID |
+| TAURI_SIGNING_PRIVATE_KEY | Tauri updater 签名私钥的完整内容 |
+| TAURI_SIGNING_PRIVATE_KEY_PASSWORD | updater 私钥密码；无密码时可以留空 |
+| TAURI_UPDATER_PUBLIC_KEY | 与上述私钥配对的 Tauri 公钥文件内容 |
 
-1. Mac「钥匙串访问」→「登录」→「我的证书」，找到 Developer ID Application，确认展开后有私钥。导出为带密码的 `md2chat-signing.p12`。若缺少私钥，应在原先创建证书的 Mac 导出；只有 .cer 不够。
-2. 假设文件在下载目录，终端运行下面命令后粘贴到 CSC_LINK 的 Secret 输入框：
+使用 `npm run tauri -- signer generate --help` 查看密钥生成命令，在安全位置生成并备份密钥。私钥丢失后无法再向已安装版本提供受信更新。仓库默认公钥留空；正式构建要求提供真实密钥对，通过临时 Tauri 配置注入公钥，不生成或使用测试生产密钥。
 
-   ```sh
-   base64 -i "$HOME/Downloads/md2chat-signing.p12" | tr -d '\n' | pbcopy
-   ```
+Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
 
-3. 登录 https://account.apple.com/ →「登录与安全」→「App 专用密码」，生成 `md2chat GitHub` 专用密码。需要双重认证。填入 APPLE_APP_SPECIFIC_PASSWORD，将登录邮箱填入 APPLE_ID。
-4. 登录 https://developer.apple.com/account/ → Membership details 获取 Team ID，填入 APPLE_TEAM_ID。
+Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺少时联网安装，因此不会在主安装包中嵌入完整浏览器。Tauri updater 签名不等于 Windows Authenticode；Windows 代码签名尚未接入。
 
-证书应属于项目获授权使用的开发者团队。保留加密的 .p12 和密码备份，后续升级继续使用同一签名身份；证书轮换必须额外验证。修改 Apple 登录密码会撤销 App 专用密码，需要重新生成并更新 Secret。
+## 构建与发布资产
 
-## 发布验证
+按 [README 发布步骤](../README.md#发布) 使用 `release:prepare` 和 `release:verify`。维护流水线不等于准备或发布版本；只有用户要求正式发布时才推送版本标签。
 
-- 先按 [README 发布步骤](../README.md#发布) 使用 `release:prepare` 同步版本和新增更新说明，再使用 `release:verify -- --tag vX.Y.Z` 校验。正式标签构建前与发布前都会检查：稳定版本号、标签与 package / lock / 更新说明首版本一致、说明正文有实质内容、候选版本严格高于 GitHub Latest。网络、鉴权或限流错误会阻止继续；Latest 不存在且已确认仓库可访问时，允许发布首个稳定版。
-- Mac 构建要求五项凭据齐全，强制 Developer ID 签名、公证，检查 `codesign`、`spctl` 和 stapler；缺失凭据或校验失败会阻止发布，不退回未签名包。
-- 两个构建任务分别产出 Mac 通用版和 Windows x64。Mac 通用应用包含 arm64 与 x64，使用同一个 DMG 安装包，并保留通用 ZIP 供应用内更新。发布前验证三个安装资产，校验元数据中的 SHA-512、大小和版本；Mac 直接使用通用构建生成的 `latest-mac.yml`，无需合并架构清单。
-- 发布必须包含 `latest.yml`、`latest-mac.yml`，Mac ZIP 和 DMG、Windows EXE、SHA256SUMS.txt；当前采用完整下载，不需要差分 blockmap。
-- 更新来源固定为 `forgeturl/md2chat` 的公开 GitHub Releases，无用户可配置下载 URL，无客户端 GitHub token。稳定版不接受预发布版或降级。
-- 更新说明来自 `docs/release-notes.md`，最新版本段落置于首部，准备命令保留历史；界面以纯文字显示，不执行远程 HTML。
-- 提交 main 或发起 PR 仅运行 `npm run check`，不构建或部署官网。先通过 workflow_dispatch 验证签名构建，再推 `v*` 版本标签发布；手动运行 `Desktop release` 仅上传安装包的 Actions 构建产物，不发布 Release 或更新官网。
-- 版本标签触发的工作流为同一标签构建 Mac / Windows 安装包和官网静态产物；全部构建成功后才发布 Release 并设为 Latest，随后部署官网。`github-pages` 环境需允许 `v*` 标签部署。官网部署失败时保留已发布的安装包，可在官网产物保留的 3 天内，在原发布运行中重跑失败的部署任务，无需重新发布版本；旧版本已不再是 Latest 时会跳过部署，避免覆盖新版官网。
-- 验收应从实际安装的旧签名版升级到同团队的新签名版，验证提醒、说明、下载、取消安装、重启安装、版本变化；M 系列和 Intel Mac 分别验证通用包运行与升级，Windows 在真实安装环境验证相同流程。开发环境或模拟状态测试不算安装验收，通用包构建成功也不代表 Intel Mac 或聊天客户端粘贴已实测。
+正式发布资产为：
 
-本地开发使用 `npm run desktop`；如需无证书的测试包，可显式覆盖 `-c.mac.identity=null -c.mac.notarize=false -c.mac.hardenedRuntime=false`。该包不能用于验证 Mac 自动安装，也不可替代正式发布包。
+- `md2chat-mac-universal.dmg`：M 系列与 Intel 通用安装包。
+- `md2chat-mac-universal.app.tar.gz`、同名 `.sig`：Mac Tauri 更新包。
+- `md2chat-windows-x64-setup.exe`、同名 `.sig`：Windows 安装与更新共用 NSIS 包。
+- `latest.json`：`darwin-aarch64`、`darwin-x86_64` 指向同一 Mac 更新包，`windows-x86_64` 指向 EXE。
+- `SHA256SUMS.txt`：以上文件的 SHA256 校验值。
 
-参考：[electron-builder v26 自动更新](https://www.electron.build/v26/docs/features/auto-update/)、[Apple Developer ID](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)、[Apple App 专用密码](https://support.apple.com/en-us/102654)。
+构建脚本统一产物名称。发布任务先用配对公钥验证每个更新包的 Minisign 内容签名和受信注释签名，再生成 `latest.json`。清单版本、平台集合、版本固定下载 URL、签名与真实文件必须一致，之后才计算校验值并发布 Release。更新源固定为 `forgeturl/md2chat`，没有用户配置下载源和客户端 GitHub token。
+
+Mac 与 Windows 构建任务均安装 Rust 并执行原生模块测试；Windows 另运行临时写入并恢复剪贴板的原生往返测试。CI 通过不能证明聊天客户端接受相应格式，人工步骤见 [Windows 剪贴板验证](windows-clipboard-qa.md)。
+
+手动运行 `Desktop release` 只保留构建产物，不发布或部署。版本标签构建同版本官网与安装包；全部成功后发布并设为 Latest，再部署官网。官网部署失败保留已发布安装包，旧版本不再是 Latest 时跳过部署。产物保留 3 天。
+
+## 验收与本地构建
+
+`npm run desktop` 启动开发版。仅测体积或本地运行时，可通过 Tauri 的 `--config` 覆盖 `bundle.createUpdaterArtifacts` 为 `false`，不需要或生成更新签名密钥。测试包不可替代正式签名、公证包。
+
+真实更新验收需要两份由同一 updater 密钥签名的 Tauri 版本；Mac 还需使用同一 Developer ID 团队签名，并从「应用程序」运行。分别验证发现新版本、说明、下载、取消安装、重启安装及安装后版本变化。M 系列、Intel Mac 和 Windows 需要各自验收；单元测试、通用包构建或开发模式不能代替跨版本安装验证。
+
+参考：[Tauri updater](https://v2.tauri.app/plugin/updater/)、[Tauri macOS 签名与公证](https://v2.tauri.app/distribute/sign/macos/)、[Tauri Windows 安装器](https://v2.tauri.app/distribute/windows-installer/)。

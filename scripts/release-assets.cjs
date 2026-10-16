@@ -1,8 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-// These names are the public README download contract. Do not embed the version.
-const expectedAssets = ['md2chat-mac-universal.dmg', 'md2chat-mac-universal.zip', 'md2chat-windows-x64-setup.exe'];
+// Stable public names keep website download links independent of the version.
+const installerAssets = ['md2chat-mac-universal.dmg', 'md2chat-windows-x64-setup.exe'];
+const updaterAssets = ['md2chat-mac-universal.app.tar.gz', 'md2chat-windows-x64-setup.exe'];
+const expectedAssets = [installerAssets[0], updaterAssets[0], updaterAssets[0] + '.sig', installerAssets[1], installerAssets[1] + '.sig', 'latest.json'];
 function writeChecksums(directory) {
  const lines = expectedAssets.map(name => {
   const data = fs.readFileSync(path.join(directory, name));
@@ -12,4 +14,4 @@ function writeChecksums(directory) {
  fs.writeFileSync(path.join(directory, 'SHA256SUMS.txt'), lines.join('\n') + '\n');
 }
 if (require.main === module) writeChecksums(process.argv[2] || 'release');
-module.exports = { expectedAssets, writeChecksums };
+module.exports = {expectedAssets, installerAssets, updaterAssets, writeChecksums};

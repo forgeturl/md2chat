@@ -1,28 +1,62 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const yaml = require('js-yaml');
-const {expectedAssets} = require('./release-assets.cjs');
-function validateManifests(directory, version) {
- const specs = [
-  ['latest-mac.yml', expectedAssets.slice(0, 2)],
-  ['latest.yml', expectedAssets.slice(2)]
- ];
- const manifests = specs.map(([name, names]) => {
-  const info = yaml.load(fs.readFileSync(path.join(directory, name), 'utf8'));
-  if (!info || info.version !== version || !Array.isArray(info.files) || info.files.length !== names.length) throw new Error('Invalid update manifest: ' + name);
-  const seen = new Set();
-  for (const file of info.files) {
-   if (!names.includes(file.url) || seen.has(file.url)) throw new Error('Unexpected update asset');
-   seen.add(file.url);
-   const data = fs.readFileSync(path.join(directory, file.url));
-   if (!data.length || data.length !== file.size || crypto.createHash('sha512').update(data).digest('base64') !== file.sha512) throw new Error('Update checksum mismatch: ' + file.url);
-  }
-  if (!info.files.some(file => file.url === info.path && file.sha512 === info.sha512)) throw new Error('Invalid legacy update metadata');
-  return info;
- });
- if (manifests.some(info => typeof info.releaseNotes !== 'string' || info.releaseNotes !== manifests[0].releaseNotes)) throw new Error('Missing or inconsistent release notes');
- return manifests;
+const {installerAssets, updaterAssets} = require('./release-assets.cjs');
+const repository = 'https://github.com/forgeturl/md2chat/releases/download/';
+const platformAssets = {'darwin-aarch64': updaterAssets[0], 'darwin-x86_64': updaterAssets[0], 'windows-x86_64': updaterAssets[1]};
+
+// Tauri stores Minisign public keys and signature boxes as Base64-encoded text.
+// Verify both Ed25519 signatures, including the signed trusted comment.
+function verifyUpdaterSignature(data, signature, publicKey) {
+ const publicLines = Buffer.from(publicKey, 'base64').toString('utf8').trim().split(/\r?\n/);
+ const key = Buffer.from(publicLines[1] || '', 'base64');
+ const lines = Buffer.from(signature, 'base64').toString('utf8').trim().split(/\r?\n/);
+ const signed = Buffer.from(lines[1] || '', 'base64');
+ const globalSignature = Buffer.from(lines[3] || '', 'base64');
+ if (key.length !== 42 || key.subarray(0, 2).toString() !== 'Ed' || signed.length !== 74 || signed.subarray(0, 2).toString() !== 'ED'
+  || !key.subarray(2, 10).equals(signed.subarray(2, 10)) || globalSignature.length !== 64 || !lines[2]?.startsWith('trusted comment: ')) throw new Error('Invalid Tauri updater signature or public key');
+ const ed25519 = crypto.createPublicKey({key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), key.subarray(10)]), format: 'der', type: 'spki'});
+ const content = crypto.createHash('blake2b512').update(data).digest();
+ const signedComment = Buffer.concat([signed.subarray(10), Buffer.from(lines[2].slice('trusted comment: '.length))]);
+ if (!crypto.verify(null, content, ed25519, signed.subarray(10)) || !crypto.verify(null, signedComment, ed25519, globalSignature)) throw new Error('Tauri updater signature verification failed');
 }
-if (require.main === module) validateManifests(process.argv[2] || 'release', require('../package.json').version);
-module.exports = {validateManifests};
+function validateManifests(directory, version, publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY) {
+ if (!publicKey?.trim()) throw new Error('TAURI_UPDATER_PUBLIC_KEY is required to verify update assets');
+ const info = JSON.parse(fs.readFileSync(path.join(directory, 'latest.json'), 'utf8'));
+ if (!info || info.version !== version || typeof info.notes !== 'string' || !info.notes.trim() || !info.platforms
+  || Object.keys(info.platforms).sort().join(',') !== Object.keys(platformAssets).sort().join(',')) throw new Error('Invalid Tauri update manifest');
+ if (typeof info.pub_date !== 'string' || !Number.isFinite(Date.parse(info.pub_date))) throw new Error('Invalid update publication date');
+ for (const [platform, name] of Object.entries(platformAssets)) {
+  const entry = info.platforms[platform];
+  if (entry.url !== repository + 'v' + version + '/' + name) throw new Error('Unexpected update asset URL');
+  const signature = fs.readFileSync(path.join(directory, name + '.sig'), 'utf8').trim();
+  if (entry.signature !== signature) throw new Error('Update signature does not match asset');
+  const data = fs.readFileSync(path.join(directory, name));
+  if (!data.length) throw new Error('Empty update asset');
+  verifyUpdaterSignature(data, signature, publicKey);
+ }
+ for (const name of installerAssets) if (!fs.statSync(path.join(directory, name)).size) throw new Error('Empty installer: ' + name);
+ return info;
+}
+function writeManifest(directory, version, notes, publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY, now = new Date()) {
+ const info = {version, notes, pub_date: now.toISOString(), platforms: {}};
+ for (const [platform, name] of Object.entries(platformAssets)) info.platforms[platform] = {
+  signature: fs.readFileSync(path.join(directory, name + '.sig'), 'utf8').trim(),
+  url: repository + 'v' + version + '/' + name
+ };
+ const destination = path.join(directory, 'latest.json');
+ const previous = fs.existsSync(destination) ? fs.readFileSync(destination) : null;
+ fs.writeFileSync(destination, JSON.stringify(info, null, 2) + '\n');
+ try { return validateManifests(directory, version, publicKey); }
+ catch (error) { if (previous) fs.writeFileSync(destination, previous); else fs.rmSync(destination, {force: true}); throw error; }
+}
+if (require.main === module) {
+ const directory = process.argv[2] || 'release';
+ const version = require('../package.json').version;
+ const releaseNotes = fs.readFileSync(path.resolve(__dirname, '../docs/release-notes.md'), 'utf8');
+ require('./release.cjs').validateNotes(releaseNotes, version);
+ const notes = releaseNotes.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split(/^# v\d+\.\d+\.\d+\s*$/m)[1]?.trim();
+ if (!notes) throw new Error('Missing current release notes');
+ writeManifest(directory, version, notes);
+}
+module.exports = {validateManifests, writeManifest, verifyUpdaterSignature};
