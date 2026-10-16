@@ -153,3 +153,6 @@ vite.config.ts.timestamp-*
 *.log
 .env*
 !.env.example
+
+# Desktop packages
+release/

@@ -2,60 +2,30 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="贴贴 Markdown：在浏览器中将 Markdown 转成适合聊天粘贴的图文，支持表格转图片和剪贴板排查。无需登录，不上传正文。">
-<meta name="referrer" content="no-referrer">
-<title>贴贴 Markdown · md2chat</title>
-<link rel="stylesheet" href="./assets/style.css">
+<meta name="description" content="md2chat 桌面版：把 Markdown 转成适合聊天的图文。保留可编辑文字，把表格、代码、公式和 Mermaid 转成清晰图片。开源，本机处理。">
+<meta name="theme-color" content="#18594a"><meta name="referrer" content="no-referrer">
+<title>md2chat · 让 Markdown，好好出现在聊天里</title>
+<link rel="stylesheet" href="./assets/landing.css">
 </head>
-<body><main>
-<header><div><h1>贴贴 Markdown</h1><p>让 Markdown 更适合聊天。</p></div><a href="https://github.com/forgeturl/md2chat" target="_blank" rel="noopener noreferrer">GitHub ↗</a></header>
-<p class="privacy-note help">纯前端处理 · 无需登录 · 不上传正文或图片 · 不持久化保存输入</p>
-<div class="workspace">
-<section class="input-panel" aria-labelledby="input-title">
-<div class="panel-heading"><div><span class="step">01</span><label id="input-title" for="markdown-input">输入内容</label></div><span class="panel-hint">Markdown / 文字 / 图片</span></div>
-<div id="markdown-input" contenteditable="true" role="textbox" aria-multiline="true" aria-label="粘贴图文或 Markdown 内容" spellcheck="false"># 周末读书会
+<body><div class="shell">
+<header class="nav"><a class="brand" href="./" aria-label="md2chat 首页"><span class="brand-icon">m↗</span>md2chat</a><nav class="nav-links" aria-label="主导航"><a href="#features">功能</a><a href="./editor.html">网页版</a><a href="https://github.com/forgeturl/md2chat" target="_blank" rel="noopener noreferrer">GitHub ↗</a></nav></header>
+<main>
+<section class="hero"><div><div class="eyebrow">Markdown, ready for your chat.</div><h1>让 Markdown，<br>好好出现在<br><em>聊天里。</em></h1><p class="lead">文字还是文字，表格变成清晰的图片。<br>把写好的内容，完整带进下一场对话。</p><div class="actions"><a class="button" href="#download">下载桌面版 <span>↓</span></a><a class="button secondary" href="./editor.html">试用网页版 ↗</a></div><p class="small">开源 · 无需账号 · 本机处理<br>macOS Apple Silicon 测试版 · 已验证钉钉输入框图文粘贴</p></div>
+<div class="hero-art" aria-label="转换示例：Markdown 变成文字、表格图片、文字"><div class="source-card"><div class="card-bar"><span>MARKDOWN</span><span class="dots"><i></i><i></i><i></i></span></div><pre><b># 周末读书会</b>
 
-**时间**：周六下午 · *记得带上喜欢的书*
+一起读书，也聊聊新的想法。
 
-- [x] 确定主题
-- [ ] 准备茶点
-  - 水果和饼干
+| 环节 | 时长 |
+| --- | --- |
+| 自由阅读 | 20 分钟 |
+| 交流讨论 | 30 分钟 |
 
-&gt; 每个人分享一个让自己印象深刻的观点。
-
-| 环节 | 时长 | 说明 |
-| --- | --- | --- |
-| 自由阅读 | 20 分钟 | 选择自己喜欢的章节 |
-| 交流讨论 | 30 分钟 | 轮流分享 |
-
-[Markdown 介绍](https://commonmark.org/)
-
-```js
-const greeting = "Hello, friends!";
-console.log(greeting);
-```
-
----
-期待见面！</div>
-<p class="panel-footer help">直接粘贴 Markdown 或图文，右侧自动预览。远程图片会从原网址加载；刷新页面会清空输入。</p>
-</section>
-<section class="preview-panel" aria-labelledby="preview-title">
-<div class="panel-heading"><div><span class="step">02</span><h2 id="preview-title">转换预览</h2></div><button id="copy-all" disabled>转换并复制完整图文</button></div>
-<div class="copy-options"><label for="copy-mode">复制方式</label><select id="copy-mode"><option value="segments">钉钉兼容 · 分段复制</option><option value="standard">标准图文 · 一次复制</option></select><select id="copy-segment" aria-label="选择要复制的段落" hidden></select></div>
-<div class="preview-status"><div id="status" role="status" aria-live="polite">正在准备预览…</div><p class="help" id="conversion-info"></p></div>
-<article id="message" tabindex="0" aria-label="转换预览内容"></article>
-<p class="panel-footer help">分段模式保留可编辑文字：每段分别复制、粘贴到同一聊天框末尾，最后统一发送。不要连续复制而跳过粘贴。</p>
-</section>
-</div>
-<details class="help"><summary>支持的格式与兼容性</summary><p>支持标题、粗体、斜体、删除线、编号和嵌套列表、任务项、引用、链接、代码块、分隔线、表格及图片。原始 HTML 按文字显示，支持 $…$ / \(…\) 行内公式、$$…$$ / \[…\] 独立公式和 mermaid 代码块。代码块使用深色语法高亮，长行折行、长代码分图，未知语言按原文排版。代码、公式与图表转为 PNG，纯文本保留源码；表格单元格内的公式暂保留源码。</p><p>默认分段复制文字和独立 PNG，每复制一段请到同一聊天框末尾粘贴。标准一次复制模式可能被钉钉降为纯文本。图片读取受限时会阻止复制并提示补图。网页无法访问钉钉专有剪贴板格式。</p></details>
-<details class="diagnostics" id="diagnostics"><summary>剪贴板排查</summary>
-<p>只在你点击或粘贴时读取浏览器开放的格式，不读取原生应用专有格式。报告仅含格式、大小及图片数量，不包含正文和图片地址。</p>
-<div class="diagnostic-actions"><button id="read-clipboard">读取当前剪贴板</button><button id="copy-report" disabled>复制排查报告</button></div>
-<div id="clipboard-paste" class="paste-zone" contenteditable="true" role="textbox" aria-label="粘贴剪贴板样本" data-placeholder="在这里按 ⌘V / Ctrl+V 粘贴样本"></div>
-<p id="diagnostic-status" role="status" aria-live="polite">不会自动读取、上传或保存内容。</p>
-<pre id="diagnostic-report" class="diagnostic-report">尚无样本。</pre><div id="clipboard-images"></div>
-</details>
-<footer>开源实验版 · <a href="https://github.com/forgeturl/md2chat/issues" target="_blank" rel="noopener noreferrer">反馈兼容性问题</a> · 托管平台可能记录访问日志；复制后的内容由系统剪贴板及目标应用管理。</footer>
-</main>
-<script src="./assets/vendor/marked.js"></script><script src="./assets/chat-markdown.js"></script><script src="./assets/code-images.js"></script><script src="./assets/renderers.js"></script><script src="./assets/chat-clipboard.js"></script><script src="./assets/app.js"></script>
-</body></html>
+<b>**期待见面！**</b></pre></div><div class="chat-card"><div class="chat-top"><span>转换后的图文 · 示例</span><span class="check">✓</span></div><p><strong>周末读书会</strong><br>一起读书，也聊聊新的想法。</p><table class="example-table"><thead><tr><th>环节</th><th>时长</th></tr></thead><tbody><tr><td>自由阅读</td><td>20 分钟</td></tr><tr><td>交流讨论</td><td>30 分钟</td></tr></tbody></table><p><strong>期待见面！</strong></p></div><div class="annotation">保留文字，把复杂排版交给图片。</div></div></section>
+<div class="strip"><span>文字可继续编辑</span><span>表格与代码转图片</span><span>正文不上传服务器</span><span>MIT 开源</span></div>
+<section class="section" id="features"><div class="section-head"><div><div class="eyebrow">Made for conversations</div><h2>从文档到聊天，<br>少一点格式折腾。</h2></div><p>在熟悉的左右栏里输入和预览。<br>让表达保持清楚，让复制更简单。</p></div><div class="features"><article class="feature"><div class="feature-icon">Aa ↗</div><h3>保留能编辑的文字</h3><p>标题、列表、引用和强调转成适合聊天的内容。不是把整篇文章压成一张长图。</p></article><article class="feature"><div class="feature-icon">⌗ &lt;/&gt;</div><h3>复杂内容，清晰呈现</h3><p>表格、彩色代码、数学公式和 Mermaid 图表转为图片，按照原文顺序与文字组合。</p></article><article class="feature"><div class="feature-icon">⌘ V</div><h3>桌面原生图文复制</h3><p>macOS 版直接写入钉钉原生图文格式。无需安装 Chrome 插件，也无需另开本机助手。</p></article></div></section>
+<section class="section product-shot" style="padding-top:0" aria-label="桌面应用实拍"><div class="section-head"><div><div class="eyebrow">A familiar workspace</div><h2>左边写，右边看。<br>准备好了，就复制。</h2></div><p>桌面应用实际界面。<br>示例中的表格和代码已转为图片，其他文字仍可编辑。</p></div><img src="./assets/desktop-preview.png" alt="md2chat 桌面版：左侧 Markdown 输入，右侧图文预览和完整图文复制按钮" width="1320" height="880" loading="lazy"></section>
+<section class="section" style="padding-top:0"><div class="how"><article><span class="number">01 / INPUT</span><h3>粘贴你的内容</h3><p>输入 Markdown，或粘贴文字和图片。</p></article><article><span class="number">02 / PREVIEW</span><h3>看一眼转换效果</h3><p>左右对照，确认表格、代码和原图都已准备好。</p></article><article><span class="number">03 / COPY</span><h3>复制，再到聊天框粘贴</h3><p>桌面版组合完整图文，发送前仍可修改文字。</p></article></div></section>
+<section class="download" id="download"><div><div class="eyebrow">Start on your desktop</div><h2>一个应用，就够了。</h2><p>不装运行环境，不开终端。<br>把现在的 md2chat，放到你的桌面。</p><div class="actions"><a class="button" href="https://github.com/forgeturl/md2chat/releases">查看桌面测试版 <span>↓</span></a></div><div class="small">v0.2.0 · macOS Apple Silicon（M 系列芯片）<br>安装包与校验值以 GitHub Releases 为准。</div></div><div class="download-side"><p><strong>关于这次测试版</strong><br>尚未进行 Apple 开发者签名和公证，macOS 可能阻止打开。需要顺畅安装的用户，请等待正式签名版。</p><p class="release-note">Intel Mac、Windows 版暂未提供。钉钉专有格式并非公开接口，可能随客户端版本变化；微信及其他客户端需单独验证。</p><p>不想安装？<a href="./editor.html">继续使用网页版 ↗</a><br>网页版保留标准图文复制，但不能保证钉钉保留图片。</p></div></section>
+<section class="faq"><div><div class="eyebrow">A few things to know</div><h2>打开之前，<br>你可能想知道。</h2></div><div><details><summary>我的文字和图片会上传吗？</summary><p>转换在本机完成，不要求登录，不向 md2chat 服务器上传正文或图片。远程原图仍会向其来源网站发起请求。桌面版会在本机缓存复制需要的图片，超过 7 天后启动时清理；当前剪贴板仍含钉钉图文时暂缓清理。</p></details><details><summary>为什么桌面版比网页更适合钉钉？</summary><p>网页只能通过浏览器开放的剪贴板格式复制。桌面版可以直接写入 macOS 钉钉使用的图文结构，保留文字、图片和排列顺序，不需要把整篇内容转成 PNG。</p></details><details><summary>钉钉、微信都能用吗？</summary><p>桌面版为 macOS 钉钉提供原生图文格式，同时提供标准 HTML 和纯文字。不同客户端的粘贴规则不同，实际支持范围和测试记录请查看仓库兼容性说明。发送前请确认图片完整。</p></details><details><summary>需要额外安装插件或助手吗？</summary><p>不需要。桌面应用包含转换界面和剪贴板写入能力。macOS 下载 DMG 后即可安装应用；正式签名版发布前，当前包仅供测试。</p></details><details><summary>这个项目收费吗？</summary><p>项目采用 MIT 开源许可证。你可以免费使用、查看代码、反馈问题，也可以参与改进。下载与更新通过 GitHub Releases 发布。</p></details></div></section>
+</main><footer class="footer"><span><strong>md2chat</strong> · 贴贴 Markdown<br>让 Markdown 更适合聊天。</span><span><a href="https://github.com/forgeturl/md2chat">源代码</a> · <a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">兼容性说明</a> · <a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a><br>独立开源项目，与钉钉、微信无隶属关系。</span></footer>
+</div></body></html>

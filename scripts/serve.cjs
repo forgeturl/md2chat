@@ -8,7 +8,7 @@ http.createServer((req,res)=>{
   if(route.startsWith('/md2chat/'))route=route.slice('/md2chat'.length);
   if(route==='/')route='/index.html';
   // Only public site assets are exposed by the development server.
-  if(route!=='/index.html'&&!route.startsWith('/assets/')){res.writeHead(404);res.end();return;}
+  if(route!=='/index.html'&&route!=='/editor.html'&&!route.startsWith('/assets/')){res.writeHead(404);res.end();return;}
   const file=path.resolve(root,'.'+route);
   if(!file.startsWith(root+path.sep)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});

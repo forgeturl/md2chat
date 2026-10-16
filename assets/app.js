@@ -176,7 +176,7 @@ function renderTable(header,rows){
 async function buildPayload(source){
  if(source.length>2*1024*1024)throw new Error('文字过长，请分段转换（最多 2 MB 字符）。');
  const blocks=ChatMarkdown.compactImages(parseMarkdown(source)),parts=[],plain=[],preview=[],segments=[];let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0,codeImages=0,codeCount=0;
- const appendText=text=>{if(segments.at(-1)?.type==='text')segments.at(-1).text+=text;else segments.push({type:'text',text});};
+ const appendText=(text,run={})=>{if(segments.at(-1)?.type==='text'){segments.at(-1).text+=text;segments.at(-1).runs.push({...run,text});}else segments.push({type:'text',text,runs:[{...run,text}]});};
  const lineBreak='<br>';
  const appendImage=image=>{
   imageCount++;
@@ -189,7 +189,7 @@ async function buildPayload(source){
    if(/^\s*\[图片\]\s*$/m.test(block.text))throw new Error('输入中只有 [图片] 占位符，没有对应图片数据。请从钉钉重新复制完整图文，或删除占位符后在原位置粘贴图片。');
    const rendered=[];
    for(const run of block.runs){
-    if(!run.math){rendered.push(ChatMarkdown.runsHtml([run]));appendText(run.text);continue;}
+    if(!run.math){rendered.push(ChatMarkdown.runsHtml([run]));appendText(run.text,run);continue;}
     try{
      const image=await ChatRenderers.math(run.math,false);mathImages++;imageCount++;
      segments.push({type:'image',src:image.src});
@@ -221,11 +221,17 @@ async function buildPayload(source){
    const image=await ensureImage(asset);originalImages++;appendImage(image);plain.push('[图片]');
   }
  }
- return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),segments:segments.map(s=>s.type==='text'?{...s,text:s.text.replace(/^\n+|\n+$/g,'')}:s).filter(s=>s.type!=='text'||s.text.trim()),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages,codeImages};
+ return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),segments:segments.map(s=>{if(s.type!=='text')return s;const runs=s.runs.map(r=>({...r}));while(runs.length&&!runs[0].text.replace(/^\n+/,''))runs.shift();while(runs.length&&!runs.at(-1).text.replace(/\n+$/,''))runs.pop();if(runs.length){runs[0].text=runs[0].text.replace(/^\n+/,'');runs.at(-1).text=runs.at(-1).text.replace(/\n+$/,'');}return {...s,text:runs.map(r=>r.text).join(''),runs};}).filter(s=>s.type!=='text'||s.text.trim()),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages,codeImages};
 }
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 let segmentIndex=0;
 const copyMode=document.getElementById('copy-mode'),segmentSelect=document.getElementById('copy-segment');
+if(window.md2chatDesktop){
+ copyMode.replaceChildren(new Option('桌面完整图文','desktop'));copyMode.value='desktop';document.querySelector('.copy-options').hidden=true;
+ document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 复制所需图片临时保存在本机';
+ document.getElementById('copy-help').textContent='复制后，到聊天输入框按 ⌘V 粘贴完整图文。macOS 钉钉使用原生图文格式；其他客户端请确认图片是否保留。';
+ document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式和图片数量。报告不包含正文、图片内容或文件路径。';
+}
 function updateCopyControls(rebuild=false){
  const list=cachedPayload?.segments||[];
  if(rebuild){segmentIndex=0;segmentSelect.replaceChildren(...list.map((s,i)=>{const option=document.createElement('option');option.value=i;option.textContent='第 '+(i+1)+'/'+list.length+' 段 · '+(s.type==='text'?'文字':'图片');return option;}));}
@@ -265,7 +271,10 @@ button.addEventListener('click',async()=>{
  button.disabled=true;
  const payload=cachedPayload,source=cachedSource,index=segmentIndex;
  try{
-  if(copyMode.value==='segments'){
+  if(copyMode.value==='desktop'){
+   const result=await window.md2chatDesktop.copy(payload.segments);
+   if(cachedSource===source)status.textContent='已复制完整图文（'+result.images+' 张图片），到聊天框粘贴即可。'+(result.native?'':'此系统使用标准图文，钉钉兼容性尚未验证。');
+  }else if(copyMode.value==='segments'){
    await ChatClipboard.writeSegment(payload.segments[index]);
    if(cachedSource!==source||cachedPayload!==payload)return;
    const last=index===payload.segments.length-1;
@@ -320,6 +329,11 @@ document.getElementById('read-clipboard').addEventListener('click',async()=>{
  const readButton=document.getElementById('read-clipboard');readButton.disabled=true;
  diagnosticStatus.textContent='正在读取浏览器可见的剪贴板格式…';
  try{
+  if(window.md2chatDesktop){
+   const report=await window.md2chatDesktop.inspect();
+   const text=['md2chat 桌面剪贴板报告','系统：'+report.platform,...report.formats.map(f=>f.type+'：'+f.bytes+' 字节'),'钉钉图文图片数量：'+report.images,'报告不含正文、图片内容和文件路径。'].join('\n');
+   sampleHistory.push(text);if(sampleHistory.length>2)sampleHistory.shift();document.getElementById('diagnostic-report').textContent=text;document.getElementById('copy-report').disabled=false;diagnosticStatus.textContent='系统剪贴板排查完成。';return;
+  }
   if(!navigator.clipboard?.read)throw new Error('Clipboard.read unavailable');
   let timer;
   const items=await Promise.race([navigator.clipboard.read(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('读取超时，请手动粘贴')),10000);})]).finally(()=>clearTimeout(timer)),entries=[];
@@ -335,6 +349,6 @@ document.getElementById('clipboard-paste').addEventListener('paste',async event=
  event.currentTarget.textContent='已接收样本，仅显示格式统计。';await showSample('原生粘贴事件',entries,types);
 });
 document.getElementById('copy-report').addEventListener('click',async()=>{
- try{await navigator.clipboard.writeText(sampleHistory.join('\n\n────────\n\n'));diagnosticStatus.textContent='元数据报告已复制，当前剪贴板已被报告替换。';}
+ try{const report=sampleHistory.join('\n\n────────\n\n');if(window.md2chatDesktop)await window.md2chatDesktop.copy([{type:'text',text:report}]);else await navigator.clipboard.writeText(report);diagnosticStatus.textContent='元数据报告已复制，当前剪贴板已被报告替换。';}
  catch(_){diagnosticStatus.textContent='自动复制失败，请手动选中上面的报告复制。';}
 });

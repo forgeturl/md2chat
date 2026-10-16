@@ -1,90 +1,61 @@
 # md2chat · 贴贴 Markdown
 
-把 Markdown 转成适合聊天粘贴的图文：**正文保留为文字，表格、代码、公式和图表转为图片。**
+让 Markdown 更适合聊天。保留可编辑文字，把表格、代码、公式和 Mermaid 转成图片，再按原文顺序组合。
 
-纯前端 · 无需登录 · 无后端服务 · 不上传或持久化保存输入
+- [产品主页](https://forgeturl.github.io/md2chat/)
+- [桌面测试版下载](https://github.com/forgeturl/md2chat/releases)
+- [网页版](https://forgeturl.github.io/md2chat/editor.html)
+- [兼容性与测试范围](docs/compatibility.md)
 
-[在线使用（需先启用 GitHub Pages）](https://forgeturl.github.io/md2chat/) · [兼容性说明](docs/compatibility.md) · [反馈问题](https://github.com/forgeturl/md2chat/issues)
+![桌面预览](docs/desktop-preview.png)
 
-> 当前为实验版。标准图文能否完整粘贴由浏览器、操作系统和聊天客户端共同决定；**没有承诺钉钉、微信全版本无损粘贴**。网页预览正常或复制成功，都不能证明目标聊天框保留了图片。
+## 桌面版
 
-![虚构读书会示例的转换预览](docs/preview.png)
+首版支持 macOS Apple Silicon（M 系列）。使用 Electron，应用内包含转换器和原生剪贴板能力，不需要另装插件、Python、Node 或助手。
 
-## 使用
+输入 Markdown → 检查右侧预览 → 点击「转换并复制完整图文」→ 在钉钉输入框按一次 ⌘V。普通文字仍可编辑，表格等复杂内容以图片保留。
 
-1. 在左栏粘贴 Markdown 或图文，右栏实时查看转换预览。
-2. 默认选择 **钉钉兼容 · 分段复制**，点击 **复制第 1/N 段**。
-3. 到同一个聊天输入框末尾粘贴，再回来复制下一段；按顺序重复，最后统一发送。文字仍可编辑，图片单独以 PNG 写入剪贴板。
-4. 目标应用支持 HTML 图文时，可切换 **标准图文 · 一次复制**。若图片丢失，切回分段模式。
+当前为**未进行 Apple 开发者签名和公证的测试版**，系统可能阻止打开。正式面向大众的顺畅安装需要完成签名和公证。Intel、Windows 未提供发行包；微信等客户端未验证同等效果。不支持自动发送消息。
 
-桌面采用左右分栏，输入和预览独立滚动，复制按钮始终位于右栏顶部；窄屏自动改为上下排列。主流程只有一个复制按钮，可用段落下拉框重复制某一段；每次复制后要先粘贴，不能连续复制后只粘贴一次。剪贴板排查折叠在底部。可以先用页面里的虚构读书会示例体验。
+## 隐私
 
-## 功能
+- 不登录，不上传正文或图片到 md2chat 服务；转换逻辑在本机运行。
+- 不持久化保存输入正文。桌面版将复制用图片缓存在应用本机目录，保留以支持退出后粘贴。超过 7 天后下次启动时清理；剪贴板仍含钉钉格式时暂缓清理。
+- 引用远程图片会访问其原网址，网页版仍受 CORS 与来源访问权限限制。
+- 排查按钮只展示格式、字节数与图片数量；不输出正文、媒体标识或文件路径。
+- 帮助菜单打开 GitHub Releases 查看更新；本版没有后台自动更新。
 
-- 标题、粗体、斜体、删除线、行内代码和代码块。
-- 编号、嵌套列表、任务项、引用、分隔线。
-- 链接保留可读地址；行内代码保留文字。
-- 代码块使用深色语法高亮、行号和 2 倍分辨率 PNG；长行折行、长代码自动分图。支持 JavaScript / TypeScript、Python、JSON、HTML / CSS、SQL、Go 等常见语言；未知或未标注语言按原文排版。纯文本副本保留完整源码。
-- GFM 表格转高清 PNG；较长表格自动分图。
-- 行内/独立 LaTeX 数学公式与 Mermaid 图表在浏览器内渲染为 PNG，复制时随图文一起保留；纯文本保留源码。
-- 原图保留位置；缺失或不能读取的图片会阻止复制并提示补图。
-- 默认分段复制：连续文字合并为一段，每张图片单独一段，按原文顺序粘贴。复制失败不会跳过当前段落；不把整段正文截图。
-- 可选标准图文模式同时复制 HTML 和纯文本；纯文本包含表格内容，避免目标应用只取纯文本时表格完全丢失。
-- 剪贴板排查显示可见格式、大小、图片数量与引用类型；复制的报告不含正文或图片地址。
+## 开发
 
-公式支持 `$…$`、`\(…\)`、`$$…$$`、`\[…\]`；Mermaid 使用 `mermaid` 围栏代码块。数学公式使用 MathJax 的 base / AMS 子集，表格单元格内公式暂保留源码；图表不接受自定义配置、外部资源或 HTML 标签。语法错误会阻止复制并提示具体公式/图表。Markdown 内的 HTML 源码按文字显示。网页不能读取或写入原生应用的专有剪贴板格式。
-
-使用示例见 [代码高亮](examples/code-highlighting.md) 和 [公式与图表](examples/math-and-diagrams.md)。渲染器首次遇到对应内容时才从本站加载，不依赖 CDN 或在线渲染服务。
-
-## 图片与隐私
-
-- 浏览器默认自动请求输入中的图片原网址；这些请求不经过本工具服务器，使用 `credentials: omit` 和 `no-referrer`。
-- 远程图片可能因 CORS、登录权限、失效链接或网络限制无法读取。请复制图片本身并粘贴到原位置；只有一张缺图时会自动替换，多张缺图请先点击目标图片。
-- 本工具没有账号、分析 SDK、内容上传接口，也不使用 localStorage、IndexedDB 或 Service Worker 存储输入。关闭/刷新页面会丢弃内存中的输入和报告。
-- 系统剪贴板仍保存你主动复制的内容，目标聊天工具负责其后续处理。GitHub Pages 等托管平台可能记录访问日志。浏览器扩展及系统行为不在本工具控制范围内。
-- 不要将敏感内容放进 Issue 或截图。所有内置示例都是虚构通用内容。
-
-## 本地开发
-
-需要 Node.js 22 或更新版本，无需安装依赖：
+Node.js 22+，macOS 桌面打包需要 macOS。
 
 ```sh
-git clone https://github.com/forgeturl/md2chat.git
-cd md2chat
-npm run dev
+npm ci
+npm run dev          # 宣传页及网页版：http://127.0.0.1:18768/md2chat/
+npm run desktop      # 桌面编辑器
+npm run check        # 语法与回归测试
+npm run build        # GitHub Pages 静态站点
+npm run desktop:test # macOS 原生剪贴板往返测试，结束后恢复原剪贴板
+npm run desktop:dist # release/ 中生成 Apple Silicon DMG 和 ZIP
 ```
 
-打开终端显示的网址。开发服务仅监听 `127.0.0.1`，支持 `/md2chat/` 子目录，以验证 GitHub Pages 路径。
-
-```sh
-npm run check  # 语法检查、Markdown/图片/隐私与发布边界测试
-npm run build  # 生成 dist/，只包含公开网页所需资源
-```
-
-## 部署 GitHub Pages
-
-1. 仓库 **Settings → Pages → Source** 选择 **GitHub Actions**。
-2. 在 **Actions → Check and deploy Pages** 手动运行工作流，或推送到 `main`。
-3. 工作流通过后，在 `https://forgeturl.github.io/md2chat/` 访问。
-
-只上传代码不会自动启用 Pages。提供的工作流先测试再部署，PR 只运行检查，不部署。也可把 `dist/` 部署到其他 HTTPS 静态托管；资源路径均为相对路径。
+`desktop:test` 会临时写入测试剪贴板，请在不使用剪贴板时运行。单元测试不访问系统剪贴板。桌面层使用 Electron 44 原生格式 API，运行时版本锁定在 package-lock.json。
 
 ## 项目结构
 
-```text
-index.html                 页面与通用示例
-assets/app.js              输入、预览、复制进度和标准图文处理
-assets/chat-clipboard.js   逐段文字 / PNG 剪贴板写入
-assets/chat-markdown.js     Marked token → 聊天文字结构
-assets/renderers.js         公式和 Mermaid → 本地 SVG → PNG
-assets/code-images.js       代码语法高亮、折行、分图
-assets/vendor/             固定版本 Marked、MathJax、Mermaid、Highlight.js 及其许可证
-scripts/                   静态开发服务、公开资源构建
-tests/                     自动化回归测试
-```
+- `index.html`、`assets/landing*.css`：产品宣传与下载页面。
+- `editor.html`、`assets/app.js`：网页/桌面共用转换界面。
+- `assets/chat-markdown.js`、`assets/renderers.js`、`assets/code-images.js`：解析与图片渲染。
+- `desktop/main.cjs`、`preload.cjs`：隔离的桌面主进程与窄 IPC 接口。
+- `desktop/payload.cjs`：受验证的图文数据、本地图片和钉钉剪贴板结构。
+- `tests/`：纯逻辑、图片顺序、原生格式与缓存清理测试。
 
-## 贡献
+桌面渲染进程开启 sandbox、contextIsolation，关闭 Node 集成。只加载打包的本地界面，拒绝页面导航、嵌入 webview 和任意外部窗口；剪贴板 IPC 验证调用方和内容，不能让渲染器选择读写文件路径。
 
-欢迎提供脱敏的兼容性结果，注明系统、浏览器、聊天工具版本，以及“网页读取 / 复制 / 目标粘贴”哪一步失败。请勿将某个版本上的成功写成全平台保证。
+## 发布
 
-MIT License。依赖许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+推送 main 自动发布 Pages；推送版本标签（例如 v0.2.0）运行 `Desktop release`，在 macOS runner 构建 Apple Silicon DMG/ZIP，并发布 GitHub 预发布和校验文件。宣传页下载链接指向 Releases。
+
+当前流水线明确不进行开发者签名；接入合法签名证书和 Apple 公证凭据后才能发布正式签名版。不要在网站上宣称未验证的客户端已兼容。
+
+示例只使用虚构内容，请勿提交工作消息、剪贴板原始样本或私人截图。MIT 许可证；第三方渲染库见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
