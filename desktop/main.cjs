@@ -1,16 +1,19 @@
-const {app,BrowserWindow,Menu,ipcMain,clipboard,ClipboardItem,nativeImage,shell,session,Tray,dialog}=require('electron');
+const {app,BrowserWindow,Menu,ipcMain,clipboard,ClipboardItem,nativeImage,shell,session,Tray,dialog,Notification}=require('electron');
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {makePayload,pruneImages,RAW_FORMAT}=require('./payload.cjs');
 const {createIntegration,startHidden}=require('./integration.cjs');
+const {createUpdates}=require('./updates.cjs');
 app.setName('md2chat');
-let win,copying=false,quitting=false,integration;
+let win,copying=false,quitting=false,integration,updates;
 const primaryInstance=app.requestSingleInstanceLock();
 if(!primaryInstance)app.quit();
 function showWindow(){if(!win||win.isDestroyed())return;if(win.isMinimized())win.restore();win.show();win.focus();integration?.refreshApplicationMenu();}
 app.on('second-instance',showWindow);
 app.on('before-quit',()=>{quitting=true;});
-app.on('will-quit',()=>integration?.destroy());
+// Native updater closes windows before app.before-quit; bypass tray hiding first.
+require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;});
+app.on('will-quit',()=>{integration?.destroy();updates?.destroy();});
 const entry=path.join(__dirname,'../editor.html'),entryURL=pathToFileURL(entry).href;
 function trusted(event){if(!win||event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==entryURL)throw new Error('不允许的调用来源');}
 async function inspect(){
@@ -23,6 +26,30 @@ async function inspect(){
  return {formats,images,htmlImages,htmlTables,platform:process.platform};
 }
 if(primaryInstance)app.whenReady().then(async()=>{
+ const {autoUpdater}=require('electron-updater');
+ const notified=new Set();
+ function openUpdates(){showWindow();win?.webContents.send('md2chat:update-open');void updates.check();}
+ updates=createUpdates({updater:autoUpdater,version:app.getVersion(),available:()=>{
+  if(!app.isPackaged)return '开发模式不安装更新，请使用已发布的桌面版。';
+  if(process.platform==='darwin'&&!app.isInApplicationsFolder())return '请先把 md2chat 移到「应用程序」，再检查更新。';
+  return ['darwin','win32'].includes(process.platform)?'':'当前系统不支持应用内更新。';
+ },publish:state=>{
+  if(win&&!win.isDestroyed())win.webContents.send('md2chat:update-state',state);
+  if(state.phase==='available'&&!notified.has(state.version)){
+   notified.add(state.version);
+   if(Notification.isSupported()){
+    const notice=new Notification({title:'md2chat 有新版本',body:`v${state.version} 已发布，点击查看更新内容。`});
+    notice.on('click',openUpdates);notice.show();
+   }
+  }
+ },confirmInstall:async()=>{
+  showWindow();
+  if(copying)return false;
+  const result=await dialog.showMessageBox(win,{type:'question',title:'重启并安装更新',message:'现在安装新版 md2chat？',detail:'应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。',buttons:['取消','重启并安装'],defaultId:0,cancelId:0,noLink:true});
+  return result.response===1;
+ }});
+ for(const action of ['check','download','install'])ipcMain.handle(`md2chat:update-${action}`,async event=>{trusted(event);return updates[action]();});
+ ipcMain.handle('md2chat:update-status',event=>{trusted(event);return updates.snapshot();});
  const cache=path.join(app.getPath('userData'),'clipboard-images');
  // Do not inspect clipboard contents on startup. Keep image references alive while a DingTalk item exists.
  if(!await clipboard.has(RAW_FORMAT))await pruneImages(cache).catch(()=>{});
@@ -50,7 +77,8 @@ if(primaryInstance)app.whenReady().then(async()=>{
   win.once('ready-to-show',()=>{if(!integration?.hasTray||!startHidden(app,process.platform,process.argv,process.execPath))showWindow();});
   win.loadFile(entry);
  }
- integration=createIntegration({app,Tray,Menu,nativeImage,dialog,showWindow});
+ integration=createIntegration({app,Tray,Menu,nativeImage,dialog,showWindow,checkUpdates:openUpdates});
  createWindow();app.on('activate',showWindow);
+ updates.start();
 });
 app.on('window-all-closed',()=>{if(!integration?.hasTray)app.quit();});

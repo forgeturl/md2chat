@@ -26,14 +26,14 @@ function startHidden(app, platform, argv, execPath) {
  if (platform === 'win32') return argv.includes('--autostart');
  return platform === 'darwin' && loginState(app, platform, execPath).wasOpenedAtLogin === true;
 }
-function createIntegration({app, Tray, Menu, nativeImage, dialog, showWindow, platform = process.platform, execPath = process.execPath}) {
+function createIntegration({app, Tray, Menu, nativeImage, dialog, showWindow, checkUpdates = showWindow, platform = process.platform, execPath = process.execPath}) {
  let tray;
  async function toggleLogin(item) {
   try {
    const result = setLogin(app, platform, execPath, item.checked);
    if (!item.checked && result.registered) throw new Error('系统尚未确认移除登录项，请在系统启动项设置中检查。');
    if (item.checked && !result.enabled) {
-    await dialog.showMessageBox({type: 'info', title: '开机自启动', message: result.pending ? '需要在系统设置中允许 md2chat 登录项' : '系统尚未确认开机自启动生效', detail: platform === 'darwin' ? '请在「系统设置 → 通用 → 登录项」检查状态。当前安装包未完成 Apple 签名和公证，自启动可能无法生效。' : '请在「设置 → 应用 → 启动」检查 md2chat 是否被禁用。'});
+    await dialog.showMessageBox({type: 'info', title: '开机自启动', message: result.pending ? '需要在系统设置中允许 md2chat 登录项' : '系统尚未确认开机自启动生效', detail: platform === 'darwin' ? '请在「系统设置 → 通用 → 登录项」检查并允许 md2chat。' : '请在「设置 → 应用 → 启动」检查 md2chat 是否被禁用。'});
    }
   } catch (error) {
    await dialog.showMessageBox({type: 'error', title: '开机自启动', message: '未能更改开机自启动', detail: error.message});
@@ -44,7 +44,7 @@ function createIntegration({app, Tray, Menu, nativeImage, dialog, showWindow, pl
   return [{label: '开机自启动', type: 'checkbox', checked: state.registered ?? state.enabled, enabled: state.supported, click: toggleLogin},
    ...(!state.supported ? [{label: state.reason, enabled: false}] : state.pending ? [{label: '等待系统批准登录项', enabled: false}] : state.blocked ? [{label: '启动项已被系统禁用', enabled: false}] : [])];
  }
- const help = [{label: '检查新版本', click: () => require('electron').shell.openExternal('https://github.com/forgeturl/md2chat/releases/latest')}, {label: '反馈问题', click: () => require('electron').shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
+ const help = [{label: '检查更新', click: checkUpdates}, {label: '反馈问题', click: () => require('electron').shell.openExternal('https://github.com/forgeturl/md2chat/issues')}];
  function refreshApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
    ...(platform === 'darwin' ? [{role: 'appMenu'}] : []),

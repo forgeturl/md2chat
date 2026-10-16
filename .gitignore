@@ -156,3 +156,9 @@ vite.config.ts.timestamp-*
 
 # Desktop packages
 release/
+
+# Signing credentials must only live in CI Secrets or a secure local location
+*.p12
+*.pfx
+*.key
+*.mobileprovision

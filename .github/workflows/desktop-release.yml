@@ -38,10 +38,18 @@ jobs:
       - name: Verify tag matches package version
         if: startsWith(github.ref, 'refs/tags/v')
         run: node -e "if(process.env.GITHUB_REF_NAME !== 'v'+require('./package.json').version) process.exit(1)"
-      - name: Build installer
-        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --${{ matrix.arch }} --publish never
+      - name: Build signed and notarized Mac installer
+        if: matrix.platform == 'mac'
+        run: node scripts/build-desktop-release.cjs mac ${{ matrix.arch }}
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Build Windows installer
+        if: matrix.platform == 'win'
+        run: node scripts/build-desktop-release.cjs win ${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
@@ -50,6 +58,7 @@ jobs:
             release/*.dmg
             release/*.zip
             release/*.exe
+            release/latest*.yml
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
@@ -58,16 +67,23 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v4
         with:
           pattern: desktop-*
           merge-multiple: true
           path: release
       - name: Verify complete release and calculate checksums
-        run: node scripts/release-assets.cjs release
+        run: |
+          node scripts/update-manifests.cjs release
+          node scripts/release-assets.cjs release
       - name: Publish latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.zip release/*.exe release/SHA256SUMS.txt --title "md2chat $GITHUB_REF_NAME · macOS / Windows" --notes-file docs/release-notes.md --draft --verify-tag
+          gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.zip release/*.exe release/latest.yml release/latest-mac.yml release/SHA256SUMS.txt --title "md2chat $GITHUB_REF_NAME · macOS / Windows" --notes-file docs/release-notes.md --draft --verify-tag
           gh release edit "$GITHUB_REF_NAME" --draft=false --latest

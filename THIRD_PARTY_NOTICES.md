@@ -28,3 +28,7 @@ The renderer bundles are unmodified and served from the same static site. No con
   - License: `assets/vendor/highlight/LICENSE`
   - Source: https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/highlight.min.js
   - Served locally and loaded only when rendering code blocks; source code is not uploaded.
+
+- **electron-updater 6.8.9**, MIT License.
+  - Upstream: https://github.com/electron-userland/electron-builder
+  - Bundled in the desktop app with its dependency licenses; checks and downloads releases from GitHub.
