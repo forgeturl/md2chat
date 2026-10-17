@@ -2369,6 +2369,28 @@
       "de": "Text, Bilder oder Markdown einfügen, um die Vorschau zu sehen.",
       "fr": "Collez du texte, des images ou du Markdown pour voir l’aperçu ici.",
       "hi": "प्रीव्यू देखने के लिए टेक्स्ट, चित्र या Markdown पेस्ट करें।"
+    },
+    "md2chat — AI 回答 / Markdown 转聊天图文，文字可编辑": {
+      "zh-CN": "md2chat — AI 回答 / Markdown 转聊天图文，文字可编辑",
+      "en": "md2chat — Share Markdown in chat",
+      "es": "md2chat — Comparte Markdown en el chat",
+      "pt-BR": "md2chat — Compartilhe Markdown no chat",
+      "ja": "md2chat — Markdown をチャットで共有",
+      "ko": "md2chat — Markdown을 채팅으로 공유",
+      "de": "md2chat — Markdown im Chat teilen",
+      "fr": "md2chat — Partagez du Markdown dans le chat",
+      "hi": "md2chat — Markdown को चैट में साझा करें"
+    },
+    "Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat": {
+      "zh-CN": "Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat",
+      "en": "Markdown to chat | md2chat",
+      "es": "Markdown al chat | md2chat",
+      "pt-BR": "Markdown para chat | md2chat",
+      "ja": "Markdown チャット変換 | md2chat",
+      "ko": "Markdown 채팅 변환 | md2chat",
+      "de": "Markdown für den Chat | md2chat",
+      "fr": "Markdown vers le chat | md2chat",
+      "hi": "Markdown से चैट | md2chat"
     }
   }
 }

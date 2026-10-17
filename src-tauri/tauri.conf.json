@@ -13,7 +13,7 @@
     "windows": [{
       "label": "main",
       "create": false,
-      "title": "md2chat · 贴贴 Markdown",
+      "title": "md2chat",
       "url": "editor.html",
       "width": 1320,
       "height": 880,
