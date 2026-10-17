@@ -1,6 +1,6 @@
 [package]
 name = "md2chat"
-version = "0.6.14"
+version = "0.6.15"
 description = "Markdown to editable chat messages"
 authors = ["md2chat contributors"]
 edition = "2021"
