@@ -1,12 +1,14 @@
 # Windows 剪贴板与钉钉验证
 
-Windows 打包流水线先运行 Rust 原生剪贴板往返测试，再构建 Tauri 安装包。也可单独运行 Actions 的 **Windows clipboard validation**，不触发 Release。自动测试通过不等于钉钉粘贴通过。
+正式发布会运行 Rust 原生剪贴板往返测试，测试失败会阻止发布。也可单独运行 Actions 的 **Windows clipboard validation**，不触发 Release。自动测试通过不等于钉钉粘贴通过。
 
 ## 自动验证
 
 Windows 安装 Node.js 22、Rust 和 Visual Studio C++ 构建工具后，在仓库根目录执行 `npm ci`、`npm run desktop:test:windows`。此命令会临时替换系统剪贴板，完成后恢复；请在不使用剪贴板时运行。失败时退出码非零。
 
 原生测试使用生产 Rust 剪贴板接口写入与读回，检查 HTML / 纯文本、CF_HTML 字节偏移及 PNG 表示。一般模块测试使用 `npm run desktop:test`；触及真实剪贴板的往返测试标记为 ignored，只由明确的原生验证命令执行。
+
+独立 Windows 验证只在 main 的原生剪贴板、图片处理、主窗口与托盘集成，以及相关构建或测试文件变化时自动运行；Mac 专用剪贴板、网页资源、package 和 Cargo 版本文件的变化不会触发。依赖或其他配置调整需要提前验证时，可手动运行；正式版本标签仍执行 Windows 验证。通用 JavaScript 与 SEO 检查由 **Check** 工作流和发布前置检查执行，不在独立 Windows 任务中重复运行；原生测试命令的 prehook 会准备桌面前端。
 
 Actions 的 `windows-clipboard-qa`（独立验证）或 `windows-clipboard-qa-release`（发布验证）附件包含原生测试日志、本说明及人工 Markdown 样例。日志不包含原剪贴板正文、图片或地址。自动验证判断系统格式传输和数据完整性，不能判断钉钉是否接受这些表示。旧 Electron 实现及其专用测试已移除，当前验证使用 Rust 原生接口。
 

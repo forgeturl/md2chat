@@ -4,12 +4,19 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src-tauri/**'
-      - 'assets/tauri-bridge.js'
-      - 'assets/app.js'
-      - 'assets/wecom-segments.js'
+      # Version bumps and web-only edits use Check; release tags still run Windows QA.
+      - 'src-tauri/src/clipboard/**'
+      - '!src-tauri/src/clipboard/macos.rs'
+      - 'src-tauri/src/lib.rs'
+      - 'src-tauri/src/shell.rs'
+      - 'src-tauri/src/images.rs'
+      - 'src-tauri/build.rs'
+      - 'src-tauri/tauri.conf.json'
+      - 'scripts/native.cjs'
+      - 'scripts/native-env.cjs'
+      - 'scripts/build-desktop.cjs'
       - 'scripts/inspect-windows-clipboard.ps1'
-      - 'package*.json'
+      - 'tests/windows-clipboard-workflow.test.cjs'
       - 'examples/windows-clipboard/**'
       - '.github/workflows/windows-clipboard.yml'
 permissions:
@@ -37,8 +44,6 @@ jobs:
           shared-key: build-x86_64-pc-windows-msvc
           save-if: false
       - run: npm ci
-      - run: npm run check
-      - run: node scripts/build-desktop.cjs
       - name: Test native Rust clipboard and CF_HTML reader
         shell: pwsh
         run: |

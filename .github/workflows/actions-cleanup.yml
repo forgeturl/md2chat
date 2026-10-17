@@ -1,11 +1,8 @@
 name: Cleanup workflow runs
 
 on:
-  workflow_run:
-    workflows: [Desktop release, Check, Windows clipboard validation]
-    types: [completed]
   schedule:
-    # Daily fallback at 02:23 Asia/Shanghai, including newly added workflows.
+    # Daily cleanup at 02:23 Asia/Shanghai, including newly added workflows.
     - cron: '23 18 * * *'
   workflow_dispatch:
 
@@ -23,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # workflow_run checks out the default branch, never the triggering run's code.
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:

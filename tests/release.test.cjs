@@ -125,20 +125,27 @@ test('desktop release compiles Mac architectures in parallel and packages one un
  assert.match(workflow.jobs.publish.if,/&&/);
  for(const name of ['CSC_LINK','CSC_KEY_PASSWORD','APPLE_SIGNING_IDENTITY','APPLE_ID','APPLE_APP_SPECIFIC_PASSWORD','APPLE_TEAM_ID','TAURI_SIGNING_PRIVATE_KEY','TAURI_UPDATER_PUBLIC_KEY'])assert.equal(macStep.env[name],'${{ secrets.'+name+' }}');
 });
-test('release preflight gates parallel validation and packaging while preserving manual installer checks',()=>{
+test('shared preflight checks gate both tag releases and manual installer builds',()=>{
  const workflow=readWorkflow('desktop-release.yml'),preflight=workflow.jobs.preflight;
- assertOnlyPushedVersionTags(preflight.if);
+ assert.equal(preflight.if,undefined,'manual builds must also pass the common checks');
+ assert.equal(preflight['runs-on'],'ubuntu-latest');
+ const commonChecks=Object.entries(workflow.jobs).flatMap(([name,job])=>(job.steps||[]).filter(step=>step.run==='npm run check').map(()=>name));
+ assert.deepEqual(commonChecks,['preflight'],'run the shared checks once, before native jobs');
+ const installIndex=preflight.steps.findIndex(step=>step.run==='npm ci --ignore-scripts');
+ assert(installIndex>=0&&installIndex<preflight.steps.findIndex(step=>step.run==='npm run check'));
  for(const name of ['validate','mac_binaries','windows_package','build-site'])assert.equal(workflow.jobs[name].needs,'preflight',name);
  for(const name of ['validate','mac_binaries','windows_package']){
   const expression=workflow.jobs[name].if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
   for(const [eventName,result,cancelled,expected] of [
    ['push','success',false,true],['push','failure',false,false],['push','skipped',false,false],
-   ['workflow_dispatch','skipped',false,true],['workflow_dispatch','skipped',true,false]
+   ['workflow_dispatch','success',false,true],['workflow_dispatch','failure',false,false],
+   ['workflow_dispatch','skipped',false,false],['workflow_dispatch','success',true,false]
   ])assert.equal(require('node:vm').runInNewContext(expression,{github:{event_name:eventName},needs:{preflight:{result}},cancelled:()=>cancelled}),expected,name+' '+eventName+' '+result);
  }
  assert.deepEqual([...workflow.jobs.mac_package.needs].sort(),['mac_binaries','preflight']);
  const macExpression=workflow.jobs.mac_package.if.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,'');
- assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'workflow_dispatch'},needs:{preflight:{result:'skipped'},mac_binaries:{result:'success'}},cancelled:()=>false}),true);
+ assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'workflow_dispatch'},needs:{preflight:{result:'success'},mac_binaries:{result:'success'}},cancelled:()=>false}),true);
+ assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'workflow_dispatch'},needs:{preflight:{result:'failure'},mac_binaries:{result:'success'}},cancelled:()=>false}),false);
  assert.equal(require('node:vm').runInNewContext(macExpression,{github:{event_name:'push'},needs:{preflight:{result:'success'},mac_binaries:{result:'failure'}},cancelled:()=>false}),false);
  for(const job of [preflight,workflow.jobs.publish]){
   const guard=job.steps.find(step=>step.run?.startsWith('npm run release:verify'));
@@ -146,6 +153,8 @@ test('release preflight gates parallel validation and packaging while preserving
   assert.equal(guard.run,'npm run release:verify -- --tag "$GITHUB_REF_NAME"');
   assert.equal(guard.env.GH_TOKEN,'${{ github.token }}');
  }
+ assertOnlyPushedVersionTags(preflight.steps.find(step=>step.run?.startsWith('npm run release:verify')).if);
+ assert(workflow.jobs.validate.steps.some(step=>step.run?.startsWith('cargo test --locked')),'retain native tests on both operating systems');
  const publish=workflow.jobs.publish.steps;
  assert(publish.findIndex(step=>step.run?.startsWith('npm run release:verify'))<publish.findIndex(step=>step.run?.includes('gh release create')));
 });
@@ -183,7 +192,7 @@ test('website artifacts are built from the pushed version tag before publishing 
  const checkout=site.steps.find(step=>step.uses?.startsWith('actions/checkout@'));
  assert(checkout);
  assert(!checkout.with?.ref||['${{ github.ref }}','${{ github.sha }}'].includes(checkout.with.ref),'website must use the release tag rather than main');
- for(const command of ['npm ci --ignore-scripts','npm run check','npm run build'])assert(site.steps.some(step=>step.run===command),command);
+ for(const command of ['npm ci --ignore-scripts','npm run build'])assert(site.steps.some(step=>step.run===command),command);
  const upload=site.steps.find(step=>step.uses?.startsWith('actions/upload-pages-artifact@'));
  assert(upload);
  assert.equal(upload.with.path,'dist');
@@ -228,8 +237,9 @@ test('Pages deployment gate accepts Latest, skips older versions, and fails clos
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
-test('workflow cleanup follows the renamed check workflow and desktop releases',()=>{
- const cleanup=readWorkflow('actions-cleanup.yml'),names=cleanup.on.workflow_run.workflows;
- for(const file of ['pages.yml','desktop-release.yml'])assert(names.includes(readWorkflow(file).name));
- assert(!names.includes('Check and deploy Pages'));
+test('workflow cleanup runs daily or manually without spawning after every check or release',()=>{
+ const cleanup=readWorkflow('actions-cleanup.yml');
+ assert.deepEqual(Object.keys(cleanup.on).sort(),['schedule','workflow_dispatch']);
+ assert.deepEqual(cleanup.on.schedule,[{cron:'23 18 * * *'}]);
+ assert(cleanup.jobs.cleanup.steps.some(step=>step.run==='node scripts/cleanup-actions.cjs --keep 10 --delete'));
 });

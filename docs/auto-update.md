@@ -42,7 +42,7 @@ Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺�
 
 构建脚本统一产物名称。发布任务先用配对公钥验证每个更新包的 Minisign 内容签名和受信注释签名，再生成 `latest.json`。清单版本、平台集合、版本固定下载 URL、签名与真实文件必须一致，之后才计算校验值并发布 Release。更新源固定为 `forgeturl/md2chat`，没有用户配置下载源和客户端 GitHub token。
 
-Mac 与 Windows 构建任务均安装 Rust 并执行原生模块测试；Windows 另运行临时写入并恢复剪贴板的原生往返测试。CI 通过不能证明聊天客户端接受相应格式，人工步骤见 [Windows 剪贴板验证](windows-clipboard-qa.md)。
+正式发布与手动测试包均先在 Ubuntu 执行一次完整 JavaScript、SEO 和工作流检查，通过后再并行启动平台任务，官网构建不重复公共检查。Mac 与 Windows 均保留 Rust 原生模块测试；Windows 另运行临时写入并恢复剪贴板的原生往返测试。独立 Windows 验证只对原生剪贴板及相关执行代码变更自动触发，或由用户手动运行。CI 通过不能证明聊天客户端接受相应格式，人工步骤见 [Windows 剪贴板验证](windows-clipboard-qa.md)。
 
 手动运行 `Desktop release` 使用 `--test-build`，只保留 DMG / EXE 构建产物，不发布或部署。此模式无需 Tauri updater 密钥，关闭更新产物生成并清空内嵌更新公钥，因此测试包禁用应用内更新；Mac 仍使用 Developer ID 签名并验证 App / DMG 公证。GitHub Actions 的标签构建禁止此模式，正式构建仍要求完整 updater 密钥和资产校验。版本标签构建同版本官网与安装包；全部成功后发布并设为 Latest，再部署官网。官网部署失败保留已发布安装包，旧版本不再是 Latest 时跳过部署。产物保留 3 天。
 

@@ -11,21 +11,25 @@ concurrency:
   cancel-in-progress: false
 jobs:
   preflight:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+          cache: npm
       - name: Verify release version and notes before building
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: npm run release:verify -- --tag "$GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ github.token }}
+      - run: npm ci --ignore-scripts
+      - name: Check shared JavaScript, SEO and workflow contracts once
+        run: npm run check
   validate:
     needs: preflight
-    # Validation and packaging start together after tag preflight.
-    if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    # Validation and packaging start together after the shared checks.
+    if: ${{ !cancelled() && needs.preflight.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +57,6 @@ jobs:
           shared-key: build-${{ matrix.target }}
           save-if: false
       - run: npm ci
-      - run: npm run check
       - run: node scripts/build-desktop.cjs
       - name: Test native desktop modules
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
@@ -77,7 +80,7 @@ jobs:
             examples/windows-clipboard/
   mac_binaries:
     needs: preflight
-    if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !cancelled() && needs.preflight.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -122,7 +125,7 @@ jobs:
           path: src-tauri/target/${{ matrix.target }}/release/md2chat
   mac_package:
     needs: [preflight, mac_binaries]
-    if: ${{ !cancelled() && needs.mac_binaries.result == 'success' && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !cancelled() && needs.mac_binaries.result == 'success' && needs.preflight.result == 'success' }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
@@ -185,7 +188,7 @@ jobs:
             release/*.sig
   windows_package:
     needs: preflight
-    if: ${{ !cancelled() && (needs.preflight.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ !cancelled() && needs.preflight.result == 'success' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -229,7 +232,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run check
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
         with:
