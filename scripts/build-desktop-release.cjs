@@ -176,31 +176,75 @@ function writeCertificateArchive(value, directory) {
  }
 }
 
+function dmgBuildEnv(env) {
+ const allowed = ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LC_ALL', 'LC_CTYPE',
+  'USER', 'LOGNAME', 'SHELL', '__CF_USER_TEXT_ENCODING', 'SYSTEM_VERSION_COMPAT', 'COMMAND_MODE'];
+ return Object.fromEntries(allowed.filter(name => typeof env[name] === 'string').map(name => [name, env[name]]));
+}
+
 function signMacDmg(command, env, identity, dmg) {
  let temporary;
  let keychain;
+ let originalKeychains;
+ let searchListChanged = false;
+ let failureStage;
+ let stage = 'reading the user keychain search list';
  const quiet = {stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1024 * 1024};
  try {
+  const searchList = command('security', ['list-keychains', '-d', 'user'], quiet);
+  originalKeychains = String(searchList?.stdout || '').split(/\r?\n/)
+   .map(line => line.trim().replace(/^"(.*)"$/, '$1')).filter(Boolean);
   temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-dmg-signing-'));
   fs.chmodSync(temporary, 0o700);
   const certificate = writeCertificateArchive(env.CSC_LINK, temporary);
-  keychain = path.join(temporary, 'signing.keychain-db');
+  // macOS keychain services and codesign expect user keychains under this
+  // directory. Keep only the P12 in the private temporary directory.
+  keychain = path.join(os.homedir(), 'Library', 'Keychains',
+   'md2chat-' + randomBytes(16).toString('hex') + '.keychain-db');
   const password = randomBytes(32).toString('hex');
+  stage = 'creating the temporary keychain';
   command('security', ['create-keychain', '-p', password, keychain], quiet);
+  stage = 'unlocking the temporary keychain';
   command('security', ['unlock-keychain', '-p', password, keychain], quiet);
+  stage = 'importing the signing certificate';
   command('security', ['import', certificate, '-f', 'pkcs12', '-t', 'agg', '-k', keychain, '-P', env.CSC_KEY_PASSWORD,
    '-T', '/usr/bin/codesign'], quiet);
+  stage = 'setting the temporary keychain timeout';
   command('security', ['set-keychain-settings', '-t', '3600', '-u', keychain], quiet);
+  stage = 'authorizing codesign key access';
   command('security', ['set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s',
    '-k', password, keychain], quiet);
-  command('codesign', ['--force', '--sign', identity, '--keychain', keychain, '--timestamp', dmg]);
+  // codesign does not reliably resolve an identity from --keychain alone on
+  // GitHub macOS runners. Match Tauri's certificate flow by adding this
+  // short-lived keychain to the user search list for the signing operation.
+  stage = 'adding the temporary keychain to the search list';
+  // Restore even when security mutates the list and then reports a failure.
+  searchListChanged = true;
+  command('security', ['list-keychains', '-d', 'user', '-s', ...originalKeychains, keychain], quiet);
+  stage = 'signing the DMG';
+  command('codesign', ['--force', '--sign', identity, '--keychain', keychain, '--timestamp', dmg], quiet);
  } catch {
-  throw new Error('DMG signing failed; no release artifacts were copied');
+  failureStage = stage;
  } finally {
-  if (keychain) {
-   try { command('security', ['delete-keychain', keychain], {...quiet, allowFailure: true}); } catch {}
+  let cleanupFailed = false;
+  if (searchListChanged) {
+   try {
+    const result = command('security', ['list-keychains', '-d', 'user', '-s', ...originalKeychains],
+     {...quiet, allowFailure: true});
+    if (result?.status !== 0 || result.signal) cleanupFailed = true;
+   } catch { cleanupFailed = true; }
   }
-  if (temporary) fs.rmSync(temporary, {recursive: true, force: true});
+  if (keychain) {
+   try {
+    const result = command('security', ['delete-keychain', keychain], {...quiet, allowFailure: true});
+    if (result?.status !== 0 || result.signal) cleanupFailed = true;
+   } catch { cleanupFailed = true; }
+   try { fs.rmSync(keychain, {force: true}); } catch { cleanupFailed = true; }
+  }
+  try { if (temporary) fs.rmSync(temporary, {recursive: true, force: true}); } catch { cleanupFailed = true; }
+  if (failureStage) throw new Error('DMG signing failed during ' + failureStage +
+   (cleanupFailed ? ' and cleanup' : '') + '; no release artifacts were copied');
+  if (cleanupFailed) throw new Error('DMG signing cleanup failed; no release artifacts were copied');
  }
 }
 
@@ -272,7 +316,7 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
   requireNonemptyFile(path.join(root, 'desktop/dmg/background@2x.png'), 'Retina DMG background');
   fs.mkdirSync(dmgDirectory, {recursive: true});
   command(env.DMGBUILD_PYTHON?.trim() || 'python3', ['-m', 'dmgbuild', '-s', dmgSettings,
-   '-D', 'app=' + app, '-D', 'background=' + dmgBackground, 'md2chat', dmg]);
+   '-D', 'app=' + app, '-D', 'background=' + dmgBackground, 'md2chat', dmg], {env: dmgBuildEnv(buildEnv)});
   requireNonemptyFile(dmg, 'Mac DMG');
   // Tauri removes the temporary keychain created from APPLE_CERTIFICATE when
   // its process exits, so import the same P12 into a short-lived keychain for

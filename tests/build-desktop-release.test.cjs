@@ -26,13 +26,18 @@ function fixture(callback) {
   fs.copyFileSync(path.resolve(__dirname, '../desktop/dmg', name), path.join(dmgResources, name));
  }
  const signing = signingFixture();
- const env = {...Object.fromEntries(appleSecrets.map(name => [name, 'fixture'])), APPLE_SIGNING_IDENTITY: 'Developer ID Application: Test Team (0123456789)', TAURI_SIGNING_PRIVATE_KEY: 'not-used-in-test', TAURI_UPDATER_PUBLIC_KEY: signing.publicKey};
+ const env = {...Object.fromEntries(appleSecrets.map(name => [name, 'fixture'])), APPLE_SIGNING_IDENTITY: 'Developer ID Application: Test Team (0123456789)', TAURI_SIGNING_PRIVATE_KEY: 'not-used-in-test', TAURI_UPDATER_PUBLIC_KEY: signing.publicKey,
+  PATH: '/fixture/bin', HOME: root, TMPDIR: path.join(root, 'tmp'), LANG: 'en_US.UTF-8', GITHUB_TOKEN: 'private-fixture-token'};
  env.CSC_LINK = Buffer.from('fixture-p12').toString('base64');
  const calls = [];
  const guards = [];
+ const originalKeychains = [path.join(root, 'Login Keychain With Space.keychain-db'), '/Library/Keychains/System.keychain'];
  function run(command, args, options) {
   calls.push({command, args, options});
   if (command === 'openssl') return {stdout: developerCertificate};
+  if (command === 'security' && args[0] === 'list-keychains' && !args.includes('-s')) {
+   return {status: 0, stdout: originalKeychains.map(value => `    "${value}"`).join('\n') + '\n'};
+  }
   if (args[0] === 'notarytool') return {stdout: JSON.stringify({status: 'Accepted'})};
   if (args[0] === '-m' && args[1] === 'dmgbuild') {
    const dmg = args.at(-1);
@@ -59,10 +64,11 @@ function fixture(callback) {
    fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, data);
    if (updater && (name.endsWith('.gz') || name.endsWith('.exe'))) fs.writeFileSync(file + '.sig', signing.sign(data));
   }
+  return {status: 0};
  }
- try { callback({root, env, calls, guards, run}); } finally { fs.rmSync(root, {recursive: true, force: true}); }
+ try { callback({root, env, calls, guards, originalKeychains, run}); } finally { fs.rmSync(root, {recursive: true, force: true}); }
 }
-test('Mac release builds only the Tauri app, creates and signs the guided DMG, then notarizes it', () => fixture(({root, env, calls, guards, run}) => {
+test('Mac release builds only the Tauri app, creates and signs the guided DMG, then notarizes it', () => fixture(({root, env, calls, guards, originalKeychains, run}) => {
  const assets = buildRelease('mac', 'universal', {root, env, run});
  assert.deepEqual(assets, ['md2chat-mac-universal.dmg', 'md2chat-mac-universal.app.tar.gz', 'md2chat-mac-universal.app.tar.gz.sig']);
  const build = calls[0];
@@ -73,38 +79,54 @@ test('Mac release builds only the Tauri app, creates and signs the guided DMG, t
  assert.match(guards[0].source, /exec "\$MD2CHAT_REAL_XCRUN"/);
  assert(!guards[0].source.includes(env.APPLE_APP_SPECIFIC_PASSWORD)); assert(!fs.existsSync(guards[0].directory));
  assert.deepEqual(calls.slice(1).map(call => call.command), ['lipo', 'codesign', 'spctl', 'xcrun', 'python3',
-  'security', 'security', 'security', 'security', 'security', 'codesign', 'security', 'codesign', 'xcrun', 'xcrun', 'xcrun']);
+  'security', 'security', 'security', 'security', 'security', 'security', 'security', 'codesign', 'security', 'security',
+  'codesign', 'xcrun', 'xcrun', 'xcrun']);
  assert.deepEqual(calls[1].args.slice(-3), ['-verify_arch', 'arm64', 'x86_64']);
  const app = path.join(root, 'src-tauri/target/universal-apple-darwin/release/bundle/macos/md2chat.app');
  const dmg = path.join(root, 'src-tauri/target/universal-apple-darwin/release/bundle/dmg/md2chat.dmg');
  assert.deepEqual(calls[4].args, ['stapler', 'validate', app]);
  assert.deepEqual(calls[5].args, ['-m', 'dmgbuild', '-s', path.join(root, 'desktop/dmg/settings.py'),
   '-D', 'app=' + app, '-D', 'background=' + path.join(root, 'desktop/dmg/background.png'), 'md2chat', dmg]);
- const keychain = calls[6].args.at(-1), keychainPassword = calls[6].args[2];
- assert.deepEqual(calls[6].args, ['create-keychain', '-p', keychainPassword, keychain]);
- assert.deepEqual(calls[7].args, ['unlock-keychain', '-p', keychainPassword, keychain]);
- assert.deepEqual(calls[8].args, ['import', path.join(path.dirname(keychain), 'certificate.p12'),
+ const buildPath = calls[0].options.env.PATH.split(path.delimiter).slice(1).join(path.delimiter);
+ assert.deepEqual(calls[5].options.env, {PATH: buildPath, HOME: root,
+  TMPDIR: path.join(root, 'tmp'), LANG: 'en_US.UTF-8'});
+ for (const name of [...appleSecrets, 'APPLE_CERTIFICATE', 'APPLE_CERTIFICATE_PASSWORD', 'APPLE_PASSWORD',
+  'APPLE_SIGNING_IDENTITY', 'TAURI_SIGNING_PRIVATE_KEY', 'TAURI_SIGNING_PRIVATE_KEY_PASSWORD',
+  'TAURI_UPDATER_PUBLIC_KEY', 'GITHUB_TOKEN']) assert.equal(calls[5].options.env[name], undefined);
+ assert.deepEqual(calls[6].args, ['list-keychains', '-d', 'user']);
+ const keychain = calls[7].args.at(-1), keychainPassword = calls[7].args[2];
+ const certificate = calls[9].args[1];
+ assert.deepEqual(calls[7].args, ['create-keychain', '-p', keychainPassword, keychain]);
+ assert.deepEqual(calls[8].args, ['unlock-keychain', '-p', keychainPassword, keychain]);
+ assert.equal(path.basename(certificate), 'certificate.p12');
+ assert.deepEqual(calls[9].args, ['import', certificate,
   '-f', 'pkcs12', '-t', 'agg', '-k', keychain, '-P', env.CSC_KEY_PASSWORD, '-T', '/usr/bin/codesign']);
- assert.deepEqual(calls[9].args, ['set-keychain-settings', '-t', '3600', '-u', keychain]);
- assert.deepEqual(calls[10].args, ['set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s', '-k', keychainPassword, keychain]);
- for (const call of calls.slice(6, 11)) assert.deepEqual(call.options.stdio, ['ignore', 'pipe', 'pipe']);
- assert.deepEqual(calls[11].args, ['--force', '--sign', env.APPLE_SIGNING_IDENTITY, '--keychain', keychain, '--timestamp', dmg]);
- assert.deepEqual(calls[12].args, ['delete-keychain', keychain]);
- assert.equal(calls[12].options.allowFailure, true); assert(!fs.existsSync(path.dirname(keychain)));
- assert.deepEqual(calls[13].args, ['--verify', '--strict', dmg]);
- assert.deepEqual(calls[14].args, ['notarytool', 'submit', dmg, '--apple-id', env.APPLE_ID,
+ assert.deepEqual(calls[10].args, ['set-keychain-settings', '-t', '3600', '-u', keychain]);
+ assert.deepEqual(calls[11].args, ['set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s', '-k', keychainPassword, keychain]);
+ assert.deepEqual(calls[12].args, ['list-keychains', '-d', 'user', '-s', ...originalKeychains, keychain]);
+ assert.deepEqual(calls[13].args, ['--force', '--sign', env.APPLE_SIGNING_IDENTITY, '--keychain', keychain, '--timestamp', dmg]);
+ assert.deepEqual(calls[14].args, ['list-keychains', '-d', 'user', '-s', ...originalKeychains]);
+ assert.deepEqual(calls[15].args, ['delete-keychain', keychain]);
+ for (const call of calls.slice(6, 16)) assert.deepEqual(call.options.stdio, ['ignore', 'pipe', 'pipe']);
+ assert.equal(calls[14].options.allowFailure, true); assert.equal(calls[15].options.allowFailure, true);
+ assert.equal(path.dirname(keychain), path.join(os.homedir(), 'Library', 'Keychains'));
+ assert.match(path.basename(keychain), /^md2chat-[0-9a-f]{32}\.keychain-db$/);
+ assert(!fs.existsSync(path.dirname(certificate)));
+ assert.deepEqual(calls[16].args, ['--verify', '--strict', dmg]);
+ assert.deepEqual(calls[17].args, ['notarytool', 'submit', dmg, '--apple-id', env.APPLE_ID,
   '--password', env.APPLE_APP_SPECIFIC_PASSWORD, '--team-id', env.APPLE_TEAM_ID,
   '--wait', '--timeout', '30m', '--output-format', 'json']);
- assert.deepEqual(calls[14].options.stdio, ['ignore', 'pipe', 'pipe']);
- assert.equal(calls[14].options.encoding, 'utf8');
- assert.deepEqual(calls[15].args, ['stapler', 'staple', dmg]);
- assert.deepEqual(calls[16].args, ['stapler', 'validate', dmg]);
+ assert.deepEqual(calls[17].options.stdio, ['ignore', 'pipe', 'pipe']);
+ assert.equal(calls[17].options.encoding, 'utf8');
+ assert.deepEqual(calls[18].args, ['stapler', 'staple', dmg]);
+ assert.deepEqual(calls[19].args, ['stapler', 'validate', dmg]);
  for (const name of assets) assert(fs.statSync(path.join(root, 'release', name)).size);
 }));
-test('Mac DMG signing uses a private temporary keychain and cleans it after failure', () => fixture(({root, env, calls, run}) => {
+test('Mac DMG signing uses a private temporary keychain and cleans it after failure', () => fixture(({root, env, calls, originalKeychains, run}) => {
  const privateDiagnostic = 'private-codesign-diagnostic';
- let temporary, deleted = false;
+ let temporary, keychain, restored = false, deleted = false;
  assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'security' && args[0] === 'create-keychain') keychain = args.at(-1);
   if (command === 'security' && args[0] === 'import') {
    const certificate = args[1]; temporary = path.dirname(certificate);
    assert.equal(fs.readFileSync(certificate, 'utf8'), 'fixture-p12');
@@ -115,10 +137,57 @@ test('Mac DMG signing uses a private temporary keychain and cleans it after fail
    assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
   }
   if (command === 'codesign' && args.includes('--keychain')) throw new Error(privateDiagnostic);
+  if (command === 'security' && args[0] === 'list-keychains' && args.includes('-s') && !args.includes(keychain)) {
+   assert.deepEqual(args, ['list-keychains', '-d', 'user', '-s', ...originalKeychains]);
+   restored = true;
+  }
   if (command === 'security' && args[0] === 'delete-keychain') deleted = true;
   return run(command, args, options);
- }}), error => /DMG signing failed/.test(error.message) && !error.message.includes(privateDiagnostic));
- assert(temporary); assert.equal(deleted, true); assert(!fs.existsSync(temporary));
+ }}), error => /DMG signing failed during signing the DMG/.test(error.message) && !error.message.includes(privateDiagnostic));
+ assert(temporary); assert(keychain); assert.equal(restored, true); assert.equal(deleted, true); assert(!fs.existsSync(temporary));
+ assert(!calls.some(call => call.args[0] === 'notarytool'));
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('Mac DMG signing hides keychain search-list diagnostics and stops before creating credentials', () => fixture(({root, env, calls, run}) => {
+ const privateDiagnostic = 'private-keychain-search-list-diagnostic';
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'security' && args[0] === 'list-keychains' && !args.includes('-s')) throw new Error(privateDiagnostic);
+  return run(command, args, options);
+ }}), error => /DMG signing failed during reading the user keychain search list/.test(error.message) && !error.message.includes(privateDiagnostic));
+ assert(!calls.some(call => call.command === 'security' && call.args[0] === 'create-keychain'));
+ assert(!calls.some(call => call.args[0] === 'notarytool'));
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('Mac DMG signing restores the original search list after a partial update failure', () => fixture(({root, env, calls, originalKeychains, run}) => {
+ const privateDiagnostic = 'private-partial-search-list-diagnostic';
+ let keychain, restored = false, deleted = false;
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'security' && args[0] === 'create-keychain') keychain = args.at(-1);
+  if (command === 'security' && args[0] === 'list-keychains' && args.includes('-s')) {
+   if (args.includes(keychain)) throw new Error(privateDiagnostic);
+   assert.deepEqual(args, ['list-keychains', '-d', 'user', '-s', ...originalKeychains]);
+   restored = true;
+  }
+  if (command === 'security' && args[0] === 'delete-keychain') deleted = true;
+  return run(command, args, options);
+ }}), error => /DMG signing failed during adding the temporary keychain to the search list/.test(error.message) && !error.message.includes(privateDiagnostic));
+ assert(keychain); assert.equal(restored, true); assert.equal(deleted, true);
+ assert(!calls.some(call => call.command === 'codesign' && call.args.includes('--keychain')));
+ assert(!calls.some(call => call.args[0] === 'notarytool'));
+ assert(!fs.existsSync(path.join(root, 'release')));
+}));
+test('Mac DMG signing treats interrupted keychain cleanup as a release failure', () => fixture(({root, env, calls, run}) => {
+ let keychain, restored = false, deleted = false;
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (command === 'security' && args[0] === 'create-keychain') keychain = args.at(-1);
+  if (command === 'security' && args[0] === 'list-keychains' && args.includes('-s') && !args.includes(keychain)) {
+   restored = true;
+   return {status: null, signal: 'SIGTERM'};
+  }
+  if (command === 'security' && args[0] === 'delete-keychain') deleted = true;
+  return run(command, args, options);
+ }}), /DMG signing cleanup failed/);
+ assert(keychain); assert.equal(restored, true); assert.equal(deleted, true);
  assert(!calls.some(call => call.args[0] === 'notarytool'));
  assert(!fs.existsSync(path.join(root, 'release')));
 }));
