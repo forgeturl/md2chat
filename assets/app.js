@@ -6,7 +6,7 @@ const wecomSegments=WecomSegments.create({copySegment:segment=>{
 }});
 let copying=false,lastCopyTarget=null;
 const desktopRequired=b=>['dingtalk','feishu'].includes(b.dataset.copyTarget)&&!window.md2chatDesktop;
-function copyTargetNote(target){return target==='feishu'&&window.md2chatDesktop?.platform==='darwin'?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
+function copyTargetNote(target){return target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');

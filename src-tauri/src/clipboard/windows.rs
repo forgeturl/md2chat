@@ -192,6 +192,7 @@ fn format_name(id: u32) -> String {
             match name.as_str() {
                 "HTML Format" => "text/html".into(),
                 "PNG" => "image/png".into(),
+                "Chromium Web Custom MIME Data Format" => super::super::payload::FEISHU.into(),
                 _ => name,
             }
         },
@@ -431,6 +432,7 @@ fn write_owned_with_owner(
                 let native = match name.as_str() {
                     "text/html" => "HTML Format",
                     "image/png" => "PNG",
+                    super::super::payload::FEISHU => "Chromium Web Custom MIME Data Format",
                     other => other,
                 };
                 let id = unsafe { RegisterClipboardFormatW(wide(native).as_ptr()) };

@@ -49,7 +49,7 @@ fn copy_inner(
         ("text/html".into(), payload.html.into_bytes()),
     ];
     let native = cfg!(target_os = "macos") && target == "dingtalk";
-    let feishu_native = cfg!(target_os = "macos") && target == "feishu";
+    let feishu_native = cfg!(any(target_os = "macos", windows)) && target == "feishu";
     if native {
         formats.push((
             payload::DINGTALK.into(),
@@ -68,7 +68,7 @@ fn copy_inner(
     native::write_checked(formats, sequence)?;
     // Prune only after replacing the previous clipboard, whose private fragments
     // may still refer to the cache. Current files have a fresh modification time.
-    if cfg!(windows) && target == "dingtalk" || feishu_native {
+    if feishu_native {
         let _ = cache::prune(directory);
     }
     Ok(
@@ -173,7 +173,9 @@ fn source(snapshot: native::Snapshot, directory: &Path) -> Result<Value, String>
             if total > payload::MAX_TOTAL {
                 return Err("剪贴板图文过大，请分段转换。".into());
             }
-            if name.starts_with("text/") && bytes.len() > payload::MAX_TEXT {
+            // Embedded image data counts toward MAX_TOTAL, not the plain-text
+            // limit. Windows DingTalk carries PNGs in both HTML representations.
+            if name == "text/plain" && bytes.len() > payload::MAX_TEXT {
                 return Err("剪贴板文字过长，请分段转换。".into());
             }
             if name.starts_with("image/")
@@ -372,11 +374,13 @@ fn roundtrip_formats() -> Vec<(String, Vec<u8>)> {
         ),
         ("image/png".into(), png.into_inner()),
     ];
-    // The application writes these chat formats on macOS only. Read them back
-    // without accepting a generic HTML fallback as a successful native write.
+    // Read chat formats back without accepting generic HTML as a native write.
     #[cfg(target_os = "macos")]
     {
         formats.push((payload::DINGTALK.into(),json!({"contents":[{"type":"markdown","text":{"items":[{"type":"text","data":{"text":"test"}}]}}]}).to_string().into_bytes()));
+    }
+    #[cfg(any(target_os = "macos", windows))]
+    {
         formats.push((
             payload::FEISHU.into(),
             payload::encode_feishu(&json!({"deltas":{"0":{"ops":[{"insert":"中文😀"}]}}})).unwrap(),
@@ -415,6 +419,43 @@ mod tests {
             sequence: 1,
         };
         assert!(source(snapshot, &std::env::temp_dir()).is_err());
+    }
+    #[test]
+    fn windows_dingtalk_large_image_can_be_read_back() {
+        let mut state = 1u32;
+        let pixels = (0..1024 * 1024 * 4)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 17;
+                state ^= state << 5;
+                state as u8
+            })
+            .collect::<Vec<_>>();
+        let image = image::DynamicImage::ImageRgba8(
+            image::RgbaImage::from_raw(1024, 1024, pixels).unwrap(),
+        );
+        let png = crate::images::encode_png(&image).unwrap();
+        assert!(png.len() < crate::images::MAX_IMAGE_BYTES);
+        let src = format!("data:image/png;base64,{}", STANDARD.encode(png));
+        let payload = payload::build(
+            vec![json!({"type":"image","src":src})],
+            "dingtalk",
+            &std::env::temp_dir(),
+            true,
+            false,
+        )
+        .unwrap();
+        assert!(payload.html.len() > payload::MAX_TEXT);
+        let snapshot = native::Snapshot {
+            items: vec![vec![native::Format {
+                name: "text/html".into(),
+                size: payload.html.len(),
+                bytes: Some(payload.html.as_bytes().to_vec()),
+            }]],
+            sequence: 1,
+        };
+        let read = source(snapshot, &std::env::temp_dir()).unwrap();
+        assert_eq!(read["content"][0]["html"], payload.html);
     }
     /// Run only on an isolated runner, or explicitly with a restorable clipboard.
     /// This proves native bytes round trip; chat-client paste acceptance is separate.

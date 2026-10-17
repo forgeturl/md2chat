@@ -51,7 +51,9 @@ v0.6.4 按上述结构改为仅 HTML、本机 PNG 文件引用。用户反馈钉
 
 - Windows 使用与 Chromium 一致的 CF_HTML 封装，同时保留纯文本回退，避免 HTML 未导入时没有文字。纯文本中的 `[图片]` 仅是占位，不能算图片粘贴成功；钉钉客户端效果仍需真机验证。Mac 钉钉继续使用原生私有格式。
 - 「剪贴板排查」增加无图 HTML-only 与当前 HTML 原样重写两个显式实验，缩小入口、传输封装、结构和图源之间的差异。重写保持读取到的 HTML 字符串，不承诺原生 CF_HTML 字节相同。不上传、存盘或请求 HTML 引用的图片。
-- 原图已有合规 HTTPS 地址且能正常读取时仍保留原来源；表格、代码、公式和图表使用本机 PNG 缓存，没有自动上传或创建公网地址。Windows 下次成功复制钉钉内容后清理超过 7 天的旧图；编辑器/托盘只回读本应用缓存内内容校验通过的 PNG。
+- Windows 钉钉图文现在在 `article[data-clipboard-cangjie]` 中携带 JSON 节点树（`root`、`copyFrom: im-native`），图片使用规范化后的内嵌 PNG，并保留普通 HTML 和纯文本回退。此路径不再依赖本机缓存文件或远程图片地址。Mac 钉钉仍使用原生私有格式和本机缓存。
+- 本机排查样本包含两张内嵌图片，保存于上述 JSON 属性中；只统计普通 HTML 的 `<img>` 标签会误报为零张。将该样本仅保留 HTML 重写后，用户确认文字和两张图片仍可正常粘回 Windows 钉钉，说明此样本不依赖 `dingtext` 等附加格式。该结果验证了样本重写，生成的新内容仍需单独验收。
+- 本地构建反馈表明，钉钉 JSON 的文字叶节点内嵌 `strong`、`em` 等 HTML 节点会丢失整段带样式的文字，包括标题。现改为直接字符串，优先保留完整文字；钉钉 JSON 中暂不附加未经验证的强调样式，标准 HTML 副本仍保留粗体、斜体与删除线。
 - Windows 打包流程已改为 Rust 原生剪贴板读写与 CF_HTML 字节校验；另有独立验证工作流和原生测试日志。它验证应用写入和系统读回，不代替钉钉粘贴验收。完整用例与人工结果模板见 [Windows 验证步骤](windows-clipboard-qa.md)。
 
 历史 Electron 版的依赖源码：[Electron 44.8.0 ClipboardItem](https://github.com/electron/electron/blob/v44.8.0/shell/browser/api/electron_api_clipboard_item.cc#L493-L498) 将 HTML 交给 WriteHTML；其 Chromium 152.0.7977.167 在 [Windows 写入路径](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_win.cc#L1050-L1058)调用 [HtmlToCFHtml](https://github.com/chromium/chromium/blob/152.0.7977.167/ui/base/clipboard/clipboard_util_win.cc#L1256-L1372)，自动生成头部、UTF-8 字节偏移与片段标记。当前 Tauri 版由 Rust 原生层生成 CF_HTML，并测试 UTF-8 字节偏移；不能把解码 HTML 中的 `StartFragment 无` 当成原生封装缺失的证据。
@@ -134,3 +136,11 @@ Windows 企微、其他版本和消息发送后的最终效果均未验证，不
 标准 HTML + 纯文本在当前飞书客户端中只保留文字和强调样式，两张内嵌 PNG 丢失。改为飞书原生编辑 fragment，加标准 HTML 与纯文本后，用户在展开的富文本输入框一次粘贴「前文 + 蓝图 + 中间文字 + 绿图 + 后文」，并提供发送后截图确认顺序、两张图片和粗体、斜体、删除线完整。
 
 Mac 桌面版主窗口与托盘采用该格式，图片使用本机 PNG 缓存及新 UUID，不依赖账号配置。普通输入框可能丢图，必须先展开富文本输入框。此证据限本机客户端；网页版已禁用飞书复制，Windows 飞书仍待验证；客户端产品版本号尚未从关于界面确认。详细用法、格式与自动传输测试见 [Mac 飞书适配](feishu-mac.md)。
+
+## Windows 飞书编辑器样本与适配
+
+在 Windows 飞书 7.51.0.45 中，用户反馈标准 HTML 粘贴仅有文字，图片缺失。消息正文复制只提供 HTML，图片带 `data-lark-image-uri` 等内部引用；从有图的富文本编辑区复制则额外提供 `Chromium Web Custom MIME Data Format`。其 Chromium Pickle 包含 `application/x-editor-kit-business-key = IM_CHAT` 及 `application/x-editor-kit-fragment`，图片位于 `deltas` 的 image 节点中。
+
+Windows 生成路径现复用编辑 fragment 和本机 PNG 缓存，并将应用内部的 `org.chromium.web-custom-data` 名称映射到上述 Windows 原生格式；读取时反向映射，以便识别和保护仍被剪贴板引用的缓存。界面提示先展开飞书富文本输入框。样本中的已上传图片标识不进入生成内容，生成内容使用新 UUID 和本机图片路径。
+
+本次只确认了剪贴板结构并修改源码。按用户要求未运行修复后的测试，也未打包或完成新构建的客户端粘贴验收；不能将样本读取视为修复已验证。

@@ -163,7 +163,8 @@ pub fn resolve_with(
     directory: &Path,
     mut on_image: impl FnMut(&[u8], &str) -> Result<(), String>,
 ) -> Result<String, String> {
-    if html.len() > super::payload::MAX_TEXT {
+    // HTML can include embedded PNGs, so retain the overall clipboard limit.
+    if html.len() > super::payload::MAX_TOTAL {
         return Err("剪贴板 HTML 过长，请分段转换。".into());
     }
     let prefix = super::payload::escape(

@@ -24,7 +24,7 @@ Mac 飞书复制在同一个剪贴板 item 中写入标准 `text/html`、`text/p
 
 fragment 中图片使用新 UUID、`INITIAL` 状态和应用自己生成的 PNG 缓存绝对路径，让飞书按正常图片上传流程处理。不会复用账号 ID、已上传图片 token，或读取飞书账号数据。
 
-成功写入替换上一份剪贴板后才清理超过 7 天的旧缓存；启动时若检测到原生图文相关表示则暂缓清理，保护仍可能被剪贴板引用的图片。HTML 备用副本仍使用内嵌 PNG，网页和 Windows 不获得 Mac 私有格式。
+成功写入替换上一份剪贴板后才清理超过 7 天的旧缓存；启动时若检测到原生图文相关表示则暂缓清理，保护仍可能被剪贴板引用的图片。HTML 备用副本仍使用内嵌 PNG。网页不提供该私有格式；Windows 现复用 fragment，通过 `Chromium Web Custom MIME Data Format` 传递，尚待新构建验收，见 [Windows 样本与适配](compatibility.md#windows-飞书编辑器样本与适配)。
 
 ## 自动检查
 
