@@ -322,7 +322,7 @@ async function updatePreview(){
  button.disabled=true;
  if(source===cachedSource&&cachedPayload){button.disabled=false;return cachedPayload;}
  cachedPayload=null;
- if(!source.trim()){message.innerHTML='<p style="color:#718096">粘贴图文或 Markdown 后，这里会显示完整预览。</p>';cachedSource=null;document.getElementById('conversion-info').textContent='';return null;}
+ if(!source.trim()){message.innerHTML='<p style="color:#718096">'+escapeHtml(window.md2chatI18n?.t('粘贴图文或 Markdown 后，这里会显示完整预览。') || '粘贴图文或 Markdown 后，这里会显示完整预览。')+'</p>';cachedSource=null;document.getElementById('conversion-info').textContent='';return null;}
  try{
   const payload=await buildPayload(source);
   if(version!==renderVersion)return null;
@@ -491,3 +491,6 @@ async function convertClipboardContent(content,target){
 }
 window.md2chatDesktop?.onWecomSegments?.(parts=>wecomSegments.open(parts));
 window.md2chatDesktop?.onConvertClipboard?.(convertClipboardContent);
+
+// Localize only the empty UI hint; a language change never rewrites user content.
+window.addEventListener?.('md2chat:language', () => { if (!serializeInput().trim()) void updatePreview(); });

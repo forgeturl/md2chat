@@ -8,11 +8,11 @@
 
 Marked is bundled locally. Loading md2chat does not contact a CDN.
 
-- **Mermaid 12.1.0**, MIT License.
+- **Mermaid 12.2.0**, MIT License.
   - Upstream: https://github.com/mermaid-js/mermaid
   - Build: `assets/vendor/mermaid/mermaid.min.js`
   - License: `assets/vendor/mermaid/LICENSE`; bundled dependency notices are retained in the build.
-  - Source: https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js
+  - Source: https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.min.js
 
 - **MathJax 3.2.2**, Apache License 2.0.
   - Upstream: https://github.com/mathjax/MathJax

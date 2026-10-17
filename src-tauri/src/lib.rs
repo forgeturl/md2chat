@@ -1,5 +1,6 @@
 mod clipboard;
 mod images;
+mod locale;
 mod preferences;
 mod shell;
 mod updates;
@@ -171,7 +172,7 @@ fn desktop_open_external(
 }
 
 #[tauri::command]
-fn desktop_smoke_result(
+async fn desktop_smoke_result(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
     mut report: Value,
@@ -179,6 +180,10 @@ fn desktop_smoke_result(
     trusted(&window)?;
     if !std::env::args().any(|arg| arg == "--smoke") {
         return Err("未启用本机验证模式".into());
+    }
+    #[cfg(debug_assertions)]
+    if report["status"] == "passed" {
+        report["shell"] = shell::smoke_check(app.clone()).await?;
     }
     let path = std::env::var("MD2CHAT_SMOKE_REPORT")
         .map(std::path::PathBuf::from)
@@ -446,6 +451,8 @@ pub fn run() {
             conversion_ready,
             conversion_take,
             conversion_result,
+            locale::locale_get,
+            locale::locale_set,
             preferences::preferences_get,
             preferences::preferences_set,
             updates::update_status,
@@ -489,6 +496,9 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("无法启动 md2chat")
         .run(|app, event| match event {
+            tauri::RunEvent::ExitRequested { code, api, .. } => {
+                shell::handle_exit_request(app, code, &api)
+            }
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => shell::show_window(app),
             _ => {}

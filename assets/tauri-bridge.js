@@ -78,6 +78,10 @@
  Object.defineProperty(window, 'md2chatPreferences', {value: Object.freeze({
   get: () => invoke('preferences_get'), set: patch => invoke('preferences_set', {patch})
  })});
+ Object.defineProperty(window, 'md2chatLocale', {value: Object.freeze({
+  get: () => invoke('locale_get'), set: (preference, detected) => invoke('locale_set', {preference, detected}),
+  subscribe: callback => subscribe('md2chat:locale', callback)
+ })});
  document.addEventListener('click', event => {
   const anchor = event.target?.closest?.('a[href]');
   if (!anchor) return;

@@ -16,11 +16,22 @@ pub(crate) const TARGETS: [&str; 5] = ["wechat", "dingtalk", "feishu", "wecom", 
 const MAX_FILE_BYTES: u64 = 64 * 1024;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
 pub(crate) struct Preferences {
     pub pinned_targets: Vec<String>,
     pub show_tray_label: bool,
+    pub language: String,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            pinned_targets: Vec::new(),
+            show_tray_label: false,
+            language: "auto".into(),
+        }
+    }
 }
 
 struct PreferencesState {
@@ -86,7 +97,9 @@ fn read_preferences(file: &Path) -> io::Result<Preferences> {
         None
     };
     if let Some(saved) = saved {
-        if validate_targets(&json!(saved.pinned_targets)).is_ok() {
+        if validate_targets(&json!(saved.pinned_targets)).is_ok()
+            && crate::locale::valid(&saved.language)
+        {
             return Ok(saved);
         }
     }
@@ -178,6 +191,18 @@ pub(crate) fn current(app: &AppHandle) -> Preferences {
         .lock()
         .map(|value| value.clone())
         .unwrap_or_default()
+}
+
+pub(crate) fn save_language(app: &AppHandle, language: &str) -> Result<(), String> {
+    let state = app.state::<PreferencesState>();
+    let mut current = state.value.lock().map_err(|_| "Unable to save language")?;
+    if current.language != language {
+        let mut next = current.clone();
+        next.language = language.to_owned();
+        write_preferences(&state.file, &next).map_err(|_| "Unable to save language")?;
+        *current = next;
+    }
+    Ok(())
 }
 
 fn platform() -> &'static str {
@@ -362,6 +387,7 @@ mod tests {
         let expected = Preferences {
             pinned_targets: vec!["wecom".into(), "dingtalk".into()],
             show_tray_label: true,
+            language: "ja".into(),
         };
         write_preferences(&file, &expected).unwrap();
         assert_eq!(read_preferences(&file).unwrap(), expected);
@@ -375,6 +401,15 @@ mod tests {
             );
         }
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn old_preferences_keep_their_settings_and_default_to_auto_language() {
+        let value: Preferences =
+            serde_json::from_str(r#"{"pinnedTargets":["email"],"showTrayLabel":true}"#).unwrap();
+        assert_eq!(value.language, "auto");
+        assert_eq!(value.pinned_targets, ["email"]);
+        assert!(value.show_tray_label);
     }
 
     #[test]

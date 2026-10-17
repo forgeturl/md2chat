@@ -6,6 +6,9 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'">
   <title>首选项 · md2chat</title>
   <link rel="stylesheet" href="../assets/preferences.css">
+  <script src="../assets/tauri-bridge.js" defer></script>
+  <script src="../assets/i18n-data.js" defer></script>
+  <script src="../assets/i18n.js" defer></script>
   <script src="../assets/preferences.js" defer></script>
 </head>
 <body>
@@ -16,6 +19,7 @@
     </header>
 
     <main id="preferences-content" aria-busy="true">
+      <section class="preferences-section"><label class="setting-row"><span class="setting-title">语言</span><select class="language-select" data-locale-select aria-label="语言"></select></label><p data-locale-status role="status"></p></section>
       <section class="preferences-section" aria-labelledby="tray-formats-title">
         <h2 id="tray-formats-title">托盘常用格式</h2>
         <p id="pin-description" class="section-description">勾选常用格式，按列表顺序显示在托盘菜单顶部。</p>

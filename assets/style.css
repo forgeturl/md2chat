@@ -103,3 +103,8 @@ button:focus-visible,a:focus-visible,summary:focus-visible,#message:focus-visibl
 
 
 @media(max-width:360px){body:not(.desktop-app) .platform-actions button{flex-direction:column;gap:2px}}
+.language-select { max-width:155px; min-height:32px; padding:5px 22px 5px 8px; border:1px solid #d4dce8; border-radius:7px; background:#fff; color:#263348; font:inherit; font-size:13px; }
+.language-control { display:inline-flex; align-items:center; }
+.locale-status { font-size:13px; color:#b42318; margin:0 12px; }
+.locale-status:empty { display:none; }
+@media(max-width:760px) { .utility-actions { flex-wrap:wrap; } .language-select { max-width:130px; } }

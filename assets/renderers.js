@@ -14,7 +14,13 @@
  }
  async function diagramEngine(){
   await load('mermaid/mermaid.min.js');
-  root.mermaid.initialize({startOnLoad:false,securityLevel:'strict',suppressErrorRendering:true,theme:'default',htmlLabels:false,fontFamily:'Arial, sans-serif',maxTextSize:30000,maxEdges:300,flowchart:{htmlLabels:false,useMaxWidth:false},secure:['secure','securityLevel','startOnLoad','maxTextSize','maxEdges','htmlLabels','flowchart','themeCSS']});
+  root.mermaid.initialize({
+   startOnLoad:false,securityLevel:'strict',suppressErrorRendering:true,theme:'base',htmlLabels:false,fontFamily:'Arial, sans-serif',maxTextSize:30000,maxEdges:300,
+   flowchart:{htmlLabels:false,useMaxWidth:false},
+   themeVariables:{fontFamily:'Arial, sans-serif',fontSize:'16px',primaryColor:'#eff6ff',primaryTextColor:'#1e293b',primaryBorderColor:'#94a3b8',lineColor:'#64748b',secondaryColor:'#f1f5f9',tertiaryColor:'#ffffff',clusterBkg:'#f8fafc',clusterBorder:'#cbd5e1',edgeLabelBackground:'#ffffff',mainBkg:'#eff6ff',nodeBorder:'#94a3b8',textColor:'#1e293b'},
+   themeCSS:'.node rect,.node polygon,.cluster rect{filter:none!important}.node rect{rx:6px;ry:6px}.cluster rect{rx:8px;ry:8px}',
+   secure:['secure','securityLevel','startOnLoad','maxTextSize','maxEdges','htmlLabels','flowchart','themeCSS']
+  });
   return root.mermaid;
  }
  function cleanSVG(svg){

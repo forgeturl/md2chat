@@ -9,3 +9,6 @@ for (const directory of ['assets', 'scripts']) {
   if (result.status !== 0) process.exit(result.status || 1);
  }
 }
+
+const locales = spawnSync(process.execPath, [path.join(root, 'scripts/generate-locales.cjs'), '--check'], {stdio:'inherit'});
+if (locales.status !== 0) process.exit(locales.status || 1);

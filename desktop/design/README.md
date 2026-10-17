@@ -1,7 +1,5 @@
 # App icon
 
-Created with the built-in Image Gen tool on 2026-10-16. `app-icon.png` is the original generated design, including its alpha channel. `../icon.py` only resizes and packages it into ICNS, ICO, application PNG and favicon PNG; it does not redraw the artwork.
+The website and desktop application use the existing tray symbol from `../../assets/menu-icons/tray.svg`: a blue chat bubble with the white Markdown M and download arrow.
 
-Prompt:
-
-> Use case: logo-brand. Asset type: production desktop application icon for md2chat, a Markdown-to-chat tool for macOS and Windows. Design ONE polished, beautifully balanced icon, no presentation sheet. Concept: a clean white document/chat bubble with two short horizontal text lines and a tiny square image tile, gently transitioning into a single speech bubble silhouette. Strong simple geometry, soft rounded corners, crisp readable at small dock sizes. App tile: rich indigo to cobalt subtle gradient rounded square, with restrained dimensional depth and refined edge lighting. Warm white central glyph, one tiny mint accent for the image tile. Face-on, centered, 1024x1024 square composition, icon fills about 84% of canvas with transparent outside corners and margins. No letters, no words, no arrows, no badges, no watermark, no mockup, no background scene. The result must be an actual usable app icon with real alpha transparency, not a checkerboard illustration.
+`app-icon.png` is a transparent 1024px rasterization of that SVG. `../icon.py` resizes and packages it as ICNS, ICO, the application PNG and favicon PNG. Keep the tray SVG as the source of truth when updating the artwork.

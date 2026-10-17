@@ -61,6 +61,7 @@ console.log(greeting);
 <div class="app-brand"><img class="app-brand-image" src="./assets/app-icon.png" width="28" height="28" alt=""><h1>贴贴 Markdown</h1><span class="brand-tagline">让 Markdown 更适合聊天。</span></div>
 <span class="local-status" title="无需登录，正文在本机处理；远程图片仍会从原网址加载。"><span class="status-dot"></span>内容仅在本机处理</span>
 <nav id="utility-actions" class="utility-actions" aria-label="应用与帮助">
+<label class="language-control"><select class="language-select" data-locale-select aria-label="语言"></select></label>
 <a id="back-home" href="./">返回首页</a>
 <button type="button" data-open-dialog="help-dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1zM12 5v15"/></svg>使用说明</button>
 <button type="button" data-open-dialog="diagnostic-dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H5v16h14V5h-4M9 3h6v4H9zM8 12h8M8 16h5"/></svg>剪贴板排查</button>
@@ -89,8 +90,10 @@ console.log(greeting);
 <pre id="diagnostic-report" class="diagnostic-report">尚无样本。</pre><div id="clipboard-images"></div>
 </section></div>
 </dialog>
+<p class="locale-status" data-locale-status role="status"></p>
 <div id="copy-notice" class="copy-notice" role="status" aria-live="polite" aria-atomic="true"></div>
 <script src="./assets/tauri-bridge.js?v=0.6.12"></script>
+<script src="./assets/i18n-data.js?v=0.6.12"></script><script src="./assets/i18n.js?v=0.6.12"></script><script src="./assets/demo.js?v=0.6.12"></script><script src="./assets/editor-example.js?v=0.6.12"></script>
 <script src="./assets/vendor/marked.js?v=0.6.12"></script><script src="./assets/chat-markdown.js?v=0.6.12"></script><script src="./assets/code-images.js?v=0.6.12"></script><script src="./assets/renderers.js?v=0.6.12"></script><script src="./assets/chat-clipboard.js?v=0.6.12"></script><script src="./assets/chat-targets.js?v=0.6.12"></script><script src="./assets/clipboard-source.js?v=0.6.12"></script><script src="./assets/clipboard-image.js?v=0.6.12"></script><script src="./assets/wecom-segments.js?v=0.6.12"></script><script src="./assets/clipboard-diagnostics.js?v=0.6.12"></script><script src="./assets/app.js?v=0.6.12"></script>
 <script src="./assets/workbench.js?v=0.6.12"></script>
 <script src="./assets/updates.js?v=0.6.12"></script>
