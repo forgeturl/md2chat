@@ -13,9 +13,11 @@ function buildDesktop(root = path.resolve(__dirname, '..'), output = path.join(r
   return policy.includes('ipc:') ? policy : policy + ' ipc: http://ipc.localhost';
  });
  fs.writeFileSync(path.join(output, 'editor.html'), allowIpc(fs.readFileSync(path.join(root, 'editor.html'), 'utf8')));
- const preferences = fs.readFileSync(path.join(root, 'desktop/preferences.html'), 'utf8')
-  .replaceAll('../assets/', './assets/');
- fs.writeFileSync(path.join(output, 'preferences.html'), allowIpc(preferences));
+ for (const page of ['preferences', 'tray-panel']) {
+  const html = fs.readFileSync(path.join(root, 'desktop', page + '.html'), 'utf8')
+   .replaceAll('../assets/', './assets/');
+  fs.writeFileSync(path.join(output, page + '.html'), allowIpc(html));
+ }
  return output;
 }
 if (require.main === module) console.log('Desktop frontend built in ' + buildDesktop());

@@ -11,6 +11,8 @@ use tauri_plugin_opener::OpenerExt;
 #[cfg(target_os = "macos")]
 mod macos;
 
+pub(crate) mod tray_panel;
+
 const TRAY_ID: &str = "md2chat-tray";
 const HELP_URL: &str = "https://github.com/forgeturl/md2chat/issues";
 
@@ -367,6 +369,11 @@ pub fn open_preferences(app: &AppHandle) {
 }
 
 pub fn refresh_tray(app: &AppHandle) {
+    #[cfg(target_os = "windows")]
+    if app.get_webview_window(tray_panel::LABEL).is_some() {
+        tray_panel::refresh(app);
+        return;
+    }
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
@@ -390,6 +397,10 @@ pub fn refresh_tray(app: &AppHandle) {
 pub(crate) fn refresh_locale(app: &AppHandle) {
     if let Ok(menu) = application_menu(app) {
         let _ = app.set_menu(menu);
+    }
+    #[cfg(target_os = "windows")]
+    if let Some(window) = app.get_webview_window(tray_panel::LABEL) {
+        let _ = window.remove_menu();
     }
     refresh_tray(app);
     if let Some(window) = app.get_webview_window("preferences") {
@@ -463,6 +474,33 @@ fn smoke_check_on_main(app: &AppHandle) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({"status":"passed", "quitKeepsTray":true, "reopenWindows":true}))
 }
 
+fn activate_menu_action(app: &AppHandle, id: &str) {
+    if let Some(target) = conversion_target(id) {
+        if !crate::is_busy(app) {
+            crate::start_conversion(app.clone(), target.to_owned());
+        }
+        return;
+    }
+    match id {
+        "show-main" => show_window(app),
+        "preferences" => open_preferences(app),
+        "updates" => crate::open_updates(app),
+        "help" => {
+            let _ = app.opener().open_url(HELP_URL, None::<&str>);
+        }
+        "quit" => quit(app),
+        "hide-to-tray" => hide_to_tray(app),
+        "fullscreen" => {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Ok(fullscreen) = window.is_fullscreen() {
+                    let _ = window.set_fullscreen(!fullscreen);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     preferences::setup(app.handle())?;
     crate::locale::setup(app.handle());
@@ -470,43 +508,51 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         quitting: AtomicBool::new(false),
     });
     app.set_menu(application_menu(app.handle())?)?;
-    app.on_menu_event(|app, event| {
-        let id = event.id().as_ref();
-        if let Some(target) = conversion_target(id) {
-            if !crate::is_busy(app) {
-                crate::start_conversion(app.clone(), target.to_owned());
-            }
-            return;
+    app.on_menu_event(|app, event| activate_menu_action(app, event.id().as_ref()));
+
+    // Preload the small Windows panel so the first click does not create a WebView.
+    #[cfg(not(target_os = "windows"))]
+    let use_panel = false;
+    #[cfg(target_os = "windows")]
+    let use_panel = match tray_panel::create(app.handle()) {
+        Ok(()) => true,
+        Err(error) => {
+            eprintln!("md2chat: 快捷面板暂不可用，改用原生托盘菜单：{error}");
+            false
         }
-        match id {
-            "show-main" => show_window(app),
-            "preferences" => open_preferences(app),
-            "updates" => crate::open_updates(app),
-            "help" => {
-                let _ = app.opener().open_url(HELP_URL, None::<&str>);
-            }
-            "quit" => quit(app),
-            "hide-to-tray" => hide_to_tray(app),
-            "fullscreen" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    if let Ok(fullscreen) = window.is_fullscreen() {
-                        let _ = window.set_fullscreen(!fullscreen);
-                    }
-                }
-            }
-            _ => {}
-        }
-    });
+    };
 
     let tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(Image::from_bytes(include_bytes!(
             "../../assets/menu-icons/tray.png"
         ))?)
         .icon_as_template(false)
-        .tooltip("md2chat")
-        .menu(&tray_menu(app.handle())?)
+        .tooltip("md2chat");
+    let tray = if use_panel {
+        tray
+    } else {
+        tray.menu(&tray_menu(app.handle())?)
+    };
+    let tray = tray
         .show_menu_on_left_click(cfg!(target_os = "macos"))
         .on_tray_icon_event(|tray, event| match event {
+            #[cfg(target_os = "windows")]
+            TrayIconEvent::Click {
+                button: MouseButton::Right,
+                button_state: MouseButtonState::Up,
+                position,
+                rect,
+                ..
+            } if tray
+                .app_handle()
+                .get_webview_window(tray_panel::LABEL)
+                .is_some() =>
+            {
+                if let Err(error) = tray_panel::show(tray.app_handle(), position, rect) {
+                    eprintln!("md2chat: 无法打开快捷面板：{error}");
+                    show_window(tray.app_handle());
+                }
+            }
             TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'">
+  <title>md2chat</title>
+  <link rel="stylesheet" href="../assets/tray-panel.css">
+  <script src="../assets/tray-panel.js" defer></script>
+</head>
+<body>
+  <main class="tray-panel">
+    <header class="panel-header">
+      <img src="../assets/menu-icons/tray.svg" width="28" height="28" alt="">
+      <div><strong>md2chat</strong><p id="panel-title">剪贴板转换</p></div>
+    </header>
+    <div id="panel-menu" role="menu" aria-labelledby="panel-title" aria-busy="true">
+      <div id="conversions" role="group" aria-labelledby="panel-title"></div>
+      <div class="separator" role="separator"></div>
+      <div id="actions" role="group"></div>
+      <div class="separator" role="separator"></div>
+      <div id="quit-action" role="group"></div>
+    </div>
+    <p id="panel-error" role="alert" hidden></p>
+  </main>
+</body>
+</html>
