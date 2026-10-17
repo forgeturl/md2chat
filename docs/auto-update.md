@@ -24,7 +24,7 @@ Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer
 
 Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。省略 `APPLE_SIGNING_IDENTITY` 时，脚本在私有临时文件中用 OpenSSL 提取公开证书，由 Node 解析唯一 Developer ID Application 名称后清理；提取失败或名称存在歧义就停止，不使用临时签名。Tauri 负责 App 签名、公证和装订票据；发布脚本另行提交签名后的 DMG 公证，等待 `Accepted` 后装订并验证票据。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
 
-已公证产物的票据装订或验证若遇到 Apple 票据服务的明确临时网络错误，会在 5 秒、10 秒后重试，最多 3 次；不会重新编译或重复提交公证。其他错误立即停止，重试后仍须验证通过才复制发布资产。
+生成 Mac App 时，发布脚本会在 Tauri 创建 DMG 和应用内更新归档前守卫 App 票据装订；装订失败会在 5 秒、10 秒后重试，最多 3 次，仍失败或没有成功状态就停止，不复制发布资产。构建后的 App / DMG 票据装订或验证仍只在 Apple 票据服务返回明确临时网络错误时按相同间隔重试；其他错误立即停止。两层检查都不会重新编译或重复提交公证，最终仍须验证通过才复制发布资产。
 
 Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺少时联网安装，因此不会在主安装包中嵌入完整浏览器。Tauri updater 签名不等于 Windows Authenticode；Windows 代码签名尚未接入。
 

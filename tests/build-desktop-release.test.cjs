@@ -1,6 +1,6 @@
 const {test} = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os');
-const {buildMacBinary, buildRelease} = require('../scripts/build-desktop-release.cjs');
+const {buildMacBinary, buildRelease, runGuardedAppStapler} = require('../scripts/build-desktop-release.cjs');
 const {signingFixture} = require('./helpers/updater.cjs');
 const appleSecrets = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'];
 // Public self-signed certificate used only to exercise CN extraction. Its private
@@ -23,11 +23,17 @@ function fixture(callback) {
  const signing = signingFixture();
  const env = {...Object.fromEntries(appleSecrets.map(name => [name, 'fixture'])), APPLE_SIGNING_IDENTITY: 'Developer ID Application: Test Team (0123456789)', TAURI_SIGNING_PRIVATE_KEY: 'not-used-in-test', TAURI_UPDATER_PUBLIC_KEY: signing.publicKey};
  const calls = [];
+ const guards = [];
  function run(command, args, options) {
   calls.push({command, args, options});
   if (command === 'openssl') return {stdout: developerCertificate};
   if (args[0] === 'notarytool') return {stdout: JSON.stringify({status: 'Accepted'})};
   if (args[1] !== 'build' && args[1] !== 'bundle') return {status: 0};
+  if (options.env?.MD2CHAT_APP_STAPLER_STATUS) {
+   const directory = options.env.PATH.split(path.delimiter)[0];
+   guards.push({directory, source: fs.readFileSync(path.join(directory, 'xcrun'), 'utf8')});
+   fs.writeFileSync(options.env.MD2CHAT_APP_STAPLER_STATUS, 'ok\n');
+  }
   const updater = JSON.parse(args.at(-1)).bundle.createUpdaterArtifacts;
   const target = args[args.indexOf('--target') + 1];
   if (args.includes('--no-bundle')) {
@@ -43,18 +49,23 @@ function fixture(callback) {
    if (updater && (name.endsWith('.gz') || name.endsWith('.exe'))) fs.writeFileSync(file + '.sig', signing.sign(data));
   }
  }
- try { callback({root, env, calls, run}); } finally { fs.rmSync(root, {recursive: true, force: true}); }
+ try { callback({root, env, calls, guards, run}); } finally { fs.rmSync(root, {recursive: true, force: true}); }
 }
-test('Mac release builds Tauri universal app, verifies signature and notarization, then normalizes artifact names', () => fixture(({root, env, calls, run}) => {
+test('Mac release builds Tauri universal app, verifies signature and notarization, then normalizes artifact names', () => fixture(({root, env, calls, guards, run}) => {
  const assets = buildRelease('mac', 'universal', {root, env, run});
  assert.deepEqual(assets, ['md2chat-mac-universal.dmg', 'md2chat-mac-universal.app.tar.gz', 'md2chat-mac-universal.app.tar.gz.sig']);
  const build = calls[0];
  assert(build.args.includes('universal-apple-darwin')); assert(build.args.includes('app,dmg'));
  const config = JSON.parse(build.args.at(-1)); assert.equal(config.plugins.updater.pubkey, env.TAURI_UPDATER_PUBLIC_KEY);
  assert.equal(build.options.env.APPLE_CERTIFICATE, env.CSC_LINK); assert.equal(build.options.env.APPLE_PASSWORD, env.APPLE_APP_SPECIFIC_PASSWORD);
+ assert.equal(guards.length, 1); assert.match(guards[0].source, /--guard-app-stapler/);
+ assert.match(guards[0].source, /exec "\$MD2CHAT_REAL_XCRUN"/);
+ assert(!guards[0].source.includes(env.APPLE_APP_SPECIFIC_PASSWORD)); assert(!fs.existsSync(guards[0].directory));
  assert.deepEqual(calls.slice(1).map(call => call.command), ['lipo', 'codesign', 'spctl', 'xcrun', 'codesign', 'xcrun', 'xcrun', 'xcrun']);
  assert.deepEqual(calls[1].args.slice(-3), ['-verify_arch', 'arm64', 'x86_64']);
+ const app = path.join(root, 'src-tauri/target/universal-apple-darwin/release/bundle/macos/md2chat.app');
  const dmg = path.join(root, 'src-tauri/target/universal-apple-darwin/release/bundle/dmg/md2chat_0.6.6_universal.dmg');
+ assert.deepEqual(calls[4].args, ['stapler', 'validate', app]);
  assert.deepEqual(calls[5].args, ['--verify', '--strict', dmg]);
  assert.deepEqual(calls[6].args, ['notarytool', 'submit', dmg, '--apple-id', env.APPLE_ID,
   '--password', env.APPLE_APP_SPECIFIC_PASSWORD, '--team-id', env.APPLE_TEAM_ID,
@@ -64,6 +75,89 @@ test('Mac release builds Tauri universal app, verifies signature and notarizatio
  assert.deepEqual(calls[7].args, ['stapler', 'staple', dmg]);
  assert.deepEqual(calls[8].args, ['stapler', 'validate', dmg]);
  for (const name of assets) assert(fs.statSync(path.join(root, 'release', name)).size);
+}));
+test('Mac Tauri xcrun shim routes app stapling through the checked helper and delegates other tools', {skip: process.platform === 'win32'}, () => fixture(({root, env, run}) => {
+ const callsFile = path.join(root, 'real-xcrun-calls');
+ const realXcrun = path.join(root, 'real-xcrun');
+ fs.writeFileSync(realXcrun, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$MD2CHAT_FAKE_XCRUN_CALLS"\n', {mode: 0o700});
+ env.MD2CHAT_FAKE_XCRUN_CALLS = callsFile;
+ let exercised = false;
+ buildRelease('mac', 'universal', {root, env, realXcrun, run(command, args, options) {
+  if (['build', 'bundle'].includes(args[1]) && options.env?.MD2CHAT_APP_STAPLER_STATUS) {
+   exercised = true;
+   const shim = path.join(options.env.PATH.split(path.delimiter)[0], 'xcrun');
+   const app = require('node:child_process').spawnSync('/bin/sh', [shim, 'stapler', 'staple', '-v', path.join(root, 'Fixture App.app')], {env: options.env, encoding: 'utf8'});
+   assert.equal(app.status, 0); assert.equal(app.stdout, ''); assert.equal(app.stderr, '');
+   const delegated = require('node:child_process').spawnSync('/bin/sh', [shim, 'notarytool', 'history'], {env: options.env, encoding: 'utf8'});
+   assert.equal(delegated.status, 0);
+   const unguarded = {...options, env: {...options.env}};
+   delete unguarded.env.MD2CHAT_APP_STAPLER_STATUS;
+   return run(command, args, unguarded);
+  }
+  return run(command, args, options);
+ }});
+ assert.equal(exercised, true);
+ const forwarded = fs.readFileSync(callsFile, 'utf8').trim().split('\n');
+ assert.equal(forwarded.length, 2);
+ assert.match(forwarded[0], /^stapler staple -v .*Fixture App\.app$/);
+ assert.equal(forwarded[1], 'notarytool history');
+}));
+test('guarded internal app stapler retries in place and stores no captured service diagnostic', () => {
+ const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-app-stapler-test-'));
+ try {
+  const marker = path.join(temporary, 'status');
+  const waits = [];
+  let attempts = 0;
+  const privateDiagnostic = 'private-apple-service-diagnostic';
+  const result = runGuardedAppStapler(['stapler', 'staple', '-v', path.join(temporary, 'md2chat.app')], {
+   env: {MD2CHAT_APP_STAPLER_STATUS: marker, MD2CHAT_REAL_XCRUN: '/usr/bin/xcrun'},
+   sleep: milliseconds => waits.push(milliseconds),
+   run(command, args, options) {
+    attempts++;
+    assert.equal(command, '/usr/bin/xcrun'); assert.equal(args[0], 'stapler');
+    assert.deepEqual(options.stdio, ['ignore', 'pipe', 'pipe']);
+    return attempts < 3 ? {status: 68, stderr: privateDiagnostic} : {status: 0};
+   }
+  });
+  assert.equal(result, 0); assert.equal(attempts, 3); assert.deepEqual(waits, [5000, 10000]);
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'ok\n');
+  assert(!fs.readFileSync(marker, 'utf8').includes(privateDiagnostic));
+ } finally { fs.rmSync(temporary, {recursive: true, force: true}); }
+});
+test('guarded internal app stapler exhausts bounded retries and records only failure state', () => {
+ const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-app-stapler-test-'));
+ try {
+  const marker = path.join(temporary, 'status');
+  const waits = [];
+  let attempts = 0;
+  const privateDiagnostic = 'private-apple-service-diagnostic';
+  const result = runGuardedAppStapler(['stapler', 'staple', path.join(temporary, 'md2chat.app')], {
+   env: {MD2CHAT_APP_STAPLER_STATUS: marker, MD2CHAT_REAL_XCRUN: '/usr/bin/xcrun'},
+   sleep: milliseconds => waits.push(milliseconds),
+   run() { attempts++; return {status: 68, stdout: privateDiagnostic}; }
+  });
+  assert.equal(result, 68); assert.equal(attempts, 3); assert.deepEqual(waits, [5000, 10000]);
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'failed\n');
+  assert(!fs.readFileSync(marker, 'utf8').includes(privateDiagnostic));
+ } finally { fs.rmSync(temporary, {recursive: true, force: true}); }
+});
+test('Mac packaging fails closed when Tauri does not complete guarded app stapling', () => fixture(({root, env, calls, run}) => {
+ const privateDiagnostic = 'private-tauri-stapler-diagnostic';
+ let guardDirectory;
+ assert.throws(() => buildRelease('mac', 'universal', {root, env, run(command, args, options) {
+  if (['build', 'bundle'].includes(args[1]) && options.env?.MD2CHAT_APP_STAPLER_STATUS) {
+   guardDirectory = path.dirname(options.env.MD2CHAT_APP_STAPLER_STATUS);
+   const unguarded = {...options, env: {...options.env}};
+   delete unguarded.env.MD2CHAT_APP_STAPLER_STATUS;
+   const result = run(command, args, unguarded);
+   fs.writeFileSync(path.join(guardDirectory, 'captured-diagnostic'), privateDiagnostic);
+   return result;
+  }
+  return run(command, args, options);
+ }}), error => /Mac app ticket stapling failed during packaging/.test(error.message) && !error.message.includes(privateDiagnostic));
+ assert(guardDirectory); assert(!fs.existsSync(guardDirectory));
+ assert(!calls.some(call => call.args[0] === 'notarytool'));
+ assert(!fs.existsSync(path.join(root, 'release')));
 }));
 test('Mac release binaries compile independently with matching updater configuration and no bundle', () => fixture(({root, env, calls, run}) => {
  const compileEnv = {TAURI_UPDATER_PUBLIC_KEY: env.TAURI_UPDATER_PUBLIC_KEY};

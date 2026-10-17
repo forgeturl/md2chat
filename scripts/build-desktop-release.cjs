@@ -12,6 +12,84 @@ function sleepSync(milliseconds) {
  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
 
+function writeAppStaplerStatus(file, status) {
+ try {
+  fs.writeFileSync(file, status + '\n', {encoding: 'utf8', mode: 0o600});
+  return true;
+ } catch {
+  return false;
+ }
+}
+
+function runGuardedAppStapler(args, {env = process.env, run = spawnSync, sleep = sleepSync} = {}) {
+ const marker = env.MD2CHAT_APP_STAPLER_STATUS;
+ const realXcrun = env.MD2CHAT_REAL_XCRUN;
+ const artifact = args.at(-1)?.replace(/[\\/]+$/, '');
+ if (!path.isAbsolute(marker || '') || !path.isAbsolute(realXcrun || '') ||
+  args[0] !== 'stapler' || args[1] !== 'staple' || !artifact?.endsWith('.app')) {
+  if (path.isAbsolute(marker || '')) writeAppStaplerStatus(marker, 'failed');
+  return 64;
+ }
+ let lastStatus = 1;
+ for (let attempt = 0; attempt < 3; attempt++) {
+  let result;
+  try {
+   result = run(realXcrun, args, {
+    stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1024 * 1024,
+    timeout: 90_000
+   });
+  } catch {
+   // Tauri currently discards stapler's exit status. Capture every diagnostic
+   // here as well so certificate, account, and service details stay out of logs.
+  }
+  if (result?.status === 0) return writeAppStaplerStatus(marker, 'ok') ? 0 : 1;
+  if (Number.isInteger(result?.status) && result.status > 0 && result.status < 256) lastStatus = result.status;
+  if (attempt < 2) {
+   try { sleep((attempt + 1) * 5000); } catch { break; }
+  }
+ }
+ writeAppStaplerStatus(marker, 'failed');
+ return lastStatus;
+}
+
+function withMacAppStaplerGuard(buildEnv, invoke, {realXcrun = '/usr/bin/xcrun'} = {}) {
+ if (!path.isAbsolute(realXcrun)) throw new Error('Mac app stapler guard requires an absolute xcrun path');
+ const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-xcrun-'));
+ fs.chmodSync(temporary, 0o700);
+ const marker = path.join(temporary, 'app-stapler.status');
+ const shim = path.join(temporary, 'xcrun');
+ const source = `#!/bin/sh
+last=
+for argument do last=$argument; done
+case "\${last%/}" in
+ *.app)
+  if [ "\${1-}" = stapler ] && [ "\${2-}" = staple ]; then
+   exec "$MD2CHAT_NODE" "$MD2CHAT_STAPLER_HELPER" --guard-app-stapler "$@"
+  fi
+  ;;
+esac
+exec "$MD2CHAT_REAL_XCRUN" "$@"
+`;
+ fs.writeFileSync(shim, source, {encoding: 'utf8', mode: 0o700, flag: 'wx'});
+ const inheritedPath = buildEnv.PATH || process.env.PATH || '';
+ const guardedEnv = {
+  ...buildEnv,
+  PATH: temporary + (inheritedPath ? path.delimiter + inheritedPath : ''),
+  MD2CHAT_APP_STAPLER_STATUS: marker,
+  MD2CHAT_REAL_XCRUN: realXcrun,
+  MD2CHAT_NODE: process.execPath,
+  MD2CHAT_STAPLER_HELPER: __filename
+ };
+ try {
+  invoke(guardedEnv);
+  let status;
+  try { status = fs.readFileSync(marker, 'utf8').trim(); } catch {}
+  if (status !== 'ok') throw new Error('Mac app ticket stapling failed during packaging; no release artifacts were copied');
+ } finally {
+  fs.rmSync(temporary, {recursive: true, force: true});
+ }
+}
+
 function checkedStapler(command, operation, artifact, sleep) {
  for (let attempt = 0; attempt < 3; attempt++) {
   let result;
@@ -104,7 +182,7 @@ function buildMacBinary(arch, {env = process.env, root = path.resolve(__dirname,
  return binary;
 }
 
-function buildRelease(platform, arch, {env = process.env, root = path.resolve(__dirname, '..'), run = runCommand, testBuild = false, prebuilt = false, sleep = sleepSync} = {}) {
+function buildRelease(platform, arch, {env = process.env, root = path.resolve(__dirname, '..'), run = runCommand, testBuild = false, prebuilt = false, sleep = sleepSync, realXcrun = '/usr/bin/xcrun'} = {}) {
  if (!((platform === 'mac' && arch === 'universal') || (platform === 'win' && arch === 'x64'))) throw new Error('Invalid build target: use mac universal or win x64');
  if (prebuilt && platform !== 'mac') throw new Error('--prebuilt is allowed only for mac universal');
  assertTestBuildScope(env, testBuild);
@@ -134,7 +212,9 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
  // Remove only this target's package folders so an older bundle cannot be published.
  for (const directory of platform === 'mac' ? ['macos', 'dmg'] : ['nsis']) fs.rmSync(path.join(bundle, directory), {recursive: true, force: true});
  const config = releaseConfig(env, testBuild);
- command(process.execPath, [path.join(root, 'node_modules/@tauri-apps/cli/tauri.js'), prebuilt ? 'bundle' : 'build', '--target', target, '--bundles', platform === 'mac' ? 'app,dmg' : 'nsis', '--config', JSON.stringify(config)]);
+ const tauriArgs = [path.join(root, 'node_modules/@tauri-apps/cli/tauri.js'), prebuilt ? 'bundle' : 'build', '--target', target, '--bundles', platform === 'mac' ? 'app,dmg' : 'nsis', '--config', JSON.stringify(config)];
+ if (platform === 'mac') withMacAppStaplerGuard(buildEnv, guardedEnv => command(process.execPath, tauriArgs, {env: guardedEnv}), {realXcrun});
+ else command(process.execPath, tauriArgs);
  const one = (directory, suffix) => {
   const matches = fs.readdirSync(path.join(bundle, directory)).filter(name => name.endsWith(suffix));
   if (matches.length !== 1) throw new Error('Expected one ' + suffix + ' in ' + directory);
@@ -187,7 +267,10 @@ function runCommand(command, args, options) {
  if (result.status !== 0 && !allowFailure) throw new Error(command + ' failed with status ' + result.status);
  return result;
 }
-if (require.main === module) {
+if (require.main === module && process.argv[2] === '--guard-app-stapler') {
+ process.exitCode = runGuardedAppStapler(process.argv.slice(3));
+}
+else if (require.main === module) {
  const [platform, arch, ...extra] = process.argv.slice(2);
  const flags = new Set(extra);
  const validFlags = new Set(['--test-build', '--compile-only', '--prebuilt']);
@@ -201,4 +284,4 @@ if (require.main === module) {
  }
  else buildRelease(platform, arch, {testBuild, prebuilt: flags.has('--prebuilt')});
 }
-module.exports = {buildMacBinary, buildRelease};
+module.exports = {buildMacBinary, buildRelease, runGuardedAppStapler};
