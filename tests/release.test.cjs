@@ -184,6 +184,22 @@ test('main, pull requests, and manual checks do not build or deploy the website'
   assert(!/^actions\/(?:upload-pages-artifact|deploy-pages)@/.test(step.uses||''),'checks must not upload or deploy Pages');
  }
 });
+test('website-only deployment is manual on main and cannot compile or publish desktop apps',()=>{
+ const workflow=readWorkflow('website-deploy.yml');
+ assert.deepEqual(Object.keys(workflow.on),['workflow_dispatch']);
+ assert.deepEqual(Object.keys(workflow.jobs),['deploy']);
+ const deploy=workflow.jobs.deploy;
+ assert.equal(deploy.if,"github.ref == 'refs/heads/main'");
+ assert.deepEqual(deploy.steps.filter(step=>step.run).map(step=>step.run),['npm ci --ignore-scripts','npm run check','npm run build']);
+ assert.deepEqual(deploy.steps.filter(step=>step.uses).map(step=>step.uses.split('@')[0]),['actions/checkout','actions/setup-node','actions/upload-pages-artifact','actions/deploy-pages']);
+ assert.equal(deploy.steps.find(step=>step.uses?.startsWith('actions/upload-pages-artifact@')).with.path,'dist');
+ assert.equal(deploy.permissions.pages,'write');
+ assert.equal(deploy.permissions['id-token'],'write');
+ assert.equal(deploy.permissions.contents,'read');
+ assert.equal(deploy.environment.name,'github-pages');
+ assert.equal(deploy.concurrency.group,'pages');
+ assert.equal(deploy.concurrency['cancel-in-progress'],false);
+});
 test('website artifacts are built from the pushed version tag before publishing installers',()=>{
  const workflow=readWorkflow('desktop-release.yml'),site=workflow.jobs['build-site'];
  assert(site);
