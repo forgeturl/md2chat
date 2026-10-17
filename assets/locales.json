@@ -2391,6 +2391,50 @@
       "de": "Markdown für den Chat | md2chat",
       "fr": "Markdown vers le chat | md2chat",
       "hi": "Markdown से चैट | md2chat"
+    },
+    "恢复示例": {
+      "zh-CN": "恢复示例",
+      "en": "Reset example",
+      "es": "Restablecer ejemplo",
+      "pt-BR": "Restaurar exemplo",
+      "ja": "例に戻す",
+      "ko": "예시 복원",
+      "de": "Beispiel zurücksetzen",
+      "fr": "Réinitialiser",
+      "hi": "उदाहरण बहाल करें"
+    },
+    "编辑 Markdown 原文": {
+      "zh-CN": "编辑 Markdown 原文",
+      "en": "Edit Markdown source",
+      "es": "Editar código Markdown",
+      "pt-BR": "Editar código Markdown",
+      "ja": "Markdown 原文を編集",
+      "ko": "Markdown 원문 편집",
+      "de": "Markdown-Quelltext bearbeiten",
+      "fr": "Modifier le Markdown",
+      "hi": "Markdown स्रोत संपादित करें"
+    },
+    "直接修改原文，右侧实时预览。": {
+      "zh-CN": "直接修改原文，右侧实时预览。",
+      "en": "Edit the source. See the result on the right.",
+      "es": "Edita el código y ve el resultado a la derecha.",
+      "pt-BR": "Edite o código e veja o resultado à direita.",
+      "ja": "原文を編集すると、右側に結果を表示します。",
+      "ko": "원문을 수정하면 오른쪽에 결과가 표시됩니다.",
+      "de": "Quelltext bearbeiten, Ergebnis rechts sehen.",
+      "fr": "Modifiez la source, voyez le résultat à droite.",
+      "hi": "स्रोत बदलें और दाईं ओर परिणाम देखें।"
+    },
+    "暂时无法转换，请检查原文后重试。": {
+      "zh-CN": "暂时无法转换，请检查原文后重试。",
+      "en": "Could not render. Check the source and retry.",
+      "es": "No se pudo convertir. Revisa el código e inténtalo de nuevo.",
+      "pt-BR": "Não foi possível converter. Confira o código e tente novamente.",
+      "ja": "変換できません。原文を確認して再試行してください。",
+      "ko": "변환하지 못했습니다. 원문을 확인하고 다시 시도하세요.",
+      "de": "Konvertierung fehlgeschlagen. Quelltext prüfen und erneut versuchen.",
+      "fr": "Conversion impossible. Vérifiez la source et réessayez.",
+      "hi": "बदलाव नहीं हो सका। स्रोत जाँचें और फिर प्रयास करें।"
     }
   }
 }

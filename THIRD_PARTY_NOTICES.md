@@ -47,3 +47,7 @@ Platform logos are used only to identify the corresponding copy destinations. Th
 | `assets/platforms/wecom.svg` | [WeCom](https://work.weixin.qq.com/) | `LogoSingle` from the [official vector sprite](https://wwcdn.weixin.qq.com/node/wwnl/wwnl/style/images/officialImages$hab21d86.svg), with its original paths and colors centered in a square viewport. |
 
 `assets/platforms/email.svg` is a generic envelope drawn for this project, rather than a mail provider's logo. The tray PNGs were generated locally from these same SVGs and are provided at 1× and 2× resolutions. All icon assets are bundled locally; displaying them does not fetch third-party resources.
+
+## UI icons
+
+Language, chevron, check and loading icons in `assets/ui-icons/` are unmodified Lucide SVGs, distributed under the ISC license (and MIT license for Feather-derived icons). The complete copyright and license notices are in `assets/ui-icons/LICENSE`. Source: https://github.com/lucide-icons/lucide/tree/main/icons. Icons are served locally without contacting an icon service.

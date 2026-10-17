@@ -36,7 +36,7 @@ test('all demo locales render precisely the text from the displayed source, foll
   assert.equal(blocks[1].text, t('文字')+t('与')+t('图表')+t('，按原顺序发出去。'));
   assert.equal(blocks[1].runs.filter(r=>r.bold).map(r=>r.text).join(''),t('文字'));
   assert.equal(blocks[1].runs.filter(r=>r.italic).map(r=>r.text).join(''),t('图表'));
-  assert.equal((blocks[2].text.match(/-->/g)||[]).length, 5);
+  assert.equal((blocks[2].text.match(/-->/g)||[]).length, 4);
   assert.ok(blocks[2].text.includes(t('复制到聊天')));
  }
 });

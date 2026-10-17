@@ -16,6 +16,7 @@
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="md2chat — AI 回答 / Markdown 转聊天图文，文字可编辑"><meta name="twitter:description" content="把 DeepSeek、ChatGPT、Claude、Codex、Cursor 等工具中的 Markdown 转成好读、好发的聊天图文。文字可编辑，表格、代码、公式和 Mermaid 转图片。免费开源，无需注册，本机转换，支持 macOS、Windows 和网页版。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"md2chat","url":"https://forgeturl.github.io/md2chat/","description":"把 DeepSeek、ChatGPT、Claude、Codex、Cursor 等工具中的 Markdown 转成好读、好发的聊天图文。文字可编辑，表格、代码、公式和 Mermaid 转图片。免费开源，无需注册，本机转换，支持 macOS、Windows 和网页版。","applicationCategory":"ProductivityApplication","operatingSystem":"macOS, Windows","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://github.com/forgeturl/md2chat/blob/main/LICENSE","downloadUrl":"https://github.com/forgeturl/md2chat/releases/latest","screenshot":"https://forgeturl.github.io/md2chat/assets/desktop-preview.png"}</script>
 <!-- seo:end -->
+<link rel="stylesheet" href="./assets/language-picker.css?v=0.6.13">
 </head>
 <body class="landing redesign">
 <a class="skip-link" href="#main">跳到主要内容</a>
@@ -34,13 +35,13 @@
  <div class="hero-copy">
   <p class="eyebrow">从 Markdown，到聊天图文</p>
   <h1 id="hero-title"><span>好内容，</span><span>值得好好</span><span class="accent-blue">分享。</span></h1>
-  <p class="lead">把 AI 回答发进工作群。<br><strong>文字还能改，</strong><br><em>复杂排版不再乱。</em></p>
+  <p class="lead">把 AI 回答发进工作群。<br><strong>文字还能改，</strong> <em>复杂排版不再乱。</em></p>
   <div class="actions"><a class="button" href="#download">免费下载桌面版</a><a class="text-link" href="./editor.html?example=mermaid">试用网页版</a></div>
   <p class="trust">免费开源 · 无需注册 · 本机转换</p>
  </div>
  <div class="demo-pair" aria-label="Markdown 转换示例">
-  <section class="demo-panel source-panel" aria-labelledby="demo-source-title"><h2 id="demo-source-title">Markdown 原文</h2><pre data-no-i18n><code id="demo-source"></code></pre></section>
-  <section class="demo-panel result-panel" aria-labelledby="demo-result-title"><h2 id="demo-result-title">转换后 · 可直接发送的图文</h2><div class="demo-preview" id="demo-preview" data-no-i18n aria-busy="true"></div><p id="demo-status" role="status">正在生成预览…</p><button id="demo-retry" type="button" hidden>重试</button></section>
+  <section class="demo-panel source-panel" aria-labelledby="demo-source-title"><div class="demo-panel-heading"><h2 id="demo-source-title">Markdown 原文</h2><button id="demo-reset" type="button" disabled>恢复示例</button></div><textarea id="demo-source" data-no-i18n aria-label="编辑 Markdown 原文" spellcheck="false" maxlength="30000"></textarea><p class="demo-editor-hint">直接修改原文，右侧实时预览。</p></section>
+  <section class="demo-panel result-panel" aria-labelledby="demo-result-title"><div class="demo-panel-heading"><h2 id="demo-result-title">转换后 · 可直接发送的图文</h2></div><div class="demo-result-body"><div class="demo-preview" id="demo-preview" data-no-i18n aria-busy="true"></div><div id="demo-loading" class="demo-loading" role="status"><img class="render-spinner" src="./assets/ui-icons/loader-circle.svg" width="28" height="28" alt=""><span id="demo-status">正在生成预览…</span></div><div id="demo-error" class="demo-error" role="status" hidden><p>暂时无法转换，请检查原文后重试。</p><button id="demo-retry" type="button">重试</button></div></div></section>
  </div>
 </section>
 <ol class="steps">
@@ -73,6 +74,8 @@
 </div>
 <script src="./assets/i18n-data.js?v=0.6.13"></script><script src="./assets/i18n.js?v=0.6.13"></script>
 <script src="./assets/vendor/marked.js?v=0.6.13"></script><script src="./assets/chat-markdown.js?v=0.6.13"></script><script src="./assets/renderers.js?v=0.6.13"></script>
+<script src="./assets/table-images.js?v=0.6.13"></script><script src="./assets/code-images.js?v=0.6.13"></script>
 <script src="./assets/demo.js?v=0.6.13"></script><script src="./assets/landing.js?v=0.6.13"></script>
+<script src="./assets/language-picker.js?v=0.6.13"></script>
 </body>
 </html>
