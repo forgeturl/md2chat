@@ -75,7 +75,7 @@ Windows 桌面版在排查窗口提供「复制 HTML 文字测试」「重写当
 
 ## 开发
 
-Node.js 22+、Rust 1.90+。Mac 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 构建工具和 WebView2。macOS 安装包在 macOS 构建，Windows 安装包在 Windows 构建；CI 自动分平台打包。
+Node.js 22+、Rust 1.90+。Mac 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 构建工具和 WebView2。macOS 安装包在 macOS 构建，Windows 安装包在 Windows 构建；CI 自动分平台打包。本地生成正式 Mac DMG 还需 Python 3.10+，并先执行 `python3 -m pip install --only-binary=:all: --require-hashes -r scripts/dmgbuild-requirements.txt`。
 
 ```sh
 npm ci
@@ -100,6 +100,7 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 - `assets/chat-markdown.js`、`assets/renderers.js`、`assets/code-images.js`：解析与图片渲染。
 - `src-tauri/`：Rust 桌面主进程、菜单栏／托盘、系统登录项、窗口和原生剪贴板。
 - `desktop/design/`、`desktop/icon.py`：Image Gen 图标原图、提示词与跨平台图标打包脚本。
+- `desktop/dmg/`：Mac 拖拽安装窗口的引导背景与无 Finder 自动化布局配置。
 - `assets/tauri-bridge.js`：网页界面与 Rust 命令之间的窄接口；网页版不启用。
 - `scripts/build-desktop.cjs`：仅打包共用界面、首选项及资源，不包含 Node.js 运行时。
 - `tests/`：纯逻辑、图片顺序、原生格式与缓存清理测试。

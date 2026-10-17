@@ -2,7 +2,7 @@ const {spawnSync} = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const {X509Certificate} = require('node:crypto');
+const {X509Certificate, randomBytes} = require('node:crypto');
 const {verifyUpdaterSignature} = require('./update-manifests.cjs');
 const {nativeEnv} = require('./native-env.cjs');
 const developerId = /^Developer ID Application: .+\([A-Z0-9]{10}\)$/;
@@ -122,15 +122,9 @@ function macSigningIdentity(env, root, run) {
  }
  let temporary;
  try {
-  const encoded = env.CSC_LINK.replace(/\s/g, '');
-  if (encoded.length > 16 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error();
-  const archive = Buffer.from(encoded, 'base64');
-  if (!archive.length || archive.toString('base64').replace(/=+$/, '') !== encoded.replace(/=+$/, '')) throw new Error();
   temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-signing-'));
   fs.chmodSync(temporary, 0o700);
-  const file = path.join(temporary, 'certificate.p12');
-  fs.writeFileSync(file, archive, {mode: 0o600, flag: 'wx'});
-  archive.fill(0);
+  const file = writeCertificateArchive(env.CSC_LINK, temporary);
   // Older P12 exports may require OpenSSL 3's legacy provider. Both attempts
   // expose only public certificates, with the password supplied through env.
   for (const legacy of [[], ['-legacy']]) {
@@ -166,6 +160,48 @@ function requireNonemptyFile(file, description) {
  let stat;
  try { stat = fs.statSync(file); } catch {}
  if (!stat?.isFile() || !stat.size) throw new Error('Missing or empty ' + description + ': ' + file);
+}
+
+function writeCertificateArchive(value, directory) {
+ const encoded = String(value || '').replace(/\s/g, '');
+ if (encoded.length > 16 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error();
+ const archive = Buffer.from(encoded, 'base64');
+ try {
+  if (!archive.length || archive.toString('base64').replace(/=+$/, '') !== encoded.replace(/=+$/, '')) throw new Error();
+  const file = path.join(directory, 'certificate.p12');
+  fs.writeFileSync(file, archive, {mode: 0o600, flag: 'wx'});
+  return file;
+ } finally {
+  archive.fill(0);
+ }
+}
+
+function signMacDmg(command, env, identity, dmg) {
+ let temporary;
+ let keychain;
+ const quiet = {stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 1024 * 1024};
+ try {
+  temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'md2chat-dmg-signing-'));
+  fs.chmodSync(temporary, 0o700);
+  const certificate = writeCertificateArchive(env.CSC_LINK, temporary);
+  keychain = path.join(temporary, 'signing.keychain-db');
+  const password = randomBytes(32).toString('hex');
+  command('security', ['create-keychain', '-p', password, keychain], quiet);
+  command('security', ['unlock-keychain', '-p', password, keychain], quiet);
+  command('security', ['import', certificate, '-f', 'pkcs12', '-t', 'agg', '-k', keychain, '-P', env.CSC_KEY_PASSWORD,
+   '-T', '/usr/bin/codesign'], quiet);
+  command('security', ['set-keychain-settings', '-t', '3600', '-u', keychain], quiet);
+  command('security', ['set-key-partition-list', '-S', 'apple-tool:,apple:,codesign:', '-s',
+   '-k', password, keychain], quiet);
+  command('codesign', ['--force', '--sign', identity, '--keychain', keychain, '--timestamp', dmg]);
+ } catch {
+  throw new Error('DMG signing failed; no release artifacts were copied');
+ } finally {
+  if (keychain) {
+   try { command('security', ['delete-keychain', keychain], {...quiet, allowFailure: true}); } catch {}
+  }
+  if (temporary) fs.rmSync(temporary, {recursive: true, force: true});
+ }
 }
 
 function buildMacBinary(arch, {env = process.env, root = path.resolve(__dirname, '..'), run = runCommand, testBuild = false} = {}) {
@@ -212,7 +248,7 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
  // Remove only this target's package folders so an older bundle cannot be published.
  for (const directory of platform === 'mac' ? ['macos', 'dmg'] : ['nsis']) fs.rmSync(path.join(bundle, directory), {recursive: true, force: true});
  const config = releaseConfig(env, testBuild);
- const tauriArgs = [path.join(root, 'node_modules/@tauri-apps/cli/tauri.js'), prebuilt ? 'bundle' : 'build', '--target', target, '--bundles', platform === 'mac' ? 'app,dmg' : 'nsis', '--config', JSON.stringify(config)];
+ const tauriArgs = [path.join(root, 'node_modules/@tauri-apps/cli/tauri.js'), prebuilt ? 'bundle' : 'build', '--target', target, '--bundles', platform === 'mac' ? 'app' : 'nsis', '--config', JSON.stringify(config)];
  if (platform === 'mac') withMacAppStaplerGuard(buildEnv, guardedEnv => command(process.execPath, tauriArgs, {env: guardedEnv}), {realXcrun});
  else command(process.execPath, tauriArgs);
  const one = (directory, suffix) => {
@@ -223,13 +259,28 @@ function buildRelease(platform, arch, {env = process.env, root = path.resolve(__
  const assets = [];
  if (platform === 'mac') {
   const app = one('macos', '.app');
-  const dmg = one('dmg', '.dmg');
   command('lipo', [path.join(app, 'Contents/MacOS/md2chat'), '-verify_arch', 'arm64', 'x86_64']);
   command('codesign', ['--verify', '--deep', '--strict', app]);
   command('spctl', ['--assess', '--type', 'execute', '--verbose', app]);
   checkedStapler(command, 'validate', app, sleep);
+  const dmgDirectory = path.join(bundle, 'dmg');
+  const dmg = path.join(dmgDirectory, 'md2chat.dmg');
+  const dmgSettings = path.join(root, 'desktop/dmg/settings.py');
+  const dmgBackground = path.join(root, 'desktop/dmg/background.png');
+  requireNonemptyFile(dmgSettings, 'DMG layout settings');
+  requireNonemptyFile(dmgBackground, 'DMG background');
+  requireNonemptyFile(path.join(root, 'desktop/dmg/background@2x.png'), 'Retina DMG background');
+  fs.mkdirSync(dmgDirectory, {recursive: true});
+  command(env.DMGBUILD_PYTHON?.trim() || 'python3', ['-m', 'dmgbuild', '-s', dmgSettings,
+   '-D', 'app=' + app, '-D', 'background=' + dmgBackground, 'md2chat', dmg]);
+  requireNonemptyFile(dmg, 'Mac DMG');
+  // Tauri removes the temporary keychain created from APPLE_CERTIFICATE when
+  // its process exits, so import the same P12 into a short-lived keychain for
+  // the separately generated DMG and explicitly select that keychain.
+  signMacDmg(command, env, buildEnv.APPLE_SIGNING_IDENTITY, dmg);
   command('codesign', ['--verify', '--strict', dmg]);
-  // Tauri notarizes and staples the .app, but only signs the enclosing DMG.
+  // Tauri notarizes and staples the .app. The custom DMG is signed above,
+  // then submitted and stapled independently here.
   // Capture notarytool output so credentials or service diagnostics never reach
   // build logs. Do not include its argv or underlying errors in our failures.
   let notarization;

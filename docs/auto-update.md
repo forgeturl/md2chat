@@ -22,9 +22,9 @@ Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer
 
 使用 `npm run tauri -- signer generate --help` 查看密钥生成命令，在安全位置生成并备份密钥。私钥丢失后无法再向已安装版本提供受信更新。仓库默认公钥留空；正式构建要求提供真实密钥对，通过临时 Tauri 配置注入公钥，不生成或使用测试生产密钥。
 
-Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。省略 `APPLE_SIGNING_IDENTITY` 时，脚本在私有临时文件中用 OpenSSL 提取公开证书，由 Node 解析唯一 Developer ID Application 名称后清理；提取失败或名称存在歧义就停止，不使用临时签名。Tauri 负责 App 签名、公证和装订票据；发布脚本另行提交签名后的 DMG 公证，等待 `Accepted` 后装订并验证票据。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
+Mac 构建把既有 CSC 凭据映射到 Tauri 的 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`，把 App 专用密码映射到 `APPLE_PASSWORD`。证书必须包含私钥，并属于项目获授权使用的 Developer ID 团队。省略 `APPLE_SIGNING_IDENTITY` 时，脚本在私有临时文件中用 OpenSSL 提取公开证书，由 Node 解析唯一 Developer ID Application 名称后清理；提取失败或名称存在歧义就停止，不使用临时签名。Tauri 负责 App 签名、公证和装订票据；发布脚本使用固定哈希依赖的 `dmgbuild` 直接写入 DMG 的引导背景、图标位置和 Applications 快捷方式，不调用 CI 中不可靠的 Finder AppleScript，再把同一 P12 短暂导入独立钥匙串、显式签名 DMG，并在成功或失败后清理钥匙串。签名后的 DMG 会提交公证，等待 `Accepted` 后装订并验证票据。构建后检查通用二进制的 arm64 / x86_64 架构、`codesign`、`spctl` 及 App / DMG 的公证票据。缺少凭据或校验失败时停止。
 
-生成 Mac App 时，发布脚本会在 Tauri 创建 DMG 和应用内更新归档前守卫 App 票据装订；装订失败会在 5 秒、10 秒后重试，最多 3 次，仍失败或没有成功状态就停止，不复制发布资产。构建后的 App / DMG 票据装订或验证仍只在 Apple 票据服务返回明确临时网络错误时按相同间隔重试；其他错误立即停止。两层检查都不会重新编译或重复提交公证，最终仍须验证通过才复制发布资产。
+生成 Mac App 和应用内更新归档时，发布脚本会守卫 Tauri 的 App 票据装订；装订失败会在 5 秒、10 秒后重试，最多 3 次，仍失败或没有成功状态就停止，也不会继续生成 DMG 或复制发布资产。构建后的 App / DMG 票据装订或验证仍只在 Apple 票据服务返回明确临时网络错误时按相同间隔重试；其他错误立即停止。两层检查都不会重新编译或重复提交公证，最终仍须验证通过才复制发布资产。
 
 Windows 生成每用户 NSIS x64 安装器。优先复用系统 WebView2，缺少时联网安装，因此不会在主安装包中嵌入完整浏览器。Tauri updater 签名不等于 Windows Authenticode；Windows 代码签名尚未接入。
 
@@ -50,6 +50,6 @@ Mac 与 Windows 构建任务均安装 Rust 并执行原生模块测试；Windows
 
 `npm run desktop` 启动开发版。仅测体积或本地运行时，可通过 Tauri 的 `--config` 覆盖 `bundle.createUpdaterArtifacts` 为 `false`，不需要或生成更新签名密钥。测试包不可替代正式签名、公证包。
 
-真实更新验收需要两份由同一 updater 密钥签名的 Tauri 版本；Mac 还需使用同一 Developer ID 团队签名，并从「应用程序」运行。分别验证发现新版本、说明、下载、取消安装、重启安装及安装后版本变化。M 系列、Intel Mac 和 Windows 需要各自验收；单元测试、通用包构建或开发模式不能代替跨版本安装验证。
+真实更新验收需要两份由同一 updater 密钥签名的 Tauri 版本；Mac 还需使用同一 Developer ID 团队签名，并从「应用程序」运行。首次安装时应打开全新 DMG，确认窗口显示“将左侧 md2chat 拖到右侧 Applications 文件夹”、左右图标与箭头对齐，并实际拖拽后从「应用程序」启动。再分别验证发现新版本、说明、下载、取消安装、重启安装及安装后版本变化。M 系列、Intel Mac 和 Windows 需要各自验收；单元测试、通用包构建或开发模式不能代替跨版本安装验证。
 
 参考：[Tauri updater](https://v2.tauri.app/plugin/updater/)、[Tauri macOS 签名与公证](https://v2.tauri.app/distribute/sign/macos/)、[Tauri Windows 安装器](https://v2.tauri.app/distribute/windows-installer/)。

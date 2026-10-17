@@ -1,6 +1,12 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const readWorkflow=name=>require('js-yaml').load(fs.readFileSync(path.join(root,'.github/workflows',name),'utf8'));
+function readPngSize(file){
+ const image=fs.readFileSync(file);
+ assert.equal(image.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+ assert.equal(image.subarray(12,16).toString('ascii'),'IHDR');
+ return {width:image.readUInt32BE(16),height:image.readUInt32BE(20)};
+}
 function matchesEvent(condition,eventName,ref){
  assert.equal(typeof condition,'string');
  return require('node:vm').runInNewContext(condition.replace(/^\s*\$\{\{\s*|\s*\}\}\s*$/g,''),{github:{event_name:eventName,ref},startsWith:(value,prefix)=>value.startsWith(prefix)});
@@ -36,6 +42,36 @@ test('latest download links and Tauri configuration match the public release ass
  assert.equal(config.bundle.createUpdaterArtifacts,true);
  assert(!pkg.dependencies?.['electron-updater']);assert(!pkg.devDependencies?.electron);
 });
+test('Mac DMG guidance assets keep the configured size and left-to-right copy layout',()=>{
+ const config=require('../src-tauri/tauri.conf.json'),dmg=config.bundle.macOS.dmg;
+ assert.deepEqual(dmg,{
+  background:'../desktop/dmg/background.png',
+  windowSize:{width:660,height:400},
+  appPosition:{x:170,y:220},
+  applicationFolderPosition:{x:490,y:220}
+ });
+ const background=path.resolve(root,'src-tauri',dmg.background);
+ assert.deepEqual(readPngSize(background),dmg.windowSize);
+ assert.deepEqual(readPngSize(path.join(path.dirname(background),'background@2x.png')),{width:1320,height:800});
+ const svg=fs.readFileSync(path.join(root,'desktop/dmg/background.svg'),'utf8');
+ assert.match(svg,/<svg[^>]*\bwidth="660"[^>]*\bheight="400"[^>]*\bviewBox="0 0 660 400"/);
+ assert.match(svg,/将左侧 md2chat 拖到右侧 Applications 文件夹/);
+ assert.match(svg,/复制完成后，请从“应用程序”中打开 md2chat/);
+ assert.match(svg,/d="M32 24h48m-13-13 13 13-13 13"/,'the installation arrow must continue pointing right');
+ const settings=fs.readFileSync(path.join(root,'desktop/dmg/settings.py'),'utf8');
+ assert.match(settings,/application\s*=\s*os\.path\.abspath\(defines\["app"\]\)/);
+ assert.match(settings,/background\s*=\s*os\.path\.abspath\(defines\["background"\]\)/);
+ assert.match(settings,/files\s*=\s*\[application\]/);
+ assert.match(settings,/symlinks\s*=\s*\{"Applications":\s*"\/Applications"\}/);
+ const appPoint=settings.match(/app_name:\s*\((\d+),\s*(\d+)\)/),applicationsPoint=settings.match(/"Applications":\s*\((\d+),\s*(\d+)\)/);
+ assert(appPoint);assert(applicationsPoint);
+ assert.deepEqual(appPoint.slice(1).map(Number),[dmg.appPosition.x,dmg.appPosition.y]);
+ assert.deepEqual(applicationsPoint.slice(1).map(Number),[dmg.applicationFolderPosition.x,dmg.applicationFolderPosition.y]);
+ assert(Number(appPoint[1])<Number(applicationsPoint[1]),'the app must remain left of Applications');
+ const guidance=fs.readFileSync(path.join(root,'desktop/dmg/README.md'),'utf8');
+ assert.match(guidance,/`background\.svg` is the editable source/);
+ assert.match(guidance,/app on the left and the Applications shortcut on the right/);
+});
 test('release checksums require all platform assets before publication',()=>{
  const {expectedAssets,writeChecksums}=require('../scripts/release-assets.cjs');
  const dir=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'md2chat-release-'));
@@ -66,10 +102,20 @@ test('desktop release compiles Mac architectures in parallel and packages one un
  assert.equal(binaryUpload.with.name,'mac-binary-${{ matrix.arch }}');
  assert.equal(binaryUpload.with['compression-level'],0);
  const mac=workflow.jobs.mac_package;
+ const python=mac.steps.find(step=>step.uses?.startsWith('actions/setup-python@'));
+ assert.equal(python.uses,'actions/setup-python@v6');
+ assert.deepEqual(python.with,{'python-version':'3.13',cache:'pip','cache-dependency-path':'scripts/dmgbuild-requirements.txt'});
+ const installDmgbuild=mac.steps.find(step=>step.run?.includes('pip install'));
+ assert.equal(installDmgbuild.run,'python3 -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/dmgbuild-requirements.txt');
  const combine=mac.steps.find(step=>step.run?.includes('lipo -create'));
  assert(combine); assert.match(combine.run,/aarch64-apple-darwin/); assert.match(combine.run,/x86_64-apple-darwin/); assert.match(combine.run,/chmod 755/);
  const macStep=mac.steps.find(step=>step.run?.includes('scripts/build-desktop-release.cjs mac universal'));
  assert(macStep); assert.match(macStep.run,/--prebuilt/);
+ assert(mac.steps.indexOf(python)<mac.steps.indexOf(installDmgbuild));
+ assert(mac.steps.indexOf(installDmgbuild)<mac.steps.indexOf(macStep));
+ const requirements=fs.readFileSync(path.join(root,'scripts/dmgbuild-requirements.txt'),'utf8').trim().split(/\n(?=[A-Za-z0-9])/);
+ assert(requirements.some(entry=>entry.startsWith('dmgbuild==')));
+ for(const entry of requirements)assert.match(entry,/^[A-Za-z0-9._-]+==[^\s\\]+\s+\\\r?\n\s+--hash=sha256:[a-f0-9]{64}$/);
  const macUpload=mac.steps.find(step=>step.with?.name==='desktop-mac-universal'); assert(macUpload);
  const win=workflow.jobs.windows_package;
  assert(win.steps.some(step=>step.run?.includes('scripts/build-desktop-release.cjs win x64')));

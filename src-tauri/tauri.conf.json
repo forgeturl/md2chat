@@ -35,7 +35,15 @@
     "copyright": "Copyright md2chat contributors",
     "icon": ["../assets/app-icon.png", "../desktop/icon.icns", "../desktop/icon.ico"],
     "createUpdaterArtifacts": true,
-    "macOS": {"minimumSystemVersion": "11.0"},
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "background": "../desktop/dmg/background.png",
+        "windowSize": {"width": 660, "height": 400},
+        "appPosition": {"x": 170, "y": 220},
+        "applicationFolderPosition": {"x": 490, "y": 220}
+      }
+    },
     "windows": {
       "webviewInstallMode": {"type": "downloadBootstrapper"},
       "nsis": {"installMode": "currentUser", "languages": ["SimpChinese", "English"], "displayLanguageSelector": false}
