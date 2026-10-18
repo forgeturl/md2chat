@@ -55,8 +55,8 @@ test('HTML tables containing images fail explicitly instead of silently dropping
  assert.throws(()=>ctx.htmlToSource('<table><tr><td><img src="data:image/png;base64,AAAA"></td></tr></table>'),/表格单元格中的图片/);
 });
 function payloadContext(){
- const ctx={ChatMarkdown:chat,assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
- vm.runInContext(code.slice(code.indexOf('const escapeHtml='),code.indexOf('const assets='))+code.slice(code.indexOf('function parseMarkdown('),code.indexOf('function renderTable('))+code.slice(code.indexOf('async function buildPayload('),code.indexOf('let cachedSource=')),ctx);return ctx;
+ const ctx={ChatMarkdown:chat,ChatPayload:require('../assets/chat-payload.js'),ChatRenderers:{},assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
+ vm.runInContext(code.slice(code.indexOf('const escapeHtml='),code.indexOf('const assets='))+code.slice(code.indexOf('function buildPayload('),code.indexOf('let cachedSource=')),ctx);return ctx;
 }
 test('task emojis survive chat, email, plaintext and WeCom segments without becoming images',async()=>{
  const {render,profiles}=require('../assets/chat-targets.js');
