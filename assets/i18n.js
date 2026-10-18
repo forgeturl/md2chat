@@ -114,6 +114,13 @@
   let busy = false, revision = 0;
   async function set(value) {
    if (!valid(value) || busy) return;
+   // The same picker serves static homepages and the shared editor. Only
+   // homepages opt into full Chinese/English page navigation.
+   const nextLocale = resolve(value, languages);
+   const pageTarget = doc.querySelector('[data-site-locale-select]')?.getAttribute('data-language-'+nextLocale.toLowerCase());
+   if (pageTarget && nextLocale !== pageLocale) {
+    persist(value); win.location.assign(pageTarget); return;
+   }
    busy = true; revision++;
    const selects = [...doc.querySelectorAll('[data-locale-select]')];
    for (const select of selects) select.disabled = true;

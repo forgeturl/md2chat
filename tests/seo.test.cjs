@@ -55,6 +55,27 @@ test('every localized page has reciprocal language alternates, its own canonical
  assert(output['index.html'].includes('md2chat 是免费开源的 Markdown 转聊天图文工具。'));
  assert(!output['editor.html'].includes('hreflang='),'the shared editor must not advertise a nonexistent English duplicate');
 });
+test('homepages unify all languages in one picker with static links only as a no-JavaScript fallback',()=>{
+ const output=files();
+ for(const [name,locale] of [['index.html','zh-CN'],['en/index.html','en']]){
+  const page=output[name];
+  const switches=[...page.matchAll(/<noscript><span class="site-languages"[^>]*>(.*?)<\/span><\/noscript>/g)];
+  assert.equal(switches.length,1);
+  assert(switches[0][0].includes('role="group"'));
+  const links=[...switches[0][1].matchAll(/<a ([^>]+)>([^<]+)<\/a>/g)];
+  assert.deepEqual(links.map(([,attrs,text])=>text),['中文','English']);
+  assert.equal(links.filter(([,attrs])=>attrs.includes('aria-current="page"')).length,1);
+  assert(links.find(([,attrs])=>attrs.includes('aria-current="page"'))[1].includes('lang="'+locale+'"'));
+  assert.equal((page.match(/data-locale-select/g)||[]).length,1);
+  assert.equal((page.match(/class="site-languages"/g)||[]).length,1,'no duplicate static links outside noscript');
+  assert(page.includes('data-language-zh-cn="'+(locale==='en'?'../':'./')+'"'));
+  assert(page.includes('data-language-en="'+(locale==='en'?'./':'./en/')+'"'));
+  assert(page.includes('assets/language-picker.js'));
+  assert(page.includes('assets/language-picker.css'));
+ }
+ assert(output['editor.html'].includes('data-locale-select'));
+ assert(output['editor.html'].includes('assets/language-picker.js'));
+});
 test('guide examples match the editor seed and keep implementation evidence separate from client acceptance',()=>{
  const englishGuides=require('../scripts/site-content-en.cjs').guides;
  const examples=require('../assets/guide-examples.js');

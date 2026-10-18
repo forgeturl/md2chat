@@ -59,8 +59,9 @@ function homepage(source,locale,list){
   .replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${esc(c.description)}">`)
   .replace(/<h1 id="hero-title"[^>]*>[\s\S]*?<\/h1>/,`<h1 id="hero-title">${c.heading}</h1>`);
  page=replaceRegion(page,'product-definition',`<p class="product-definition" data-no-i18n>${esc(c.definition)}</p>`,' </div>\n <div class="demo-pair"');
- const languageLinks=`<span class="site-languages" data-no-i18n><a href="${english?'../':'./'}" lang="zh-CN" hreflang="zh-CN"${english?'':' aria-current="page"'}>中文</a><a href="${english?'./':'./en/'}" lang="en" hreflang="en"${english?' aria-current="page"':''}>English</a></span>`;
- page=replaceRegion(page,'site-languages',languageLinks,'  <select class="language-select"');
+ const languageLinks=`<select class="language-select" data-locale-select data-site-locale-select data-language-zh-cn="${english?'../':'./'}" data-language-en="${english?'./':'./en/'}" aria-label="${english?'Language':'语言'}"></select>
+<noscript><span class="site-languages" role="group" aria-label="${english?'Website language':'网站语言'}"><a href="${english?'../':'./'}" lang="zh-CN" hreflang="zh-CN"${english?'':' aria-current="page"'}>中文</a><a href="${english?'./':'./en/'}" lang="en" hreflang="en"${english?' aria-current="page"':''}>English</a></span></noscript>`;
+ page=replaceRegion(page,'site-languages',languageLinks,'  <a class="guides-nav"');
  page=replaceRegion(page,'product-details',homeSections(locale),'<section class="guides-section"');
  const links=`<section class="guides-section" id="guides" aria-labelledby="guides-title" data-no-i18n>
  <div class="section-heading"><h2 id="guides-title">${esc(c.guidesTitle)}</h2><p>${esc(c.guidesLabel)}</p></div>

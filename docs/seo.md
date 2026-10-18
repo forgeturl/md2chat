@@ -14,6 +14,7 @@
 
 - 中文首页、共享编辑器与八篇中文指南；`en/` 下提供英文首页与八篇完整英文指南，共 19 个公开页面。正文和语言链接不依赖 JavaScript 才出现。
 - 中英文首页与对应指南各自使用 canonical，并互相声明 `zh-CN`、`en` 与 `x-default` 的 hreflang。共享编辑器保留单一 canonical；其九种界面语言不作为独立搜索页面发布。
+- 首页只保留一个多语言下拉按钮，复用九种界面语言选择器；选择中文或 English 时进入对应完整页面，其他语言沿用界面翻译。禁用 JavaScript 时显示中英文链接作为备用入口，不同时显示两套控件。编辑器和桌面应用的语言选择行为保持不变。
 - 独立 title/description、HTTPS canonical、Open Graph / Twitter 分享信息。
 - 与可见产品事实一致的 SoftwareApplication / TechArticle JSON-LD；没有虚构评分、评论或兼容性。
 - 指南包含直接回答、步骤、可复现示例、内容核对日期与实现/验证记录；“试用此示例”按钮载入同一份中英文 Markdown。语言切换不会重写已经输入的正文。
