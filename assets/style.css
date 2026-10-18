@@ -107,4 +107,4 @@ button:focus-visible,a:focus-visible,summary:focus-visible,#message:focus-visibl
 .language-control { display:inline-flex; align-items:center; }
 .locale-status { font-size:13px; color:#b42318; margin:0 12px; }
 .locale-status:empty { display:none; }
-@media(max-width:760px) { .utility-actions { flex-wrap:wrap; } .language-select { max-width:130px; } }
+@media(max-width:760px) { .utility-actions { flex-wrap:wrap; max-width:100%; } .language-select { max-width:130px; } }

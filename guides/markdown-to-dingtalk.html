@@ -1,14 +1,36 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 怎么发到钉钉？保留文字、表格和图片 | md2chat</title><meta name="description" content="解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。"><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/landing.css"><!-- seo:start -->
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 怎么发到钉钉？保留文字、表格和图片 | md2chat</title><meta name="description" content="解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。"><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/landing.css?v=0.6.16"><link rel="stylesheet" href="../assets/site-guides.css?v=0.6.16">
+<!-- seo:start -->
 <link rel="canonical" href="https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html">
-<meta property="og:type" content="website"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
+<link rel="alternate" hreflang="zh-CN" href="https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html">
+<link rel="alternate" hreflang="en" href="https://forgeturl.github.io/md2chat/en/guides/markdown-to-dingtalk.html">
+<link rel="alternate" hreflang="x-default" href="https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html">
+<meta property="og:type" content="article"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
 <meta property="og:title" content="Markdown 怎么发到钉钉？保留文字、表格和图片 | md2chat"><meta property="og:description" content="解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。"><meta property="og:url" content="https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html">
 <meta property="og:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png"><meta property="og:image:alt" content="md2chat Markdown 输入与图文预览界面">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 怎么发到钉钉？保留文字、表格和图片 | md2chat"><meta name="twitter:description" content="解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Markdown 怎么发到钉钉？保留文字、表格和图片","description":"解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。","url":"https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html","inLanguage":"zh-CN","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Markdown 怎么发到钉钉？保留文字、表格和图片","description":"解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。","url":"https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html","inLanguage":"zh-CN","dateModified":"2026-10-18","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"},"citation":["https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md"]}</script>
 <!-- seo:end --></head>
-<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links"><a href="../editor.html">试用转换器</a><a href="../#download">下载桌面版</a></nav></header><main><h1>Markdown 怎么发到钉钉？保留文字、表格和图片</h1><p class="lead">解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。</p><section><h2>直接回答</h2><p>用 md2chat 桌面版粘贴 Markdown，在预览区点击钉钉图标，再到钉钉输入框粘贴。普通文字保留为可编辑文字，表格、代码、公式和 Mermaid 图转成图片。macOS 钉钉使用专用图文剪贴板结构，M 系列 Mac 已实测文字、图片、文字的顺序。</p></section>
-<section><h2>为什么直接粘贴 Markdown 没有表格？</h2><p>聊天输入框与 Markdown 编辑器的渲染规则不同。发送竖线表格源码，不代表客户端会解析成表格。md2chat 将表格渲染为 PNG，与前后的文字按原文顺序组合。</p></section>
-<section><h2>为什么网页看得见图片，钉钉却丢了？</h2><p>浏览器复制通常写入 text/html 与 text/plain。HTML 中包含图片引用，只能证明剪贴板有引用，不能证明目标应用会读取它。macOS 桌面版为钉钉补充原生图文格式，网页无法做到同样的原生格式写入。</p></section>
-<section><h2>Windows 和网页版能保证一次粘贴吗？</h2><p>不能。网页版已禁用钉钉复制。Windows 桌面版使用与 Chromium 一致的 CF_HTML 封装并保留纯文本兜底，仍需在当前 Tauri 版与钉钉客户端真机确认。剪贴板排查中的 HTML 测试可用于定位兼容问题。不要把预览正常或复制成功当成发送成功。</p></section>
-<section><h2>排查图片丢失</h2><p>展开编辑器下方的剪贴板排查，点击读取当前剪贴板。记录操作系统、应用版本、目标客户端版本、复制入口，以及报告中的格式和图片数量。使用不含工作信息的示例反馈，报告不会包含正文和图片地址。</p></section><section><h2>相关指南</h2><ul><li><a href="./ai-markdown-to-chat.html">DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？</a></li><li><a href="./markdown-to-wechat.html">Markdown 转微信图文：文字可编辑，表格转图片</a></li><li><a href="./chat-compatibility.html">钉钉、微信、飞书、企业微信与邮件的图文复制兼容性</a></li><li><a href="./markdown-formatting.html">Markdown 表格、代码、公式和 Mermaid 转聊天图文</a></li></ul></section><p><a class="button" href="../editor.html">用公开示例试一下</a></p></main><footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">兼容性与验证记录</a><a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a></footer></div></body></html>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="导航"><a href="../editor.html">试用转换器</a><a href="../#download">下载桌面版</a><a href="../en/guides/markdown-to-dingtalk.html" lang="en" hreflang="en">English</a></nav></header>
+<main><h1>Markdown 怎么发到钉钉？保留文字、表格和图片</h1><p class="lead">解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。</p><p class="reviewed">内容核对日期：<time datetime="2026-10-18">2026-10-18</time></p>
+<nav class="guide-contents" aria-label="本页内容"><a href="#answer-0">直接回答</a><a href="#answer-1">为什么直接粘贴 Markdown 没有表格？</a><a href="#answer-2">为什么网页看得见图片，钉钉却丢了？</a><a href="#answer-3">Windows 和网页版能保证一次粘贴吗？</a><a href="#answer-4">排查图片丢失</a><a href="#steps">操作步骤</a><a href="#example">可复现的公开示例</a><a href="#evidence">实现与验证依据</a></nav>
+<section id="answer-0"><h2>直接回答</h2><p>用 md2chat 桌面版粘贴 Markdown，在预览区点击钉钉图标，再到钉钉输入框粘贴。普通文字保留为可编辑文字，表格、代码、公式和 Mermaid 图转成图片。macOS 钉钉使用专用图文剪贴板结构，M 系列 Mac 已实测文字、图片、文字的顺序。</p></section>
+<section id="answer-1"><h2>为什么直接粘贴 Markdown 没有表格？</h2><p>聊天输入框与 Markdown 编辑器的渲染规则不同。发送竖线表格源码，不代表客户端会解析成表格。md2chat 将表格渲染为 PNG，与前后的文字按原文顺序组合。</p></section>
+<section id="answer-2"><h2>为什么网页看得见图片，钉钉却丢了？</h2><p>浏览器复制通常写入 text/html 与 text/plain。HTML 中包含图片引用，只能证明剪贴板有引用，不能证明目标应用会读取它。macOS 桌面版为钉钉补充原生图文格式，网页无法做到同样的原生格式写入。</p></section>
+<section id="answer-3"><h2>Windows 和网页版能保证一次粘贴吗？</h2><p>不能。网页版已禁用钉钉复制。Windows 桌面版现生成钉钉图文节点树和内嵌 PNG，同时保留 HTML 与纯文本回退；用户已确认原始样本仅保留 HTML 重写后可粘回两张图片，但新生成内容仍需当前客户端验收。不要把样本重写、预览正常或复制成功当成完整发送验证。</p></section>
+<section id="answer-4"><h2>排查图片丢失</h2><p>展开编辑器下方的剪贴板排查，点击读取当前剪贴板。记录操作系统、应用版本、目标客户端版本、复制入口，以及报告中的格式和图片数量。使用不含工作信息的示例反馈，报告不会包含正文和图片地址。</p></section>
+<section id="steps"><h2>操作步骤</h2><ol><li>从 Markdown 或 AI 工具复制内容，粘贴到 md2chat。</li><li>核对预览中的文字、表格图片与末尾内容。</li><li>按目标平台复制，并在自己的聊天草稿检查顺序和图片。</li></ol></section>
+<section id="example"><h2>可复现的公开示例</h2><pre><code># 周末读书会
+
+开始：周六见。
+
+| 环节 | 时长 |
+| --- | --- |
+| 自由阅读 | 20 分钟 |
+| 交流讨论 | 30 分钟 |
+
+结束：记得带书。</code></pre><p>在自己的草稿中核对开头、表格图片和结尾，并检查普通文字仍可编辑。</p><p><a class="button" href="../editor.html?example=chat-table&amp;lang=zh-CN">在编辑器试用此示例</a></p></section>
+<section id="evidence"><h2>实现与验证依据</h2><ul><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">平台兼容性与验证记录</a></li></ul></section>
+
+<section><h2>相关指南</h2><ul><li><a href="./ai-markdown-to-chat.html">DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？</a></li><li><a href="./markdown-to-wechat.html">Markdown 转微信图文：文字可编辑，表格转图片</a></li><li><a href="./chat-compatibility.html">钉钉、微信、飞书、企业微信与邮件的图文复制兼容性</a></li><li><a href="./markdown-formatting.html">Markdown 表格、代码、公式和 Mermaid 转聊天图文</a></li><li><a href="./markdown-to-feishu.html">Markdown 怎么发到飞书？文字与图片一次粘贴</a></li><li><a href="./markdown-to-wecom.html">Markdown 怎么发到企业微信？按顺序保留文字与图片</a></li><li><a href="./clipboard-images-missing.html">Markdown 复制到聊天后图片丢失怎么办？</a></li></ul></section></main>
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">实现与验证依据</a><a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a></footer></div></body></html>

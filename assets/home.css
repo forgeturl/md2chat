@@ -117,3 +117,32 @@ html:not([lang="zh-CN"]):not([lang="ja"]):not([lang="ko"]) .redesign .hero h1 { 
  .redesign .footer-links > span { flex-basis:100%; }
 }
 @media(prefers-reduced-motion:reduce) { .render-spinner { animation:none; } .demo-preview { transition:none; } }
+
+/* Product facts and platform instructions are static, readable page content. */
+#hero-title { font-size:clamp(36px,3.6vw,54px); letter-spacing:-.045em; }
+.product-definition { font-size:15px; line-height:1.8; color:var(--muted); margin:16px 0 0; max-width:46ch; }
+.site-languages { display:flex; gap:10px; font-size:13px; white-space:nowrap; }
+.site-languages [aria-current="page"] { font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+.product-details { padding:36px 0; border-bottom:1px solid var(--line); }
+.product-details > h2 { font-size:30px; line-height:1.35; margin:0 0 24px; }
+.feature-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; }
+.feature-grid h3 { font-size:20px; margin:0 0 12px; }
+.product-details p, .product-details td, .product-details th { font-size:16px; line-height:1.85; }
+.product-details p { color:var(--muted); }
+.table-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+.product-details table { width:100%; border-collapse:collapse; text-align:left; }
+.product-details th, .product-details td { padding:16px; border-bottom:1px solid var(--line); vertical-align:top; }
+.product-details thead { background:#f7f9fc; }
+.product-details tbody th { min-width:100px; }
+.product-details details { border-top:1px solid var(--line); padding:18px 0; }
+.product-details summary { cursor:pointer; font-size:18px; font-weight:600; line-height:1.65; }
+.product-details details p { max-width:85ch; margin-bottom:0; }
+@media(max-width:640px) {
+ #hero-title { font-size:38px; }
+ .product-definition { max-width:none; }
+ .feature-grid { grid-template-columns:1fr; gap:18px; }
+ .product-details { padding:28px 0; }
+ .product-details > h2 { font-size:25px; }
+ .product-details table { min-width:540px; }
+ .site-languages { flex-direction:column; gap:1px; font-size:11px; }
+}

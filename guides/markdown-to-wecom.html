@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 怎么发到企业微信？按顺序保留文字与图片 | md2chat</title><meta name="description" content="企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。"><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/landing.css?v=0.6.16"><link rel="stylesheet" href="../assets/site-guides.css?v=0.6.16">
+<!-- seo:start -->
+<link rel="canonical" href="https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html">
+<link rel="alternate" hreflang="zh-CN" href="https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html">
+<link rel="alternate" hreflang="en" href="https://forgeturl.github.io/md2chat/en/guides/markdown-to-wecom.html">
+<link rel="alternate" hreflang="x-default" href="https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html">
+<meta property="og:type" content="article"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
+<meta property="og:title" content="Markdown 怎么发到企业微信？按顺序保留文字与图片 | md2chat"><meta property="og:description" content="企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。"><meta property="og:url" content="https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html">
+<meta property="og:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png"><meta property="og:image:alt" content="md2chat Markdown 输入与图文预览界面">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 怎么发到企业微信？按顺序保留文字与图片 | md2chat"><meta name="twitter:description" content="企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Markdown 怎么发到企业微信？按顺序保留文字与图片","description":"企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。","url":"https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html","inLanguage":"zh-CN","dateModified":"2026-10-18","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"},"citation":["https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md#2026-10-16-网页桌面--macOS-企业微信输入框实测"]}</script>
+<!-- seo:end --></head>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="导航"><a href="../editor.html">试用转换器</a><a href="../#download">下载桌面版</a><a href="../en/guides/markdown-to-wecom.html" lang="en" hreflang="en">English</a></nav></header>
+<main><h1>Markdown 怎么发到企业微信？按顺序保留文字与图片</h1><p class="lead">企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。</p><p class="reviewed">内容核对日期：<time datetime="2026-10-18">2026-10-18</time></p>
+<nav class="guide-contents" aria-label="本页内容"><a href="#answer-0">直接回答</a><a href="#answer-1">为什么不能一次复制整篇？</a><a href="#answer-2">网页版和桌面版都能分段吗？</a><a href="#answer-3">已验证到什么范围？</a><a href="#steps">操作步骤</a><a href="#example">可复现的公开示例</a><a href="#evidence">实现与验证依据</a></nav>
+<section id="answer-0"><h2>直接回答</h2><p>在 md2chat 中粘贴 Markdown，点击企微。内容有图时会打开分段面板，按面板顺序逐段复制并立即粘贴到同一个企微草稿。每段是纯文字或一张 PNG，普通文字仍可编辑。</p></section>
+<section id="answer-1"><h2>为什么不能一次复制整篇？</h2><p>当前 Mac 企业微信实测中，HTML 加纯文本只保留文字，PNG 加 HTML 和纯文本只保留图片。分段复制是为保留图文顺序而采用的操作方式，不承诺一次粘贴混排。</p></section>
+<section id="answer-2"><h2>网页版和桌面版都能分段吗？</h2><p>两者都有分段面板。网页版需允许浏览器写入剪贴板；桌面托盘可打开独立面板。面板只标记已复制，不会判断你是否已经粘贴，也不会自动发送。</p></section>
+<section id="answer-3"><h2>已验证到什么范围？</h2><p>macOS Apple Silicon、企业微信 5.0.12（70798）草稿中，已验证网页 5 段含 2 张图片、桌面 3 段含 1 张图片，顺序完整且文字可编辑。测试未发送消息；Windows 企微、其他版本及发送后结果仍待分别确认。</p></section>
+<section id="steps"><h2>操作步骤</h2><ol><li>粘贴示例，确认预览中有开头、表格图片和结尾。</li><li>点击企微，复制第 1 段文字，立即粘贴到自己的草稿。</li><li>依次复制、粘贴下一张 PNG 和后续文字，中途不要复制其他内容。</li><li>检查完整顺序和图片数量，再自行发送。</li></ol></section>
+<section id="example"><h2>可复现的公开示例</h2><pre><code># 周末读书会
+
+开始：周六见。
+
+| 环节 | 时长 |
+| --- | --- |
+| 自由阅读 | 20 分钟 |
+| 交流讨论 | 30 分钟 |
+
+结束：记得带书。</code></pre><p>在自己的草稿中核对开头、表格图片和结尾，并检查普通文字仍可编辑。</p><p><a class="button" href="../editor.html?example=chat-table&amp;lang=zh-CN">在编辑器试用此示例</a></p></section>
+<section id="evidence"><h2>实现与验证依据</h2><ul><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md#2026-10-16-网页桌面--macOS-企业微信输入框实测">企业微信分段流程与实测记录</a></li></ul></section>
+
+<section><h2>相关指南</h2><ul><li><a href="./ai-markdown-to-chat.html">DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？</a></li><li><a href="./markdown-to-dingtalk.html">Markdown 怎么发到钉钉？保留文字、表格和图片</a></li><li><a href="./markdown-to-wechat.html">Markdown 转微信图文：文字可编辑，表格转图片</a></li><li><a href="./chat-compatibility.html">钉钉、微信、飞书、企业微信与邮件的图文复制兼容性</a></li><li><a href="./markdown-formatting.html">Markdown 表格、代码、公式和 Mermaid 转聊天图文</a></li><li><a href="./markdown-to-feishu.html">Markdown 怎么发到飞书？文字与图片一次粘贴</a></li><li><a href="./clipboard-images-missing.html">Markdown 复制到聊天后图片丢失怎么办？</a></li></ul></section></main>
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">实现与验证依据</a><a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a></footer></div></body></html>

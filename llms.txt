@@ -1,18 +1,45 @@
 # md2chat
 
-> Free, open-source Markdown-to-chat converter. Turn Markdown copied from AI tools such as DeepSeek, Codex, Cursor, ChatGPT and Claude into chat-ready content. Keeps editable text and turns complex blocks into images. Local processing, macOS / Windows desktop app and web editor. AI tools are content source examples, not verified integrations.
+> md2chat is a free, open-source Markdown-to-chat converter. Paste an AI answer or Markdown, keep ordinary text editable and turn tables, code, equations and Mermaid diagrams into images in source order. Then copy for your chat platform.
 
-## Product and evidence
+## Product
 
-- [Home](https://forgeturl.github.io/md2chat/): Features and latest downloads.
-- [Editor](https://forgeturl.github.io/md2chat/editor.html): Local conversion; browser clipboard limitations apply.
-- [Source and compatibility](https://github.com/forgeturl/md2chat): MIT license, tests, releases and evidence.
+- [中文首页](https://forgeturl.github.io/md2chat/): 将 AI 回答和 Markdown 转为聊天图文。普通文字可编辑，表格、代码、公式与 Mermaid 转图片；提供 macOS、Windows 桌面版和网页编辑器。免费开源，本机处理。
+- [English home](https://forgeturl.github.io/md2chat/en/): Turn AI answers and Markdown into chat-ready content. Keep text editable and render tables, code, equations and Mermaid as images. Free, open-source, local processing for macOS, Windows and the web.
+- [Web editor](https://forgeturl.github.io/md2chat/editor.html): Local conversion; browser and destination-client limitations apply.
+- [Source, releases and compatibility](https://github.com/forgeturl/md2chat): MIT-licensed source and validation records.
+
+## 中文指南
+
 - [DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？](https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html): 将 AI 工具中复制到的 Markdown 转成聊天图文：文字保持可编辑，表格、代码、公式和 Mermaid 转图片；了解复制方式与客户端兼容边界。
 - [Markdown 怎么发到钉钉？保留文字、表格和图片](https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html): 解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。
 - [Markdown 转微信图文：文字可编辑，表格转图片](https://forgeturl.github.io/md2chat/guides/markdown-to-wechat.html): 使用 md2chat 将 Markdown、彩色代码、公式和表格转换成微信图文，了解标准 HTML 复制的适用范围和图片排查步骤。
 - [钉钉、微信、飞书、企业微信与邮件的图文复制兼容性](https://forgeturl.github.io/md2chat/guides/chat-compatibility.html): md2chat 各平台复制入口、企微分段复制、原生与标准 HTML 的区别，以及已实测范围和客户端兼容性边界。
 - [Markdown 表格、代码、公式和 Mermaid 转聊天图文](https://forgeturl.github.io/md2chat/guides/markdown-formatting.html): 了解 md2chat 如何处理 Markdown 标题、列表、链接、表格、语法高亮代码、LaTeX 数学公式及 Mermaid 流程图。
+- [Markdown 怎么发到飞书？文字与图片一次粘贴](https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html): 使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。
+- [Markdown 怎么发到企业微信？按顺序保留文字与图片](https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html): 企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。
+- [Markdown 复制到聊天后图片丢失怎么办？](https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html): 按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。
 
-## Limits
+## English guides
 
-Mac DingTalk native text/image/text paste has been tested on Apple Silicon. Windows DingTalk private clipboard is not implemented. WeChat uses standard HTML. WeCom image content uses sequential plain-text and PNG copies on web and desktop. The segment panel was tested end to end in Mac WeCom 5.0.12 drafts: five web segments with two images and three desktop segments with one image. Windows WeCom and sent messages have not been verified. Text remains editable; emphasis styling is not guaranteed. Mac Feishu native editor fragments were manually tested in the expanded rich-text input with two images, ordered editable text and emphasis styles, including a user-sent message. Feishu copying is disabled in the web editor. Windows Feishu and email remain experimental without client acceptance. Clipboard generation is not proof of successful pasting or email delivery. No guarantee of compatibility with every client version. No user content is uploaded to md2chat; remote image URLs still contact their source.
+- [How to share AI answers and Markdown in a chat](https://forgeturl.github.io/md2chat/en/guides/ai-markdown-to-chat.html): Turn Markdown from ChatGPT, Claude, DeepSeek, Codex or Cursor into editable text and images, with clear limits for each chat client.
+- [How to paste Markdown, tables and images into DingTalk](https://forgeturl.github.io/md2chat/en/guides/markdown-to-dingtalk.html): Use md2chat desktop to prepare editable text and images for DingTalk, and understand the different Mac and Windows validation boundaries.
+- [Convert Markdown to WeChat messages with editable text](https://forgeturl.github.io/md2chat/en/guides/markdown-to-wechat.html): Prepare Markdown tables, code and equations as images while keeping ordinary text editable, then verify the result in your WeChat client.
+- [DingTalk, WeChat, Feishu, WeCom and email compatibility](https://forgeturl.github.io/md2chat/en/guides/chat-compatibility.html): Compare destination workflows and distinguish implemented clipboard formats, tested drafts and verified sent messages.
+- [Convert Markdown tables, code, equations and Mermaid to chat images](https://forgeturl.github.io/md2chat/en/guides/markdown-formatting.html): Learn which Markdown elements stay editable and which become PNG images, with a reproducible table example.
+- [How to paste Markdown text and images into Feishu](https://forgeturl.github.io/md2chat/en/guides/markdown-to-feishu.html): Use md2chat desktop with the expanded Feishu rich-text input, including the tested Mac workflow and Windows acceptance limits.
+- [How to share Markdown text and images in WeCom](https://forgeturl.github.io/md2chat/en/guides/markdown-to-wecom.html): Copy and paste text and PNG segments in order, with the tested Mac WeCom draft workflow and explicit platform limits.
+- [Why do images disappear when pasting Markdown into chat?](https://forgeturl.github.io/md2chat/en/guides/clipboard-images-missing.html): Troubleshoot missing images by checking the source, preview, destination copy option and chat input separately.
+
+## Compatibility and evidence
+
+- DingTalk: Mac Apple Silicon native mixed content was tested; new Windows generation needs client acceptance.
+- Feishu: Mac has a two-image sent-message confirmation; Windows editor-sample adaptation needs new-build acceptance.
+- WeCom: Mac 5.0.12 drafts were tested; Windows and sent results remain unverified.
+- WeChat / Email: Check your WeChat client; delivered email images remain unverified.
+
+Windows DingTalk generates a node tree with embedded PNGs. Windows Feishu generates editor fragments and local PNG references. Source-sample rewriting and format implementation are not acceptance of newly generated content. WeCom image content requires sequential text and PNG copies. The web editor disables DingTalk and Feishu copying. Ordinary text remains editable; text inside PNGs does not.
+
+## Privacy
+
+Conversion runs locally without an account. Content is not uploaded to md2chat. Remote image URLs still contact their original hosts. Native copying may cache PNGs locally. AI tool names describe possible Markdown sources, not official integrations.

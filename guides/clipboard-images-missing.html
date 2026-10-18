@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 复制到聊天后图片丢失怎么办？ | md2chat</title><meta name="description" content="按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。"><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/landing.css?v=0.6.16"><link rel="stylesheet" href="../assets/site-guides.css?v=0.6.16">
+<!-- seo:start -->
+<link rel="canonical" href="https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html">
+<link rel="alternate" hreflang="zh-CN" href="https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html">
+<link rel="alternate" hreflang="en" href="https://forgeturl.github.io/md2chat/en/guides/clipboard-images-missing.html">
+<link rel="alternate" hreflang="x-default" href="https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html">
+<meta property="og:type" content="article"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
+<meta property="og:title" content="Markdown 复制到聊天后图片丢失怎么办？ | md2chat"><meta property="og:description" content="按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。"><meta property="og:url" content="https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html">
+<meta property="og:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png"><meta property="og:image:alt" content="md2chat Markdown 输入与图文预览界面">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 复制到聊天后图片丢失怎么办？ | md2chat"><meta name="twitter:description" content="按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Markdown 复制到聊天后图片丢失怎么办？","description":"按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。","url":"https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html","inLanguage":"zh-CN","dateModified":"2026-10-18","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"},"citation":["https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md","https://github.com/forgeturl/md2chat/blob/main/docs/windows-clipboard-qa.md"]}</script>
+<!-- seo:end --></head>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="导航"><a href="../editor.html">试用转换器</a><a href="../#download">下载桌面版</a><a href="../en/guides/clipboard-images-missing.html" lang="en" hreflang="en">English</a></nav></header>
+<main><h1>Markdown 复制到聊天后图片丢失怎么办？</h1><p class="lead">按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。</p><p class="reviewed">内容核对日期：<time datetime="2026-10-18">2026-10-18</time></p>
+<nav class="guide-contents" aria-label="本页内容"><a href="#answer-0">直接回答</a><a href="#answer-1">预览里已经缺图</a><a href="#answer-2">预览正常，粘贴后只剩文字</a><a href="#answer-3">如何提供有用的排查信息？</a><a href="#answer-4">怎样验收修复？</a><a href="#steps">操作步骤</a><a href="#example">可复现的公开示例</a><a href="#evidence">实现与验证依据</a></nav>
+<section id="answer-0"><h2>直接回答</h2><p>先检查 md2chat 预览是否有图，再检查复制目标与粘贴方式。预览缺图要补充可读取的原图；预览有图但聊天里缺图，要按平台使用桌面原生复制或企微分段复制。剪贴板里存在图片引用，不代表目标客户端已导入图片。</p></section>
+<section id="answer-1"><h2>预览里已经缺图</h2><p>核对 Markdown 图片地址是否有效、远程服务是否允许读取，以及原始内容是否实际包含图片。桌面版可导入符合校验的本机图片；网页不能直接读取任意本机文件路径。只有占位文字而没有图片数据时，转换器无法恢复原图。</p></section>
+<section id="answer-2"><h2>预览正常，粘贴后只剩文字</h2><p>钉钉和飞书请使用桌面版；飞书先展开富文本输入框。企业微信有图时逐段复制、粘贴。微信使用标准图文复制，需核对当前系统与客户端。邮件中的内嵌图片还可能被编辑器或收件端移除。</p></section>
+<section id="answer-3"><h2>如何提供有用的排查信息？</h2><p>使用下面的虚构示例重现，记录系统、浏览器或桌面版、md2chat 和目标客户端版本，以及哪一步开始丢图。桌面版可显式读取当前剪贴板并复制脱敏报告。Windows 钉钉图片可能位于专有 JSON 属性中，普通 HTML 图片标签统计为零不能证明没有图片。</p></section>
+<section id="answer-4"><h2>怎样验收修复？</h2><p>分别确认预览、复制、草稿粘贴和发送后结果。先检查下面示例中的开头、表格图片、结尾，再尝试普通文字是否可编辑。只在自己的测试会话验收，避免提供真实工作正文、图片地址或登录信息。</p></section>
+<section id="steps"><h2>操作步骤</h2><ol><li>先用公开示例确认预览中的图片是否完整。</li><li>按目标平台使用对应复制入口和输入框。</li><li>在自己的草稿里核对图片、文字和顺序。</li><li>仍失败时，收集版本号与脱敏报告；最后复制报告，避免覆盖待测剪贴板。</li></ol></section>
+<section id="example"><h2>可复现的公开示例</h2><pre><code># 周末读书会
+
+开始：周六见。
+
+| 环节 | 时长 |
+| --- | --- |
+| 自由阅读 | 20 分钟 |
+| 交流讨论 | 30 分钟 |
+
+结束：记得带书。</code></pre><p>在自己的草稿中核对开头、表格图片和结尾，并检查普通文字仍可编辑。</p><p><a class="button" href="../editor.html?example=chat-table&amp;lang=zh-CN">在编辑器试用此示例</a></p></section>
+<section id="evidence"><h2>实现与验证依据</h2><ul><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">平台兼容性和已知问题</a></li><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/windows-clipboard-qa.md">Windows 剪贴板验证步骤</a></li></ul></section>
+
+<section><h2>相关指南</h2><ul><li><a href="./ai-markdown-to-chat.html">DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？</a></li><li><a href="./markdown-to-dingtalk.html">Markdown 怎么发到钉钉？保留文字、表格和图片</a></li><li><a href="./markdown-to-wechat.html">Markdown 转微信图文：文字可编辑，表格转图片</a></li><li><a href="./chat-compatibility.html">钉钉、微信、飞书、企业微信与邮件的图文复制兼容性</a></li><li><a href="./markdown-formatting.html">Markdown 表格、代码、公式和 Mermaid 转聊天图文</a></li><li><a href="./markdown-to-feishu.html">Markdown 怎么发到飞书？文字与图片一次粘贴</a></li><li><a href="./markdown-to-wecom.html">Markdown 怎么发到企业微信？按顺序保留文字与图片</a></li></ul></section></main>
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">实现与验证依据</a><a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a></footer></div></body></html>

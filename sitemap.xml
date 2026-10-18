@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://forgeturl.github.io/md2chat/</loc></url>
-<url><loc>https://forgeturl.github.io/md2chat/editor.html</loc></url>
 <url><loc>https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html</loc></url>
 <url><loc>https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html</loc></url>
 <url><loc>https://forgeturl.github.io/md2chat/guides/markdown-to-wechat.html</loc></url>
 <url><loc>https://forgeturl.github.io/md2chat/guides/chat-compatibility.html</loc></url>
 <url><loc>https://forgeturl.github.io/md2chat/guides/markdown-formatting.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/ai-markdown-to-chat.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/markdown-to-dingtalk.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/markdown-to-wechat.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/chat-compatibility.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/markdown-formatting.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/markdown-to-feishu.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/markdown-to-wecom.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/en/guides/clipboard-images-missing.html</loc></url>
+<url><loc>https://forgeturl.github.io/md2chat/editor.html</loc></url>
 </urlset>

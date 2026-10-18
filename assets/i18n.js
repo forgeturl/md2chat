@@ -48,7 +48,14 @@
   const doc = win.document;
   const languages = win.navigator.languages?.length ? win.navigator.languages : [win.navigator.language];
   try { const saved = win.localStorage.getItem(key); if (valid(saved)) preference = saved; } catch (_) {}
+  // Static landing pages keep their authored language on first load; desktop
+  // and the shared editor retain their saved-language behavior.
+  const pageLocale = doc.documentElement.getAttribute('data-site-language');
+  const requestedLocale = new URLSearchParams(win.location?.search || '').get('lang');
+  if (codes.has(pageLocale)) preference = pageLocale;
+  else if (!win.md2chatLocale && codes.has(requestedLocale)) preference = requestedLocale;
   locale = resolve(preference, languages);
+  const englishSources = new Map(Object.entries(data.messages).map(([source, entry]) => [entry.en, source]));
   const originals = new WeakMap(), attributes = new WeakMap();
   const excluded = 'script,style,pre,code,textarea,[contenteditable],#message,#diagnostic-report,#clipboard-images,[data-no-i18n],[aria-hidden="true"]';
   function text(node) {
@@ -59,7 +66,7 @@
    const source = previous && current === previous.output ? previous.source : current;
    const trimmed = source.trim();
    if (!trimmed) return;
-   const translated = translate(trimmed, locale);
+   const translated = translate(pageLocale === 'en' ? (englishSources.get(trimmed) || trimmed) : trimmed, locale);
    const output = source.replace(trimmed, translated);
    originals.set(node, {source, output});
    if (current !== output) node.nodeValue = output;
@@ -71,7 +78,7 @@
     if (!element.hasAttribute(name)) continue;
     const current = element.getAttribute(name), previous = saved[name];
     const source = previous && previous.output === current ? previous.source : current;
-    const output = translate(source, locale);
+    const output = translate(pageLocale === 'en' ? (englishSources.get(source) || source) : source, locale);
     saved[name] = {source, output};
     if (output !== current) element.setAttribute(name, output);
    }
@@ -130,7 +137,7 @@
      else for (const node of record.addedNodes) walk(node);
     }
    }).observe(doc.body, {subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['title','aria-label','data-placeholder','placeholder']});
-   win.addEventListener('storage', event => { if (event.key === key) apply(event.newValue); });
+   win.addEventListener('storage', event => { if (!codes.has(pageLocale) && event.key === key) apply(event.newValue); });
    if (win.md2chatLocale) {
     win.md2chatLocale.subscribe(value => { if (valid(value.preference)) { persist(value.preference); apply(value.preference); } });
     const initialRevision = revision;

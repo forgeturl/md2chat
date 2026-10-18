@@ -38,6 +38,28 @@
     }
   ],
   "messages": {
+    "转聊天图文，": {
+      "zh-CN": "转聊天图文，",
+      "en": "to chat.",
+      "es": "para el chat.",
+      "pt-BR": "para o chat.",
+      "ja": "をチャットへ。",
+      "ko": "채팅으로.",
+      "de": "für den Chat.",
+      "fr": "pour le chat.",
+      "hi": "से चैट तक।"
+    },
+    "文字可编辑。": {
+      "zh-CN": "文字可编辑。",
+      "en": "Text stays editable.",
+      "es": "El texto sigue editable.",
+      "pt-BR": "O texto continua editável.",
+      "ja": "テキストは編集可能。",
+      "ko": "텍스트는 편집 가능하게.",
+      "de": "Text bleibt bearbeitbar.",
+      "fr": "Le texte reste modifiable.",
+      "hi": "टेक्स्ट संपादन योग्य रहता है।"
+    },
     "使用指南": {
       "zh-CN": "使用指南",
       "en": "Guides",

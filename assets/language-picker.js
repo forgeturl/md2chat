@@ -53,8 +53,12 @@
   function open() {
    if(select.disabled)return;
    sync();panel.hidden=false;trigger.setAttribute('aria-expanded','true');
+   panel.style.transform='';
    const rect=trigger.getBoundingClientRect(),below=window.innerHeight-rect.bottom;
    panel.classList.toggle('opens-up',below<panel.offsetHeight+12 && rect.top>below);
+   const bounds=panel.getBoundingClientRect();
+   const shift=Math.max(16-bounds.left,Math.min(0,window.innerWidth-16-bounds.right));
+   if(shift)panel.style.transform='translateX('+shift+'px)';
    (options.find(option=>option.dataset.value===select.value)||options[0])?.focus();
   }
   trigger.addEventListener('click',()=>panel.hidden?open():close());

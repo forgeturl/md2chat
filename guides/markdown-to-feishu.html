@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 怎么发到飞书？文字与图片一次粘贴 | md2chat</title><meta name="description" content="使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。"><link rel="icon" href="../assets/favicon.png"><link rel="stylesheet" href="../assets/landing.css?v=0.6.16"><link rel="stylesheet" href="../assets/site-guides.css?v=0.6.16">
+<!-- seo:start -->
+<link rel="canonical" href="https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html">
+<link rel="alternate" hreflang="zh-CN" href="https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html">
+<link rel="alternate" hreflang="en" href="https://forgeturl.github.io/md2chat/en/guides/markdown-to-feishu.html">
+<link rel="alternate" hreflang="x-default" href="https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html">
+<meta property="og:type" content="article"><meta property="og:locale" content="zh_CN"><meta property="og:site_name" content="md2chat">
+<meta property="og:title" content="Markdown 怎么发到飞书？文字与图片一次粘贴 | md2chat"><meta property="og:description" content="使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。"><meta property="og:url" content="https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html">
+<meta property="og:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png"><meta property="og:image:alt" content="md2chat Markdown 输入与图文预览界面">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 怎么发到飞书？文字与图片一次粘贴 | md2chat"><meta name="twitter:description" content="使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Markdown 怎么发到飞书？文字与图片一次粘贴","description":"使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。","url":"https://forgeturl.github.io/md2chat/guides/markdown-to-feishu.html","inLanguage":"zh-CN","dateModified":"2026-10-18","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"},"citation":["https://github.com/forgeturl/md2chat/blob/main/docs/feishu-mac.md","https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md#Windows-飞书编辑器样本与适配"]}</script>
+<!-- seo:end --></head>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="导航"><a href="../editor.html">试用转换器</a><a href="../#download">下载桌面版</a><a href="../en/guides/markdown-to-feishu.html" lang="en" hreflang="en">English</a></nav></header>
+<main><h1>Markdown 怎么发到飞书？文字与图片一次粘贴</h1><p class="lead">使用 md2chat 桌面版将 Markdown 转为飞书图文，了解展开富文本输入框的步骤、Mac 实测与 Windows 待验收范围。</p><p class="reviewed">内容核对日期：<time datetime="2026-10-18">2026-10-18</time></p>
+<nav class="guide-contents" aria-label="本页内容"><a href="#answer-0">直接回答</a><a href="#answer-1">为什么普通输入框可能丢图？</a><a href="#answer-2">Mac 与 Windows 的验证有什么区别？</a><a href="#answer-3">如何判断本次粘贴完整？</a><a href="#steps">操作步骤</a><a href="#example">可复现的公开示例</a><a href="#evidence">实现与验证依据</a></nav>
+<section id="answer-0"><h2>直接回答</h2><p>下载 md2chat 桌面版，粘贴 Markdown 并核对预览，点击飞书复制；先展开飞书富文本输入框，再粘贴。普通文字保持可编辑，表格、代码、公式与图表转为图片。网页版不提供飞书复制。</p></section>
+<section id="answer-1"><h2>为什么普通输入框可能丢图？</h2><p>飞书普通聊天框与展开后的富文本编辑区可能采用不同的剪贴板导入路径。已验证的 Mac 流程使用原生编辑 fragment；标准 HTML 中有图片，不代表飞书会导入它。</p></section>
+<section id="answer-2"><h2>Mac 与 Windows 的验证有什么区别？</h2><p>Mac 已有两张图片、前中后文字及粗体、斜体、删除线的粘贴和用户发送确认。Windows 根据飞书 7.51.0.45 编辑器样本生成原生 fragment 与本机 PNG 引用；样本读取和源码实现不能代替新构建粘贴验收。</p></section>
+<section id="answer-3"><h2>如何判断本次粘贴完整？</h2><p>先用下面的公开示例核对开头、表格图片和末尾文字，再尝试修改普通文字。若图片缺失，确认已展开富文本输入框，并记录系统、md2chat 和飞书版本。不要仅根据“复制成功”判断发送结果。</p></section>
+<section id="steps"><h2>操作步骤</h2><ol><li>打开桌面版，将下面示例粘贴到输入区，等待预览完成。</li><li>点击飞书复制，切换到自己的飞书聊天草稿。</li><li>展开富文本输入框，再按 ⌘V 或 Ctrl+V。</li><li>核对文字、表格图片、末尾文字的顺序；确认后自行发送。</li></ol></section>
+<section id="example"><h2>可复现的公开示例</h2><pre><code># 周末读书会
+
+开始：周六见。
+
+| 环节 | 时长 |
+| --- | --- |
+| 自由阅读 | 20 分钟 |
+| 交流讨论 | 30 分钟 |
+
+结束：记得带书。</code></pre><p>在自己的草稿中核对开头、表格图片和结尾，并检查普通文字仍可编辑。</p><p><a class="button" href="../editor.html?example=chat-table&amp;lang=zh-CN">在编辑器试用此示例</a></p></section>
+<section id="evidence"><h2>实现与验证依据</h2><ul><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/feishu-mac.md">Mac 飞书格式与验证记录</a></li><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md#Windows-飞书编辑器样本与适配">Windows 飞书样本与适配边界</a></li></ul></section>
+
+<section><h2>相关指南</h2><ul><li><a href="./ai-markdown-to-chat.html">DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？</a></li><li><a href="./markdown-to-dingtalk.html">Markdown 怎么发到钉钉？保留文字、表格和图片</a></li><li><a href="./markdown-to-wechat.html">Markdown 转微信图文：文字可编辑，表格转图片</a></li><li><a href="./chat-compatibility.html">钉钉、微信、飞书、企业微信与邮件的图文复制兼容性</a></li><li><a href="./markdown-formatting.html">Markdown 表格、代码、公式和 Mermaid 转聊天图文</a></li><li><a href="./markdown-to-wecom.html">Markdown 怎么发到企业微信？按顺序保留文字与图片</a></li><li><a href="./clipboard-images-missing.html">Markdown 复制到聊天后图片丢失怎么办？</a></li></ul></section></main>
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">实现与验证依据</a><a href="https://github.com/forgeturl/md2chat/issues">反馈问题</a></footer></div></body></html>

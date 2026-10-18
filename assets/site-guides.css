@@ -1,0 +1,17 @@
+.guide { max-width:960px; }
+.guide .nav { flex-wrap:wrap; gap:16px; }
+.guide .nav-links { display:flex; flex-wrap:wrap; gap:16px; }
+.guide h1 { font-size:clamp(30px,5vw,46px); line-height:1.35; overflow-wrap:anywhere; }
+.guide .reviewed { font-size:14px; color:var(--muted); }
+.guide .guide-contents { display:flex; flex-wrap:wrap; gap:10px 18px; padding:20px; background:#f0f5ef; border-radius:12px; margin:24px 0; }
+.guide .guide-contents a { font-size:14px; text-decoration:underline; text-underline-offset:3px; }
+.guide section { scroll-margin-top:24px; }
+.guide li { margin:10px 0; line-height:1.9; }
+.guide pre { background:#f0f5ef; border:1px solid var(--line); padding:20px; border-radius:12px; overflow-x:auto; font-size:14px; line-height:1.8; }
+.guide a { overflow-wrap:anywhere; }
+.guide .footer { display:flex; flex-wrap:wrap; gap:16px; }
+@media(max-width:640px) {
+ .guide .nav-links { display:flex; font-size:14px; gap:12px; }
+ .guide .button { white-space:normal; text-align:center; }
+ .guide .guide-contents { padding:14px; }
+}
