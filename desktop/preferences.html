@@ -28,6 +28,11 @@
         <fieldset id="target-options" class="target-options" aria-describedby="pin-description pin-note" disabled>
           <legend class="visually-hidden">选择并排列托盘常用格式</legend>
           <ol id="target-list" class="target-list">
+            <li class="target-option" data-target="image" draggable="false">
+              <span class="target-grip" aria-hidden="true">⠿</span>
+              <label class="target-label"><input type="checkbox" name="pinnedTargets" value="image"><img src="../assets/menu-icons/image.svg" width="22" height="22" alt=""><span>转图片</span></label>
+              <div class="target-order-actions"><button type="button" data-move="up" aria-label="转图片上移" title="转图片上移" disabled>↑</button><button type="button" data-move="down" aria-label="转图片下移" title="转图片下移" disabled>↓</button></div>
+            </li>
             <li class="target-option" data-target="wechat" draggable="false">
               <span class="target-grip" aria-hidden="true">⠿</span>
               <label class="target-label"><input type="checkbox" name="pinnedTargets" value="wechat"><img src="../assets/platforms/wechat.svg" width="22" height="22" alt=""><span>微信格式</span></label>

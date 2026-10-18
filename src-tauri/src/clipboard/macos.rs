@@ -110,6 +110,17 @@ fn native(name: &str) -> &str {
         other => other,
     }
 }
+pub fn change_count() -> Result<u64, String> {
+    let _pool = Pool::new();
+    unsafe {
+        let board: Id = send0(class("NSPasteboard"), "generalPasteboard");
+        if board.is_null() {
+            return Err("系统剪贴板不可用。".into());
+        }
+        Ok(send0::<isize>(board, "changeCount") as u64)
+    }
+}
+
 pub fn read() -> Result<Snapshot, String> {
     let _pool = Pool::new();
     unsafe {

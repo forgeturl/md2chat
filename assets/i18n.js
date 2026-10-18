@@ -28,6 +28,8 @@
   const format = (key, values) => (data.messages[key]?.[locale] || data.messages[key]?.en || key)
    .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
   let match;
+  if ((match = /^第 (\d+) 张图片无法读取，请检查原图后重试。$/.exec(source))) return format('第 {n} 张图片无法读取，请检查原图后重试。',{n:match[1]});
+  if ((match = /^第 (\d+) 张图片尺寸无效，请检查原图后重试。$/.exec(source))) return format('第 {n} 张图片尺寸无效，请检查原图后重试。',{n:match[1]});
   if ((match = /^原文图片 (\d+) 张 \+ 表格图片 (\d+) 张 \+ 公式 (\d+) 张 \+ 图表 (\d+) 张 \+ 代码 (\d+) 张 = 共 (\d+) 张图片。$/.exec(source)))
    return format('来源 {a} · 表格 {b} · 公式 {c} · 图表 {d} · 代码 {e} · 总计 {n}', Object.fromEntries(['a','b','c','d','e','n'].map((key,i)=>[key,match[i+1]])));
   if ((match = /^已复制到剪贴板（(微信|钉钉|飞书|企微|邮件)图文，(\d+) 张图片(?:，表格可编辑)?）。([\s\S]*)$/.exec(source)))

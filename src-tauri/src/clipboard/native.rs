@@ -36,7 +36,11 @@ pub use platform::native_roundtrip;
 #[cfg(windows)]
 pub use platform::register_app_owner;
 #[cfg(any(target_os = "macos", windows))]
-pub use platform::{has_private, read, write_checked};
+pub use platform::{change_count, has_private, read, write_checked};
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn change_count() -> Result<u64, String> {
+    Err("当前平台尚未提供原生剪贴板适配。".into())
+}
 #[cfg(not(any(target_os = "macos", windows)))]
 pub fn read() -> Result<Snapshot, String> {
     Err("当前平台尚未提供原生剪贴板适配。".into())

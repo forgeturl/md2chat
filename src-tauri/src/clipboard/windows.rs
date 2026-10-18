@@ -288,6 +288,11 @@ fn png_to_dib(png: &[u8]) -> Result<Vec<u8>, String> {
     }
     Ok(out)
 }
+pub fn change_count() -> Result<u64, String> {
+    let _clipboard = Clipboard::open(false)?;
+    Ok(unsafe { GetClipboardSequenceNumber() } as u64)
+}
+
 pub fn read() -> Result<Snapshot, String> {
     let _clipboard = Clipboard::open(false)?;
     let sequence = unsafe { GetClipboardSequenceNumber() };

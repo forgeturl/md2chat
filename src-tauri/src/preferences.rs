@@ -12,7 +12,7 @@ use std::{
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_autostart::ManagerExt;
 
-pub(crate) const TARGETS: [&str; 5] = ["wechat", "dingtalk", "feishu", "wecom", "email"];
+pub(crate) const TARGETS: [&str; 6] = ["image", "wechat", "dingtalk", "feishu", "wecom", "email"];
 const MAX_FILE_BYTES: u64 = 64 * 1024;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -349,6 +349,23 @@ mod tests {
             "md2chat-preferences-test-{}-{sequence}",
             std::process::id()
         ))
+    }
+
+    #[test]
+    fn image_can_be_pinned_with_all_formats_and_survives_reload() {
+        let targets = json!(["email", "image", "wechat", "dingtalk", "feishu", "wecom"]);
+        let patch = validate_patch(json!({"pinnedTargets": targets})).unwrap();
+        let directory = temporary_directory();
+        let file = directory.join("preferences.json");
+        let expected = Preferences {
+            pinned_targets: patch.pinned_targets.unwrap(),
+            show_tray_label: true,
+            language: "ja".into(),
+        };
+        write_preferences(&file, &expected).unwrap();
+        assert_eq!(read_preferences(&file).unwrap(), expected);
+        assert_eq!(json!(expected.pinned_targets), targets);
+        fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]

@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(require.resolve('../assets/preferences.js'), 'utf8');
-const canonical = ['wechat', 'dingtalk', 'feishu', 'wecom', 'email'];
+const markup = fs.readFileSync(require.resolve('../desktop/preferences.html'), 'utf8');
+const canonical = [...markup.matchAll(/data-target="([^"]+)"/g)].map(match => match[1]);
 const copy = value => JSON.parse(JSON.stringify(value));
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -97,9 +98,39 @@ async function fixture(initial = {}) {
  };
 }
 
+test('preferences expose every conversion, including image, with translated ordering labels', () => {
+ assert.deepEqual(canonical, ['image', 'wechat', 'dingtalk', 'feishu', 'wecom', 'email']);
+ const {translate, locales} = require('../assets/i18n.js');
+ for (const key of ['转图片', '转图片上移', '转图片下移']) {
+  assert(markup.includes(key));
+  for (const {code} of locales) if (code !== 'zh-CN') assert.notEqual(translate(key, code), key, `${key}: ${code}`);
+ }
+});
+
+test('image can be restored, pinned, reordered by button and drag, rolled back, and unpinned', async () => {
+ const f = await fixture({pinnedTargets: ['email', 'image']});
+ assert.equal(f.rows.get('image')?.input.checked, true);
+ await f.move('image', 'up');
+ assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['image', 'email']});
+ const transfer = {setData() {}};
+ f.dispatch('dragstart', f.rows.get('image'), {dataTransfer: transfer});
+ f.dispatch('drop', f.rows.get('email'), {dataTransfer: transfer});
+ await tick();
+ assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['email', 'image']});
+ f.fail(new Error('保存失败'));
+ await f.select('image', false);
+ assert.equal(f.rows.get('image').input.checked, true);
+ assert.deepEqual(f.order().slice(0, 2), ['email', 'image']);
+ f.fail(null);
+ await f.select('image', false);
+ assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['email']});
+ await f.select('image', true);
+ assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['email', 'image']});
+});
+
 test('selected tray formats render in saved order, then unselected formats; controls obey boundaries', async () => {
  const f = await fixture({pinnedTargets: ['email', 'wechat'], login: {supported: true, registered: true, enabled: false, pending: true}});
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  assert.equal(f.rows.get('email').input.checked, true);
  assert.equal(f.rows.get('email').up.disabled, true);
  assert.equal(f.rows.get('email').down.disabled, false);
@@ -115,7 +146,7 @@ test('checking appends a format, unchecking removes it, and keyboard order actio
  const f = await fixture({pinnedTargets: ['email', 'wechat']});
  await f.select('feishu', true);
  assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['email', 'wechat', 'feishu']});
- assert.deepEqual(f.order(), ['email', 'wechat', 'feishu', 'dingtalk', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'feishu', 'image', 'dingtalk', 'wecom']);
  await f.move('wechat', 'up');
  assert.deepEqual(f.calls.at(-1), {pinnedTargets: ['wechat', 'email', 'feishu']});
  assert.equal(f.focused(), f.rows.get('wechat').input);
@@ -132,12 +163,12 @@ test('save failure restores selections and order and retains a safe Chinese syst
  const f = await fixture({pinnedTargets: ['email', 'wechat']});
  f.fail(new Error("Error invoking remote method 'md2chat:preferences-set': Error: 系统尚未确认移除登录项，请在系统启动项设置中检查。"));
  await f.move('wechat', 'up');
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  assert.match(f.elements.get('preferences-status').textContent, /系统尚未确认移除登录项/);
  assert.equal(f.rows.get('wechat').down.disabled, true);
  await f.select('feishu', true);
  assert.equal(f.rows.get('feishu').input.checked, false);
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  f.fail(new Error('保存失败 ENOENT /Users/example/private/preferences.json'));
  await f.select('feishu', true);
  assert.equal(f.elements.get('preferences-status').textContent, '未能保存，已恢复原设置。请重试。');
@@ -179,7 +210,7 @@ test('pending saves disable controls and ignore concurrent events; focus refresh
  await f.select('feishu', true);
  assert.equal(f.calls.length, 1);
  release(); await tick();
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  assert.equal(f.rows.get('feishu').input.checked, false);
  assert.equal(f.elements.get('target-options').disabled, false);
  f.setState({login: {supported: true, registered: false, enabled: false}});
@@ -203,7 +234,7 @@ test('activating the window refreshes only system login state without disabling 
  release(); await tick();
  assert.equal(f.elements.get('open-at-login').checked, false);
  assert.equal(f.elements.get('show-tray-label').checked, false);
- assert.deepEqual(f.order(), ['wechat', 'email', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['wechat', 'email', 'image', 'dingtalk', 'feishu', 'wecom']);
  assert.equal(f.appendCount(), appends);
  f.dispatch('drop', f.rows.get('email'), {dataTransfer: transfer});
  await tick();
@@ -217,11 +248,11 @@ test('a delayed focus refresh cannot overwrite the system snapshot returned by a
  f.setState({login: {supported: true, registered: false, enabled: false}});
  await f.move('email', 'up');
  assert.equal(f.elements.get('open-at-login').checked, false);
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  const appends = f.appendCount();
  releaseRead(); await tick();
  assert.equal(f.elements.get('open-at-login').checked, false);
- assert.deepEqual(f.order(), ['email', 'wechat', 'dingtalk', 'feishu', 'wecom']);
+ assert.deepEqual(f.order(), ['email', 'wechat', 'image', 'dingtalk', 'feishu', 'wecom']);
  assert.equal(f.appendCount(), appends);
 });
 

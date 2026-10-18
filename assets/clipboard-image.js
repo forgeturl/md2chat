@@ -16,7 +16,7 @@
   return (run.italic?'italic ':'')+(run.bold?'600 ':'400 ')+(run.code?19:FONT_SIZE)+'px '+(run.code?'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace':'-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif');
  }
  function snapshot(parts){
-  if(!Array.isArray(parts)||!parts.length)throw new Error('剪贴板没有可转为图片的内容。');
+  if(!Array.isArray(parts)||!parts.length)throw new Error('没有可转为图片的内容。');
   if(parts.length>MAX_PARTS)throw new Error('内容段落过多（最多 500 段），请分段转换。');
   let textSize=0,sourceSize=0,runCount=0;
   const result=parts.map(part=>{
@@ -43,10 +43,10 @@
     sourceSize+=part.src.length;
     return {type:'image',src:part.src,width:part.width,height:part.height,displayWidth:part.displayWidth};
    }
-   throw new Error('转换内容无效，请重新复制完整图文。');
+   throw new Error('转换内容无效，请检查原文后重试。');
   });
   if(sourceSize>MAX_SOURCE)throw new Error('图文数据过大，请减少图片后重试。');
-  if(!result.some(part=>part.type==='image'||part.text.trim()))throw new Error('剪贴板没有可转为图片的内容。');
+  if(!result.some(part=>part.type==='image'||part.text.trim()))throw new Error('没有可转为图片的内容。');
   return result;
  }
  function checkHeight(bottom,scale){
@@ -66,7 +66,7 @@
    if(hasPart)y+=GAP;
    hasPart=true;
    if(part.type==='image'){
-    if(!Number.isFinite(part.width)||!Number.isFinite(part.height)||part.width<=0||part.height<=0)throw new Error('图片尺寸无效，请重新复制图片。');
+    if(!Number.isFinite(part.width)||!Number.isFinite(part.height)||part.width<=0||part.height<=0)throw new Error('图片尺寸无效，请检查原图后重试。');
     const ratio=Math.min(1,CONTENT_WIDTH/part.width,(part.displayWidth??part.width)/part.width),width=part.width*ratio,height=part.height*ratio;
     checkHeight(y+height,scale);
     nodes.push({type:'image',src:part.src,x:PADDING,y,width,height});y+=height;
@@ -104,8 +104,8 @@
   try{
    if(typeof image.decode==='function'){image.src=src;await image.decode();}
    else await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=src;});
-  }catch{throw new Error('第 '+index+' 张图片无法读取，请重新复制完整图片。');}
-  if(!Number.isSafeInteger(image.naturalWidth)||!Number.isSafeInteger(image.naturalHeight)||image.naturalWidth<=0||image.naturalHeight<=0)throw new Error('第 '+index+' 张图片尺寸无效，请重新复制图片。');
+  }catch{throw new Error('第 '+index+' 张图片无法读取，请检查原图后重试。');}
+  if(!Number.isSafeInteger(image.naturalWidth)||!Number.isSafeInteger(image.naturalHeight)||image.naturalWidth<=0||image.naturalHeight<=0)throw new Error('第 '+index+' 张图片尺寸无效，请检查原图后重试。');
   return image;
  }
  function pngSource(canvas){

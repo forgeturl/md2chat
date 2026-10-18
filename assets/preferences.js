@@ -12,7 +12,7 @@
   const loginDescription = document.getElementById('login-description');
   const status = document.getElementById('preferences-status');
   const retryLoad = document.getElementById('retry-load');
-  const canonicalTargets = ['wechat', 'dingtalk', 'feishu', 'wecom', 'email'];
+  const canonicalTargets = Array.from(targetRows.keys());
   const validTargets = new Set(canonicalTargets);
   let snapshot = null;
   let busy = false;

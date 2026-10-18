@@ -15,22 +15,30 @@
    .catch(() => {});
   return () => { disposed = true; unlisten?.(); };
  }
- let renderCallback, segmentsCallback, readyPromise, listenerPromise, backgroundLockRequested=false;
+ let renderCallback, segmentsCallback, imageCallback, readyPromise, listenerPromise, backgroundLockRequested=false, rendering=false;
  const pending = new Set();
  async function convert(request) {
-  if (!request || !Number.isSafeInteger(request.id) || request.id <= 0 || !['render', 'segments'].includes(request.kind) || pending.has(request.id)) return;
+  if (!request || !Number.isSafeInteger(request.id) || request.id <= 0 || !['render', 'segments', 'editor-image'].includes(request.kind) || pending.has(request.id)) return;
   pending.add(request.id);
+  let ownsRenderer=false;
   try {
    const input = await invoke('conversion_take', {id: request.id});
    const kind = input.kind || request.kind;
+   // A native timeout releases its lock; an old browser decode can still be pending.
+   // Do not allocate another large bitmap until that renderer actually settles.
+   if (kind === 'render' || kind === 'editor-image') {
+    if (rendering) throw new Error('正在转换或复制，请稍候再试。');
+    rendering=true;ownsRenderer=true;
+   }
    let parts;
    if (kind === 'segments' && segmentsCallback) { await segmentsCallback(input.parts); parts = []; }
    else if (kind === 'render' && renderCallback) parts = await renderCallback(input.content, input.target);
+   else if (kind === 'editor-image' && imageCallback) parts = [await imageCallback()];
    else throw new Error('转换窗口尚未准备好，请重试。');
    await invoke('conversion_result', {id: request.id, result: {parts}});
   } catch (error) {
    await invoke('conversion_result', {id: request.id, result: {error: error?.message || '转换失败，请重试。'}}).catch(() => {});
-  } finally { pending.delete(request.id); }
+  } finally { if (ownsRenderer) rendering=false; pending.delete(request.id); }
  }
  function ready() {
   if (!renderCallback || !segmentsCallback) return Promise.resolve();
@@ -54,6 +62,14 @@
   platform,
   copy: (parts, target = 'dingtalk') => invoke('desktop_copy', {parts, target}),
   copyWecomSegment: segment => invoke('desktop_copy_segment', {segment}),
+  async copyImage(render) {
+   if (imageCallback) throw new Error('正在转换或复制，请稍候再试。');
+   if (typeof render !== 'function') throw new Error('转图片暂不可用，请在应用内重试。');
+   if (!renderCallback || !segmentsCallback) throw new Error('转换窗口尚未准备好，请重试。');
+   imageCallback=render;
+   try { await ready(); return await invoke('desktop_copy_image'); }
+   finally { imageCallback=undefined; }
+  },
   testDingtalkHtml: mode => invoke('desktop_test_dingtalk_html', {mode}),
   inspect: () => invoke('desktop_inspect'),
   readLocalImage: source => invoke('desktop_read_local_image', {source}),

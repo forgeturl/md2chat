@@ -46,6 +46,22 @@ test('dynamic conversion counts stay accurate in translated status messages', ()
  assert.equal(i18n.translate(source,'en'),'Original 1 · Tables 2 · Equations 3 · Diagrams 4 · Code 5 · Total 15 images');
  assert.equal(i18n.translate('已复制第 2/4 段，请到企微粘贴后再继续。','en'),'Copied part 2/4. Paste it in WeCom before continuing.');
 });
+test('image composition errors use document-neutral wording and translate in every locale', () => {
+ const fs=require('node:fs');
+ const source=fs.readFileSync(require.resolve('../assets/clipboard-image.js'),'utf8');
+ const messages=[...source.matchAll(/new Error\('([^']*)'\)/g)].map(match=>match[1]);
+ messages.push('第 2 张图片无法读取，请检查原图后重试。','第 12 张图片尺寸无效，请检查原图后重试。',
+  '正在转换或复制，请稍候再试。','转换期间剪贴板已更新，已保留新内容。请重新转图片。',
+  '已复制转换开始时的内容；当前文档已更新，请重新转图片。');
+ for(const message of messages){
+  assert(!message.includes('重新复制'));
+  for(const {code} of data.locales)if(code!=='zh-CN'){
+   const translated=i18n.translate(message,code);
+   assert.notEqual(translated,message,`${code}: ${message}`);
+   if(message.startsWith('第 12'))assert(translated.includes('12'));
+  }
+ }
+});
 test('all nine public languages navigate to complete pages without changing editor routing', async () => {
  function windowFor(pageLocale, routes={}) {
   const navigations=[],saved=[],events=[];

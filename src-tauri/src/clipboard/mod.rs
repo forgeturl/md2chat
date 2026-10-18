@@ -12,6 +12,7 @@ use std::{
 static CLIPBOARD: Mutex<()> = Mutex::new(());
 #[cfg(windows)]
 pub use native::register_app_owner;
+pub use native::CHANGED;
 fn lock() -> Result<MutexGuard<'static, ()>, String> {
     CLIPBOARD
         .lock()
@@ -79,13 +80,33 @@ pub fn copy_segment(segment: Value) -> Result<Value, String> {
     let _lock = lock()?;
     copy_segment_inner(segment, None)
 }
+pub fn change_count() -> Result<u64, String> {
+    let _lock = lock()?;
+    native::change_count()
+}
+
+enum SegmentGuard<'a> {
+    Fingerprint(&'a Path, &'a str),
+    Sequence(u64),
+}
+
+pub fn copy_image_checked(segment: Value, sequence: u64) -> Result<Value, String> {
+    if segment["type"] != "image" {
+        return Err("转图片未生成完整 PNG，请重试。".into());
+    }
+    let _lock = lock()?;
+    copy_segment_inner(segment, Some(SegmentGuard::Sequence(sequence)))
+}
 pub fn copy_segment_guarded(
     segment: Value,
     directory: &Path,
     expected_fingerprint: &str,
 ) -> Result<Value, String> {
     let _lock = lock()?;
-    copy_segment_inner(segment, Some((directory, expected_fingerprint)))
+    copy_segment_inner(
+        segment,
+        Some(SegmentGuard::Fingerprint(directory, expected_fingerprint)),
+    )
 }
 fn check_fingerprint(directory: &Path, expected: &str) -> Result<u64, String> {
     let snapshot = native::read()?;
@@ -96,7 +117,7 @@ fn check_fingerprint(directory: &Path, expected: &str) -> Result<u64, String> {
     }
     Ok(sequence)
 }
-fn copy_segment_inner(segment: Value, guard: Option<(&Path, &str)>) -> Result<Value, String> {
+fn copy_segment_inner(segment: Value, guard: Option<SegmentGuard<'_>>) -> Result<Value, String> {
     let (kind, formats) = if segment["type"] == "text" {
         let text = segment["text"].as_str().ok_or("内容格式错误")?;
         if text.len() > 2 * 1024 * 1024 {
@@ -113,9 +134,13 @@ fn copy_segment_inner(segment: Value, guard: Option<(&Path, &str)>) -> Result<Va
     } else {
         return Err("不支持的内容类型".into());
     };
-    let sequence = guard
-        .map(|(directory, expected)| check_fingerprint(directory, expected))
-        .transpose()?;
+    let sequence = match guard {
+        Some(SegmentGuard::Fingerprint(directory, expected)) => {
+            Some(check_fingerprint(directory, expected)?)
+        }
+        Some(SegmentGuard::Sequence(sequence)) => Some(sequence),
+        None => None,
+    };
     native::write_checked(formats, sequence)?;
     Ok(json!({"type":kind}))
 }

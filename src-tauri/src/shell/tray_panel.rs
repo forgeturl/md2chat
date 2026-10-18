@@ -26,7 +26,7 @@ fn snapshot(app: &AppHandle) -> Value {
     let preferences = crate::preferences::current(app);
     let busy = crate::is_busy(app);
     let mut targets = preferences.pinned_targets;
-    for target in ["image", "wechat", "dingtalk", "feishu", "wecom", "email"] {
+    for target in crate::preferences::TARGETS {
         if !targets.iter().any(|value| value == target) {
             targets.push(target.to_owned());
         }

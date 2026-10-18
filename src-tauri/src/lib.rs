@@ -1,4 +1,5 @@
 mod clipboard;
+mod image_copy;
 mod images;
 mod locale;
 mod preferences;
@@ -104,6 +105,28 @@ async fn desktop_copy_segment(
     trusted(&window)?;
     let _guard = BusyGuard::acquire(&app)?;
     blocking(move || clipboard::copy_segment(segment)).await
+}
+
+#[tauri::command]
+async fn desktop_copy_image(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+) -> Result<Value, String> {
+    trusted(&window)?;
+    image_copy::run(
+        BusyGuard::acquire(&app)?,
+        blocking(clipboard::change_count),
+        || request_render(&app, json!({"kind":"editor-image"})),
+        |image, sequence| blocking(move || clipboard::copy_image_checked(image, sequence)),
+    )
+    .await
+    .map_err(|error| {
+        if error == clipboard::CHANGED {
+            "转换期间剪贴板已更新，已保留新内容。请重新转图片。".into()
+        } else {
+            error
+        }
+    })
 }
 
 #[tauri::command]
@@ -442,6 +465,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             desktop_copy,
             desktop_copy_segment,
+            desktop_copy_image,
             desktop_inspect,
             desktop_read_local_image,
             desktop_resolve_clipboard_html,

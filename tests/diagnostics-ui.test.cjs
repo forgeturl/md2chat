@@ -23,6 +23,11 @@ test('browser HTML diagnostics expose useful reference types and structure witho
  for(const secret of ['PRIVATE-','example.com','file:///C:'])assert(!report.includes(secret),secret);
  await f.copy();assert.equal(f.writes[0],report);
 });
+test('diagnostics recognize the editor image action without treating it as a chat platform',async()=>{
+ const f=fixture();f.context.lastCopyTarget='image';
+ await f.context.showSample('测试',[{type:'text/html',blob:new Blob(['<p>sample</p>'])}]);
+ assert.match(f.report(),/最近复制目标：图片/);
+});
 
 test('desktop read and report copy use sanitized metadata and retain exactly the last two samples',async()=>{
  let html='<div><img src="data:image/png;base64,AAAA"></div>';

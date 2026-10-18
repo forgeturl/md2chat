@@ -5,8 +5,8 @@ const wecomSegments=WecomSegments.create({copySegment:segment=>{
  return Promise.resolve(result).then(value=>{lastCopyTarget='wecom';return value;});
 }});
 let copying=false,lastCopyTarget=null;
-const desktopRequired=b=>['dingtalk','feishu'].includes(b.dataset.copyTarget)&&!window.md2chatDesktop;
-function copyTargetNote(target){return target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
+const desktopRequired=b=>['image','dingtalk','feishu'].includes(b.dataset.copyTarget)&&!window.md2chatDesktop;
+function copyTargetNote(target){return target==='image'?'将完整内容合成一张 PNG，图片中的文字不可编辑。':target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
@@ -214,6 +214,9 @@ function buildPayload(source,imageAssets=assets){
 let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
 if(window.md2chatDesktop){
  document.getElementById('back-home').hidden=true;
+ document.querySelector('[data-copy-target="image"]').hidden=false;
+ document.getElementById('image-copy-help').hidden=false;
+ document.querySelector('.copy-label').textContent='转换 / 复制';
  for(const target of ['dingtalk','feishu']){
   document.getElementById(target+'-desktop-hint').hidden=true;
   const wrapper=document.getElementById(target+'-copy-wrapper');
@@ -225,7 +228,7 @@ if(window.md2chatDesktop){
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
-function updateCopyControls(){for(const b of copyButtons){b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':'复制到'+ChatTargets.profile(b.dataset.copyTarget).label+'：'+copyTargetNote(b.dataset.copyTarget);if(desktopRequired(b)){b.disabled=true;b.setAttribute('aria-describedby',b.dataset.copyTarget+'-desktop-hint');}else b.removeAttribute('aria-describedby');}}
+function updateCopyControls(){for(const b of copyButtons){const target=b.dataset.copyTarget;b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':target==='image'?copyTargetNote(target):'复制到'+ChatTargets.profile(target).label+'：'+copyTargetNote(target);if(desktopRequired(b)){b.disabled=true;if(target!=='image')b.setAttribute('aria-describedby',target+'-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
 async function updatePreview(){
  const snapshot=inputSnapshot(),source=snapshot.source;const version=++renderVersion;clearInputError();
@@ -238,7 +241,7 @@ async function updatePreview(){
   if(version!==renderVersion)return null;
   message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;updateCopyControls(true);
   document.getElementById('conversion-info').textContent=conversionSummary(payload);
-  status.textContent='图文已准备好，点击目标平台图标复制。';return payload;
+  status.textContent=window.md2chatDesktop?'内容已准备好，可转图片或按平台复制。':'图文已准备好，点击目标平台图标复制。';return payload;
  }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;markInputError(snapshot,error);document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}return null;}
 }
 document.getElementById('clear-input').addEventListener('click',()=>{
@@ -258,17 +261,37 @@ function nativeCopy(payload){
 for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=>{
  if(copying||desktopRequired(copyButton))return;
  clearTimeout(previewTimer);
- const target=copyButton.dataset.copyTarget,profile=ChatTargets.profile(target);
- if(!cachedPayload||cachedSource!==serializeInput()){await updatePreview();status.textContent='预览已更新，请点击平台图标复制。';return;}
+ const target=copyButton.dataset.copyTarget,profile=target==='image'?null:ChatTargets.profile(target);
+ if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“转图片”。':'预览已更新，请点击平台图标复制。';return;}
  if(target==='wecom'&&cachedPayload.segments.some(part=>part.type==='image')){
   try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
   catch(error){showCopyNotice(error.message,true);}
   return;
  }
  copying=true;button.disabled=true;
- showCopyNotice('');status.textContent='正在复制到剪贴板…';
+ showCopyNotice('');status.textContent=target==='image'?'正在转图片…':'正在复制到剪贴板…';
  const payload=cachedPayload,source=cachedSource,parts=target==='email'?payload.emailSegments:payload.segments;
  try{
+  if(target==='image'){
+   let image;
+   await window.md2chatDesktop.copyImage(async()=>{
+    image=await ClipboardImage.render(parts,{fit:true});
+    if(source!==serializeInput())throw new Error('内容已更新，请重新转图片。');
+    return image;
+   });
+   lastCopyTarget='image';
+   if(cachedSource===source&&serializeInput()===source){
+    showCopyNotice('已转为图片并写入剪贴板，可以直接粘贴。');
+    for(const b of copyButtons)b.setAttribute('aria-pressed',String(b===copyButton));
+    message.innerHTML=ChatTargets.render([image],'wechat').html;
+    document.getElementById('conversion-info').textContent=copyTargetNote('image');
+    status.textContent='已转为图片并写入剪贴板，可以直接粘贴。';
+   }else{
+    const notice='已复制转换开始时的内容；当前文档已更新，请重新转图片。';
+    showCopyNotice(notice);status.textContent=notice;
+   }
+   return;
+  }
   let count,native=false,windowsHtml=false,feishuNative=false;
   if(window.md2chatDesktop){
    const result=await window.md2chatDesktop.copy(parts,target);count=result.images;native=result.native;windowsHtml=result.windowsHtml===true;feishuNative=result.feishuNative===true;
@@ -285,7 +308,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
    status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已写入 Chromium 兼容图文，请到钉钉粘贴并确认图片完整。':copyTargetNote(target));
   }
- }catch(error){showCopyNotice('复制失败，请查看下方提示后重试',true);status.textContent='复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
+ }catch(error){showCopyNotice(target==='image'?'转图片未完成，请根据提示重试。':'复制失败，请查看下方提示后重试',true);status.textContent=target==='image'?error.message:'复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
  finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();}
 });
 
@@ -316,7 +339,7 @@ function rememberReport(lines){
  document.getElementById('copy-report').disabled=false;
  diagnosticStatus.textContent='排查完成。最近两份脱敏报告仅保留在页面内存中。';
 }
-function recentCopyLine(){return '最近复制目标：'+(lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无')+'（仅记录本页操作，不代表当前剪贴板来源）';}
+function recentCopyLine(){return '最近复制目标：'+(lastCopyTarget==='image'?'图片':lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无')+'（仅记录本页操作，不代表当前剪贴板来源）';}
 function desktopReportLines(report){
  const native=report.macDingtalk;
  const nativeCount=!native.applicable?'不适用（仅 macOS）':!native.present?'未发现该格式':native.images===null?'未能统计':native.images;

@@ -107,7 +107,6 @@ fn tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         !busy,
         icon("clipboard"),
     )?;
-    conversions.append(&conversion_item(app, "image", !busy)?)?;
     for target in preferences::TARGETS {
         conversions.append(&conversion_item(app, target, !busy)?)?;
     }
@@ -626,7 +625,7 @@ mod tests {
 
     #[test]
     fn conversion_menu_dispatch_is_limited_to_known_targets() {
-        for target in preferences::TARGETS.into_iter().chain(["image"]) {
+        for target in preferences::TARGETS {
             assert_eq!(
                 conversion_target(&format!("convert:{target}")),
                 Some(target)

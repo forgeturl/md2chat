@@ -55,6 +55,58 @@ test('disposing a subscription before asynchronous registration releases its lis
  const state = fixture(); const dispose = state.bridge.updates.subscribe(() => {}); dispose(); await tick();
  assert(state.stopped.includes('md2chat:update-state')); assert(!state.listeners.has('md2chat:update-state'));
 });
+test('editor image rendering starts only on the native reserved request and returns exactly one image', async () => {
+ let finish,renderCount=0;
+ const nativeResult=new Promise(resolve=>{finish=resolve;}),image={type:'image',src:'data:image/png;base64,AAAA'};
+ const state=fixture({invoke:async(command,args)=>{
+  if(command==='desktop_copy_image')return nativeResult;
+  if(command==='conversion_take')return {kind:'editor-image'};
+  if(command==='conversion_result'){finish({type:'image'});assert.equal(args.result.parts[0],image);}
+ }});
+ state.bridge.onConvertClipboard(()=>[]);state.bridge.onWecomSegments(()=>{});await tick();
+ const copy=state.bridge.copyImage(async()=>{renderCount++;return image;});await tick();
+ assert(state.calls.some(call=>call.command==='desktop_copy_image'));
+ assert.equal(renderCount,0);
+ state.listeners.get('md2chat:conversion-request')({payload:{id:7,kind:'editor-image'}});
+ await copy;assert.equal(renderCount,1);
+ assert(!state.calls.some(call=>call.command==='desktop_copy_segment'));
+});
+test('busy rejection releases the image callback for retry without starting rendering', async () => {
+ let renders=0;
+ const state=fixture({invoke:async command=>{if(command==='desktop_copy_image')throw '正在转换或复制，请稍候再试。';}});
+ state.bridge.onConvertClipboard(()=>[]);state.bridge.onWecomSegments(()=>{});await tick();
+ for(let attempt=0;attempt<2;attempt++)await assert.rejects(()=>state.bridge.copyImage(async()=>{renders++;}),/正在转换或复制/);
+ assert.equal(renders,0);
+ assert.equal(state.calls.filter(call=>call.command==='desktop_copy_image').length,2);
+});
+test('image render errors report completion and retries cannot reuse the old callback', async () => {
+ let rejectNative;
+ const state=fixture({invoke:async(command,args)=>{
+  if(command==='desktop_copy_image')return new Promise((_,reject)=>{rejectNative=reject;});
+  if(command==='conversion_take')return {kind:'editor-image'};
+  if(command==='conversion_result')rejectNative(args.result.error);
+ }});
+ state.bridge.onConvertClipboard(()=>[]);state.bridge.onWecomSegments(()=>{});await tick();
+ for(let attempt=1;attempt<=2;attempt++){
+  const copy=state.bridge.copyImage(async()=>{throw new Error('图片读取失败');});
+  const rejected=assert.rejects(()=>copy,/图片读取失败/);await tick();
+  state.listeners.get('md2chat:conversion-request')({payload:{id:attempt,kind:'editor-image'}});
+  await rejected;
+ }
+ assert.equal(state.calls.filter(call=>call.command==='desktop_copy_image').length,2);
+});
+test('a pending decode cannot overlap another renderer even after a native request times out', async () => {
+ let finishDecode,renders=0;
+ const decode=new Promise(resolve=>{finishDecode=resolve;});
+ const state=fixture({invoke:async(command,args)=>command==='conversion_take'?{kind:'render',content:args.id}:undefined});
+ state.bridge.onWecomSegments(()=>{});
+ state.bridge.onConvertClipboard(async()=>{renders++;await decode;return [];});await tick();
+ const deliver=id=>state.listeners.get('md2chat:conversion-request')({payload:{id,kind:'render'}});
+ deliver(1);await tick();deliver(2);await tick();
+ assert.equal(renders,1);
+ assert.match(state.calls.find(call=>call.command==='conversion_result'&&call.args.id===2).args.result.error,/正在转换或复制/);
+ finishDecode();await tick();deliver(3);await tick();assert.equal(renders,2);
+});
 test('external links invoke the restricted native opener instead of navigating the WebView', async () => {
  const state = fixture(); let prevented = false;
  state.documentListeners.get('click')({target: {closest: () => ({href: 'https://github.com/forgeturl/md2chat'})}, preventDefault() {prevented = true;}});
