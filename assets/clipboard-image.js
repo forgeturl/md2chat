@@ -4,11 +4,12 @@
  if(typeof module==='object'&&module.exports)module.exports=api;else root.ClipboardImage=api;
 })(globalThis,root=>{
  'use strict';
- const CONTENT_WIDTH=1100,PADDING=32,FONT_SIZE=20,LINE_HEIGHT=30,GAP=16,SCALE=2;
+ const CONTENT_WIDTH=1100,PADDING=32,FONT_SIZE=20,LINE_HEIGHT=30,GAP=16,SCALE=2,MIN_FIT_SCALE=1;
  const MAX_PIXELS=20000000,MAX_TEXT=200000,MAX_PARTS=500,MAX_RUNS=20000;
  const MAX_IMAGE_SOURCE=15*1024*1024,MAX_SOURCE=60*1024*1024,MAX_DECODED_PIXELS=40000000,MAX_PNG_BYTES=10*1024*1024;
  const imageSource=/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i;
  const tooLarge=()=>new Error('生成的图片过大（最多 2,000 万像素），请减少内容或分段转换。');
+ const tooLong=()=>new Error('内容过长，无法生成一张清晰的长图，请减少内容后重试。');
  const style=run=>({bold:!!run.bold,italic:!!run.italic,strikethrough:!!run.strikethrough,code:!!run.code});
  const sameStyle=(a,b)=>a.bold===b.bold&&a.italic===b.italic&&a.strikethrough===b.strikethrough&&a.code===b.code;
  function font(run){
@@ -48,13 +49,13 @@
   if(!result.some(part=>part.type==='image'||part.text.trim()))throw new Error('剪贴板没有可转为图片的内容。');
   return result;
  }
- function checkHeight(bottom){
-  const width=(CONTENT_WIDTH+PADDING*2)*SCALE,height=Math.ceil(bottom+PADDING)*SCALE;
+ function checkHeight(bottom,scale){
+  const width=Math.ceil((CONTENT_WIDTH+PADDING*2)*scale),height=Math.ceil(Math.ceil(bottom+PADDING)*scale);
   if(!Number.isSafeInteger(height)||height<=0||width*height>MAX_PIXELS)throw tooLarge();
   return height;
  }
  // Image dimensions are natural bitmap dimensions; measure receives text and its style.
- function layout(parts,measure){
+ function layout(parts,measure,scale=SCALE){
   const content=snapshot(parts),nodes=[];
   if(typeof measure!=='function')throw new Error('文字测量暂不可用，请重试。');
   if(typeof Intl.Segmenter!=='function')throw new Error('当前环境不支持完整文字排版，请更新应用后重试。');
@@ -67,12 +68,12 @@
    if(part.type==='image'){
     if(!Number.isFinite(part.width)||!Number.isFinite(part.height)||part.width<=0||part.height<=0)throw new Error('图片尺寸无效，请重新复制图片。');
     const ratio=Math.min(1,CONTENT_WIDTH/part.width,(part.displayWidth??part.width)/part.width),width=part.width*ratio,height=part.height*ratio;
-    checkHeight(y+height);
+    checkHeight(y+height,scale);
     nodes.push({type:'image',src:part.src,x:PADDING,y,width,height});y+=height;
     continue;
    }
    let row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]},runIndex=0,runEnd=part.runs[0]?.text.length||0;
-   const flush=()=>{checkHeight(y+LINE_HEIGHT);nodes.push(row);y+=LINE_HEIGHT;row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]};};
+   const flush=()=>{checkHeight(y+LINE_HEIGHT,scale);nodes.push(row);y+=LINE_HEIGHT;row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]};};
    const widthOf=(text,run)=>{
     const width=measure(text,run);
     if(!Number.isFinite(width)||width<0)throw new Error('文字排版失败，请重试。');
@@ -94,8 +95,8 @@
    flush();
   }
   const width=CONTENT_WIDTH+PADDING*2,height=Math.ceil(y+PADDING);
-  checkHeight(y);
-  return {nodes,width,height,pixelWidth:width*SCALE,pixelHeight:height*SCALE,scale:SCALE};
+  checkHeight(y,scale);
+  return {nodes,width,height,pixelWidth:Math.ceil(width*scale),pixelHeight:Math.ceil(height*scale),scale};
  }
  async function decodeImage(src,index){
   if(typeof root.Image!=='function')throw new Error('图片解码暂不可用，请重试。');
@@ -123,7 +124,17 @@
    }catch{reject(new Error('图片生成失败，请减少内容后重试。'));}
   });
  }
- async function render(parts){
+ // Scales from the sharp default down to MIN_FIT_SCALE, largest first, that keep the bitmap within the pixel limit.
+ function fitScales(content,measure){
+  let base;
+  try{base=layout(content,measure,MIN_FIT_SCALE);}
+  catch(error){if(error.message===tooLarge().message)throw tooLong();throw error;}
+  const largest=Math.min(SCALE,Math.floor(Math.sqrt(MAX_PIXELS/(base.width*base.height))*20)/20),scales=[];
+  for(let scale=largest;scale>MIN_FIT_SCALE;scale=Math.round((scale-0.25)*100)/100)scales.push(scale);
+  return [...scales,MIN_FIT_SCALE];
+ }
+ // fit: one image for any length that fits at MIN_FIT_SCALE, lowering resolution instead of failing at the pixel or PNG limit.
+ async function render(parts,{fit=false}={}){
   const content=snapshot(parts);
   if(!root.document?.createElement)throw new Error('转图片暂不可用，请在应用内重试。');
   const canvas=root.document.createElement('canvas'),ctx=canvas.getContext('2d');
@@ -138,25 +149,31 @@
     if(decodedPixels>MAX_DECODED_PIXELS)throw new Error('原图总尺寸过大，请压缩图片或分段转换。');
     part.width=image.naturalWidth;part.height=image.naturalHeight;images.set(part.src,image);
    }
-   const page=layout(content,(text,run)=>{ctx.font=font(run);return ctx.measureText(text).width;});
-   // The complete layout has passed the pixel limit before allocating the output bitmap.
-   canvas.width=page.pixelWidth;canvas.height=page.pixelHeight;
-   ctx.scale(page.scale,page.scale);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,page.width,page.height);
-   ctx.textBaseline='alphabetic';
-   for(const node of page.nodes){
-    if(node.type==='image'){ctx.drawImage(images.get(node.src),node.x,node.y,node.width,node.height);continue;}
-    let x=node.x;
-    for(const run of node.runs){
-     ctx.font=font(run);
-     if(run.code){ctx.fillStyle='#f1f3f5';ctx.fillRect(x-2,node.y+3,run.width+4,24);}
-     ctx.fillStyle=run.code?'#334155':'#20242b';ctx.fillText(run.text,x,node.y+23);
-     if(run.strikethrough){ctx.fillRect(x,node.y+16,run.width,1.2);}
-     x+=run.width;
+   const measure=(text,run)=>{ctx.font=font(run);return ctx.measureText(text).width;};
+   const scales=fit?fitScales(content,measure):[SCALE];
+   for(let attempt=0;;attempt++){
+    // The complete layout has passed the pixel limit before allocating the output bitmap.
+    const page=layout(content,measure,scales[attempt]);
+    canvas.width=page.pixelWidth;canvas.height=page.pixelHeight;
+    ctx.scale(page.scale,page.scale);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,page.width,page.height);
+    ctx.textBaseline='alphabetic';
+    for(const node of page.nodes){
+     if(node.type==='image'){ctx.drawImage(images.get(node.src),node.x,node.y,node.width,node.height);continue;}
+     let x=node.x;
+     for(const run of node.runs){
+      ctx.font=font(run);
+      if(run.code){ctx.fillStyle='#f1f3f5';ctx.fillRect(x-2,node.y+3,run.width+4,24);}
+      ctx.fillStyle=run.code?'#334155':'#20242b';ctx.fillText(run.text,x,node.y+23);
+      if(run.strikethrough){ctx.fillRect(x,node.y+16,run.width,1.2);}
+      x+=run.width;
+     }
     }
+    let src;
+    try{src=await pngSource(canvas);}
+    catch(error){if(attempt+1<scales.length&&/PNG 文件过大/.test(error.message))continue;throw error;}
+    return {type:'image',src,width:page.pixelWidth,height:page.pixelHeight,displayWidth:page.width,displayHeight:page.height};
    }
-   const src=await pngSource(canvas);
-   return {type:'image',src,width:page.pixelWidth,height:page.pixelHeight,displayWidth:page.width,displayHeight:page.height};
   }finally{canvas.width=0;canvas.height=0;images.clear();}
  }
- return Object.freeze({render,layout});
+ return Object.freeze({render,layout,fitScales});
 });

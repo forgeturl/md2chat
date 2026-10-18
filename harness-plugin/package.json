@@ -1,0 +1,49 @@
+{
+  "name": "md2chat-dsh-share",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepSeek Harness plugin: share an assistant reply to WeChat, WeCom or email as md2chat chat-ready text and images",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "lib/client.js",
+    "lib/vendor/**",
+    "lib/native/**"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-session"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch --no-native",
+    "dev:patch": "node scripts/dev-patch.mjs",
+    "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/build.mjs --no-native",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

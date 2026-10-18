@@ -1,9 +1,11 @@
-/* Local-only SVG renderers. Libraries are loaded lazily from this site's assets. */
+/* Local-only SVG renderers. Libraries are loaded lazily from this site's assets, or from root.md2chatVendorBase when bundled. */
 (function(root){
- const assetBase=new URL('./vendor/',document.currentScript.src);
+ const scriptBase=typeof document==='object'&&document.currentScript?.src;
+ const codeImages=typeof module==='object'?require('./code-images.js'):null;
  const loading=new Map(),cache=new Map();let serial=Promise.resolve(),nextId=0;
  function load(name){
   if(!loading.has(name))loading.set(name,new Promise((resolve,reject)=>{
+   const assetBase=root.md2chatVendorBase?new URL(root.md2chatVendorBase,location.href):new URL('./vendor/',scriptBase);
    const script=document.createElement('script');script.src=new URL(name,assetBase).href;
    script.onload=resolve;script.onerror=()=>{loading.delete(name);reject(new Error('渲染器加载失败，请刷新页面重试'));};document.head.appendChild(script);
   }));return loading.get(name);
@@ -72,7 +74,8 @@
   const result=serial.then(()=>run(type,source,display));serial=result.catch(()=>{});cache.set(key,result);
   result.catch(()=>cache.delete(key));if(cache.size>24)cache.delete(cache.keys().next().value);return result;
  }
- root.ChatRenderers={math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source),code:async(source,language)=>{
-  await load('highlight/highlight.min.js');return root.CodeImages.render(source,language,root.hljs);
+ const api={math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source),code:async(source,language)=>{
+  await load('highlight/highlight.min.js');return (codeImages||root.CodeImages).render(source,language,root.hljs);
  }};
+ if(typeof module==='object')module.exports=api;else root.ChatRenderers=api;
 })(globalThis);

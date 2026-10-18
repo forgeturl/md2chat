@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const {layout}=require('../assets/clipboard-image.js');
+const {layout,fitScales}=require('../assets/clipboard-image.js');
 const source=fs.readFileSync(path.join(__dirname,'../assets/clipboard-image.js'),'utf8');
 const PNG='data:image/png;base64,AAAA';
 const measure=text=>[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].length*20;
@@ -98,4 +98,16 @@ test('excessive encoded PNG size reports an actionable error and releases the bi
  const {render,canvas}=browser({pngBytes:11*1024*1024});
  await assert.rejects(()=>render([{type:'text',text:'test'}]),/PNG 文件过大.*10 MB/);
  assert.equal(canvas.width,0);assert.equal(canvas.height,0);
+});
+
+test('fit mode keeps long content in one image by lowering resolution, never below 1x',()=>{
+ const lines=n=>({type:'text',text:Array.from({length:n},(_,i)=>'第'+i+'行').join('\n')});
+ assert.throws(()=>layout([lines(400)],measure),/2,000 万像素/);
+ const scales=fitScales([lines(400)],measure);
+ assert(scales[0]<2&&scales[0]>1&&scales.at(-1)===1);
+ for(let i=1;i<scales.length;i++)assert(scales[i]<scales[i-1]);
+ const page=layout([lines(400)],measure,scales[0]);
+ assert(page.pixelWidth*page.pixelHeight<=20000000&&page.scale===scales[0]);
+ assert.deepEqual(fitScales([lines(3)],measure),[2,1.75,1.5,1.25,1]);
+ assert.throws(()=>fitScales([lines(1000)],measure),/内容过长/);
 });
