@@ -22,6 +22,16 @@
 @media(prefers-reduced-motion:reduce) { .language-trigger > img:last-child { transition:none; } }
 
 .language-menu.opens-up { top:auto; bottom:calc(100% + 8px); }
+.site-language-picker { position:relative; font-size:14px; z-index:20; }
+.site-language-picker > summary { list-style:none; }
+.site-language-picker > summary::-webkit-details-marker { display:none; }
+.site-language-picker[open] > summary { background:#f3f6fb; border-color:#e8edf5; }
+.site-language-picker[open] > summary > img:last-child { transform:rotate(180deg); }
+.site-language-picker .language-menu { width:276px; max-width:calc(100vw - 36px); }
+.site-language-picker .language-option { text-decoration:none; }
+.site-language-picker .language-option[aria-current="page"] { background:#eaf2ff; color:#175bcd; font-weight:650; }
+.site-language-picker .language-option[aria-current="page"] img { opacity:.8; }
+@media(max-width:640px) { .site-language-picker .language-menu { width:260px; } }
 /* Preserve the shared picker styling inside the editor's compact utility bar. */
 .utility-actions .language-picker .language-trigger { padding:8px 10px; font-size:14px; font-weight:550; color:#344054; background:transparent; border:1px solid transparent; border-radius:9px; }
 .utility-actions .language-picker .language-option { display:flex; justify-content:space-between; padding:10px 9px; font-size:14px; color:#344054; background:transparent; border:0; border-radius:7px; font-weight:400; }

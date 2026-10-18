@@ -1,22 +1,24 @@
 const fs=require('node:fs'),path=require('node:path');
+const {createHash}=require('node:crypto');
 const {origin,guides}=require('./site-content.cjs');
-const englishGuides=require('./site-content-en.cjs').guides;
-const {content:home}=require('./site-home.cjs');
+const {content}=require('./site-copy.cjs');
+const {editions,route}=require('./site-locales.cjs');
+const home=Object.fromEntries(editions.map(({code})=>[code,content[code].home]));
 const translations=require('../assets/locales.json').messages;
 const root=path.resolve(__dirname,'..'),version=require('../package.json').version;
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-const route=(locale,slug='')=>(locale==='en'?'en/':'')+(slug?'guides/'+slug+'.html':'');
-const locales=['zh-CN','en'];
+const locales=editions.map(item=>item.code);
 function alternates(slug=''){
  return [...locales.map(locale=>`<link rel="alternate" hreflang="${locale}" href="${origin+route(locale,slug)}">`),
   `<link rel="alternate" hreflang="x-default" href="${origin+route('zh-CN',slug)}">`].join('\n');
 }
 function metadata(title,description,url,schema,{locale='zh-CN',slug,paired=false}={}){
- const imageAlt=locale==='en'?'md2chat Markdown input and chat preview':'md2chat Markdown 输入与图文预览界面';
+ const imageAlt=content[locale].labels.imageAlt;
  return `<!-- seo:start -->
 <link rel="canonical" href="${url}">
 ${paired?alternates(slug):''}
-<meta property="og:type" content="${slug?'article':'website'}"><meta property="og:locale" content="${locale==='en'?'en_US':'zh_CN'}"><meta property="og:site_name" content="md2chat">
+<meta property="og:type" content="${slug?'article':'website'}"><meta property="og:locale" content="${editions.find(item=>item.code===locale).ogLocale}"><meta property="og:site_name" content="md2chat">
+${paired?editions.filter(item=>item.code!==locale).map(item=>`<meta property="og:locale:alternate" content="${item.ogLocale}">`).join('\n'):''}
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}"><meta property="og:url" content="${url}">
 <meta property="og:image" content="${origin}assets/desktop-preview.png"><meta property="og:image:alt" content="${imageAlt}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${origin}assets/desktop-preview.png">
@@ -42,25 +44,34 @@ function homeSections(locale){
 ${c.questions.map(([question,answer])=>`<details><summary>${esc(question)}</summary><p>${esc(answer)}</p></details>`).join('\n')}</section>`;
 }
 // This build-time translation only handles trusted homepage UI, never editor input.
-function englishHome(page){
- const attributes={'主导航':'Main navigation','Markdown 转换示例':'Markdown conversion example'};
+function localizedHome(page,locale){
+ const labels=content[locale].labels;
+ const attributes={'主导航':labels.navigation,'Markdown 转换示例':labels.imageAlt,'编辑 Markdown 原文':labels.editor};
  return page.replace(/>([^<]+)</g,(all,text)=>{
   const key=text.trim(),entry=translations[key];
-  return entry?('>'+text.replace(key,esc(entry.en))+'<'):all;
+  return entry?('>'+text.replace(key,esc(entry[locale]))+'<'):all;
  }).replace(/\b(aria-label|title|alt)="([^"]*)"/g,(all,name,value)=>
-  (translations[value]||attributes[value])?`${name}="${esc(translations[value]?.en||attributes[value])}"`:all);
+  (translations[value]||attributes[value])?`${name}="${esc(translations[value]?.[locale]||attributes[value])}"`:all);
+}
+function languagePicker(locale,slug=''){
+ const file=slug?route(locale,slug):route(locale)+'index.html';
+ const depth=file.split('/').length-1,prefix=depth?'../'.repeat(depth):'./';
+ const icon=name=>`<img src="${prefix}assets/ui-icons/${name}.svg" width="18" height="18" alt="">`;
+ return `<details class="site-language-picker"><summary class="language-trigger" aria-label="${esc(content[locale].labels.language)}">${icon('languages')}<span>${esc(editions.find(item=>item.code===locale).name)}</span>${icon('chevron-down')}</summary>
+<nav class="language-menu" aria-label="${esc(content[locale].labels.language)}"><div class="language-options">${editions.map(item=>`<a class="language-option" data-site-locale="${item.code}" lang="${item.code}" hreflang="${item.code}" href="${prefix+route(item.code,slug)}"${item.code===locale?' aria-current="page"':''}><span>${esc(item.name)}</span>${icon('check')}</a>`).join('')}</div></nav></details>`;
 }
 function homepage(source,locale,list){
- const english=locale==='en',c=home[locale],url=origin+route(locale);
+ const nested=locale!=='zh-CN',c=home[locale],url=origin+route(locale);
  let page=source.replace(/\n?<!-- seo:start -->[\s\S]*?<!-- seo:end -->\n?/,'\n');
- if(english)page=englishHome(page).replaceAll('="./assets/','="../assets/').replaceAll('="./editor.html','="../editor.html');
+ if(nested)page=localizedHome(page,locale).replaceAll('="./assets/','="../assets/').replaceAll('="./editor.html','="../editor.html');
+ page=page.replace(/(href="\.{1,2}\/editor\.html\?example=mermaid)(?:&amp;lang=[^"&]+)?"/g,'$1&amp;lang='+locale+'"');
+ page=page.replace(/assets\/language-picker\.js/g,'assets/site-language.js');
  page=page.replace(/<html[^>]*>/,`<html lang="${locale}" data-site-language="${locale}">`)
   .replace(/<title>.*?<\/title>/,`<title>${esc(c.title)}</title>`)
   .replace(/<meta name="description" content="[^"]*">/,`<meta name="description" content="${esc(c.description)}">`)
   .replace(/<h1 id="hero-title"[^>]*>[\s\S]*?<\/h1>/,`<h1 id="hero-title">${c.heading}</h1>`);
  page=replaceRegion(page,'product-definition',`<p class="product-definition" data-no-i18n>${esc(c.definition)}</p>`,' </div>\n <div class="demo-pair"');
- const languageLinks=`<select class="language-select" data-locale-select data-site-locale-select data-language-zh-cn="${english?'../':'./'}" data-language-en="${english?'./':'./en/'}" aria-label="${english?'Language':'语言'}"></select>
-<noscript><span class="site-languages" role="group" aria-label="${english?'Website language':'网站语言'}"><a href="${english?'../':'./'}" lang="zh-CN" hreflang="zh-CN"${english?'':' aria-current="page"'}>中文</a><a href="${english?'./':'./en/'}" lang="en" hreflang="en"${english?' aria-current="page"':''}>English</a></span></noscript>`;
+ const languageLinks=languagePicker(locale);
  page=replaceRegion(page,'site-languages',languageLinks,'  <a class="guides-nav"');
  page=replaceRegion(page,'product-details',homeSections(locale),'<section class="guides-section"');
  const links=`<section class="guides-section" id="guides" aria-labelledby="guides-title" data-no-i18n>
@@ -68,23 +79,22 @@ function homepage(source,locale,list){
  <div class="guide-links">${list.map(g=>`<a href="./guides/${g.slug}.html"><span>${esc(g.title)}</span><span aria-hidden="true">↗</span></a>`).join('\n')}</div>
 </section>`;
  page=page.replace(/<section class="guides-section"[\s\S]*?<\/section>/,()=>links);
- const schema={'@context':'https://schema.org','@type':'SoftwareApplication','@id':origin+'#app',name:'md2chat',url,description:c.description,
+ const schema={'@context':'https://schema.org','@type':'SoftwareApplication','@id':url+'#app',name:'md2chat',url,description:c.description,
   inLanguage:locale,applicationCategory:'ProductivityApplication',operatingSystem:'macOS, Windows, Web',isAccessibleForFree:true,
   offers:{'@type':'Offer',price:'0',priceCurrency:'USD'},license:'https://github.com/forgeturl/md2chat/blob/main/LICENSE',
   downloadUrl:'https://github.com/forgeturl/md2chat/releases/latest',screenshot:origin+'assets/desktop-preview.png',sameAs:['https://github.com/forgeturl/md2chat']};
  return page.replace('</head>',metadata(c.title,c.description,url,schema,{locale,paired:true})+'\n</head>');
 }
 function guidePage(g,locale,list){
- const english=locale==='en',prefix=english?'../../':'../',url=origin+route(locale,g.slug),title=g.title+' | md2chat';
- const labels=english?{editor:'Try the editor',download:'Download desktop',steps:'Step by step',example:'A public example',check:'Check the opening text, table image and closing text in your own draft. Ordinary text should remain editable.',evidence:'Implementation and validation records',sources:'Official sources',related:'Related guides',cta:'Try the sample in the editor',feedback:'Report an issue',reviewed:'Content reviewed',contents:'On this page'}:
-  {editor:'试用转换器',download:'下载桌面版',steps:'操作步骤',example:'可复现的公开示例',check:'在自己的草稿中核对开头、表格图片和结尾，并检查普通文字仍可编辑。',evidence:'实现与验证依据',sources:'官方资料',related:'相关指南',cta:'在编辑器试用此示例',feedback:'反馈问题',reviewed:'内容核对日期',contents:'本页内容'};
+ const prefix=locale!=='zh-CN'?'../../':'../',url=origin+route(locale,g.slug),title=g.title+' | md2chat';
+ const labels=content[locale].labels;
  const headings=[...g.sections.map(([h],i)=>[h,'answer-'+i]),[labels.steps,'steps'],[labels.example,'example'],[labels.evidence,'evidence']];
- const schema={'@context':'https://schema.org','@type':'TechArticle',headline:g.title,description:g.description,url,inLanguage:locale,
+ const schema={'@context':'https://schema.org','@type':'TechArticle','@id':url+'#article',mainEntityOfPage:url,headline:g.title,description:g.description,url,inLanguage:locale,
   dateModified:g.reviewed,author:{'@type':'Organization',name:'md2chat contributors',url:'https://github.com/forgeturl/md2chat'},citation:g.evidence.map(([,link])=>link)};
  return `<!doctype html>
-<html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><meta name="description" content="${esc(g.description)}"><link rel="icon" href="${prefix}assets/favicon.png"><link rel="stylesheet" href="${prefix}assets/landing.css?v=${version}"><link rel="stylesheet" href="${prefix}assets/site-guides.css?v=${version}">
+<html lang="${locale}" data-site-language="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><meta name="description" content="${esc(g.description)}"><link rel="icon" href="${prefix}assets/favicon.png"><link rel="stylesheet" href="${prefix}assets/landing.css?v=${version}"><link rel="stylesheet" href="${prefix}assets/site-guides.css?v=${version}"><link rel="stylesheet" href="${prefix}assets/language-picker.css?v=${version}">
 ${metadata(title,g.description,url,schema,{locale,slug:g.slug,paired:true})}</head>
-<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="${english?'Navigation':'导航'}"><a href="${prefix}editor.html">${labels.editor}</a><a href="../#download">${labels.download}</a><a href="${english?'../../guides/':'../en/guides/'}${g.slug}.html" lang="${english?'zh-CN':'en'}" hreflang="${english?'zh-CN':'en'}">${english?'中文':'English'}</a></nav></header>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="${labels.navigation}"><a href="${prefix}editor.html?lang=${locale}">${labels.editor}</a><a href="../#download">${labels.download}</a>${languagePicker(locale,g.slug)}</nav></header>
 <main><h1>${esc(g.title)}</h1><p class="lead">${esc(g.description)}</p><p class="reviewed">${labels.reviewed}：<time datetime="${g.reviewed}">${g.reviewed}</time></p>
 <nav class="guide-contents" aria-label="${labels.contents}">${headings.map(([h,id])=>`<a href="#${id}">${esc(h)}</a>`).join('')}</nav>
 ${g.sections.map(([h,p],i)=>`<section id="answer-${i}"><h2>${esc(h)}</h2><p>${esc(p)}</p></section>`).join('\n')}
@@ -93,13 +103,14 @@ ${g.sections.map(([h,p],i)=>`<section id="answer-${i}"><h2>${esc(h)}</h2><p>${es
 <section id="evidence"><h2>${labels.evidence}</h2><ul>${g.evidence.map(([label,link])=>`<li><a href="${esc(link)}">${esc(label)}</a></li>`).join('')}</ul></section>
 ${g.sources?.length?`<section><h2>${labels.sources}</h2><ul>${g.sources.map(([label,link])=>`<li><a href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a></li>`).join('')}</ul></section>`:''}
 <section><h2>${labels.related}</h2><ul>${list.filter(x=>x.slug!==g.slug).map(x=>`<li><a href="./${x.slug}.html">${esc(x.title)}</a></li>`).join('')}</ul></section></main>
-<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">${labels.evidence}</a><a href="https://github.com/forgeturl/md2chat/issues">${labels.feedback}</a></footer></div></body></html>\n`;
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">${labels.evidence}</a><a href="https://github.com/forgeturl/md2chat/issues">${labels.feedback}</a></footer></div><script src="${prefix}assets/site-language.js?v=${version}"></script></body></html>\n`;
 }
 function files(){
- if(new Set(guides.map(g=>g.slug)).size!==guides.length||guides.length!==englishGuides.length||guides.some(g=>!englishGuides.some(e=>e.slug===g.slug)))throw new Error('Every guide must have exactly one matching English edition.');
+ for(const {code} of editions){const list=content[code].guides;if(new Set(list.map(g=>g.slug)).size!==guides.length||list.length!==guides.length||guides.some(g=>!list.some(e=>e.slug===g.slug)))throw new Error('Every guide must have one matching edition: '+code);}
  const output={},source=fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll('\r\n','\n');
- for(const [locale,list] of [['zh-CN',guides],['en',englishGuides]]){
-  output[locale==='en'?'en/index.html':'index.html']=homepage(source,locale,list);
+ for(const {code:locale} of editions){
+  const list=content[locale].guides;
+  output[route(locale)+'index.html']=homepage(source,locale,list);
   for(const g of list)output[route(locale,g.slug)]=guidePage(g,locale,list);
  }
  let editor=fs.readFileSync(path.join(root,'editor.html'),'utf8').replaceAll('\r\n','\n');
@@ -109,12 +120,18 @@ function files(){
   .replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/,()=>metadata(title,description,origin+'editor.html'));
  output['editor.html']=editor;
  output['assets/guide-examples.js']='// Generated by scripts/seo.cjs from the public guide examples.\n'+
-  '(function(root){const examples='+JSON.stringify({'zh-CN':guides[0].example,en:englishGuides[0].example})+';if(typeof module===\'object\')module.exports=examples;else root.md2chatGuideExamples=examples;})(globalThis);\n';
- for(const name of Object.keys(output).filter(name=>name.endsWith('.html')))output[name]=output[name].replace(/((?:src|href)="\.{1,2}\/assets\/[^"?]+\.(?:js|css))(?:\?v=[^"]*)?"/g,'$1?v='+version+'"');
+  '(function(root){const examples='+JSON.stringify(Object.fromEntries(editions.map(({code})=>[code,content[code].guides[0].example])))+';if(typeof module===\'object\')module.exports=examples;else root.md2chatGuideExamples=examples;})(globalThis);\n';
+ // Website-only deployments keep the desktop version. A content digest avoids
+ // serving old styles or language behavior from that version's browser cache.
+ const digests=new Map();
+ for(const name of Object.keys(output).filter(name=>name.endsWith('.html')))output[name]=output[name].replace(/((?:src|href)="(?:\.{1,2}\/)+(assets\/[^"?]+\.(?:js|css)))(?:\?[^\"]*)?"/g,(_,reference,asset)=>{
+  if(!digests.has(asset))digests.set(asset,createHash('sha256').update((output[asset]??fs.readFileSync(path.join(root,asset),'utf8')).replaceAll('\r\n','\n')).digest('hex').slice(0,12));
+  return reference+'?v='+version+'&amp;h='+digests.get(asset)+'"';
+ });
  const routes=Object.keys(output).filter(name=>name.endsWith('.html')).map(name=>name.replace(/index\.html$/,''));
  output['sitemap.xml']='<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+routes.map(p=>`<url><loc>${origin+p}</loc></url>`).join('\n')+'\n</urlset>\n';
- output['llms.txt']='# md2chat\n\n> '+home.en.definition+'\n\n## Product\n\n- [中文首页]('+origin+'): '+home['zh-CN'].description+'\n- [English home]('+origin+'en/): '+home.en.description+'\n- [Web editor]('+origin+'editor.html): Local conversion; browser and destination-client limitations apply.\n- [Source, releases and compatibility](https://github.com/forgeturl/md2chat): MIT-licensed source and validation records.\n\n'+
-  [['中文指南',guides,'zh-CN'],['English guides',englishGuides,'en']].map(([label,list,locale])=>'## '+label+'\n\n'+list.map(g=>'- ['+g.title+']('+origin+route(locale,g.slug)+'): '+g.description).join('\n')).join('\n\n')+
+ output['llms.txt']='# md2chat\n\n> '+home.en.definition+'\n\n## Product\n\n'+editions.map(({code,name})=>'- ['+name+']('+origin+route(code)+'): '+home[code].description).join('\n')+'\n- [Web editor]('+origin+'editor.html): Local conversion; browser and destination-client limitations apply.\n- [Source, releases and compatibility](https://github.com/forgeturl/md2chat): MIT-licensed source and validation records.\n\n'+
+  editions.map(({name,code})=>'## '+name+'\n\n'+content[code].guides.map(g=>'- ['+g.title+']('+origin+route(code,g.slug)+'): '+g.description).join('\n')).join('\n\n')+
   '\n\n## Compatibility and evidence\n\n'+home.en.rows.map(([name,,limit])=>'- '+name+': '+limit).join('\n')+
   '\n\nWindows DingTalk generates a node tree with embedded PNGs. Windows Feishu generates editor fragments and local PNG references. Source-sample rewriting and format implementation are not acceptance of newly generated content. WeCom image content requires sequential text and PNG copies. The web editor disables DingTalk and Feishu copying. Ordinary text remains editable; text inside PNGs does not.\n\n## Privacy\n\nConversion runs locally without an account. Content is not uploaded to md2chat. Remote image URLs still contact their original hosts. Native copying may cache PNGs locally. AI tool names describe possible Markdown sources, not official integrations.\n';
  return output;

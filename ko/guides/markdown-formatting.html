@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko" data-site-language="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markdown 표·코드·수식·Mermaid를 채팅 이미지로 | md2chat</title><meta name="description" content="텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다."><link rel="icon" href="../../assets/favicon.png"><link rel="stylesheet" href="../../assets/landing.css?v=0.6.16&amp;h=9f6eef9f9271"><link rel="stylesheet" href="../../assets/site-guides.css?v=0.6.16&amp;h=2ba2373e9a37"><link rel="stylesheet" href="../../assets/language-picker.css?v=0.6.16&amp;h=0046e89fe7fd">
+<!-- seo:start -->
+<link rel="canonical" href="https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="zh-CN" href="https://forgeturl.github.io/md2chat/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="en" href="https://forgeturl.github.io/md2chat/en/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="es" href="https://forgeturl.github.io/md2chat/es/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="pt-BR" href="https://forgeturl.github.io/md2chat/pt-br/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="ja" href="https://forgeturl.github.io/md2chat/ja/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="ko" href="https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="de" href="https://forgeturl.github.io/md2chat/de/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="fr" href="https://forgeturl.github.io/md2chat/fr/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="hi" href="https://forgeturl.github.io/md2chat/hi/guides/markdown-formatting.html">
+<link rel="alternate" hreflang="x-default" href="https://forgeturl.github.io/md2chat/guides/markdown-formatting.html">
+<meta property="og:type" content="article"><meta property="og:locale" content="ko_KR"><meta property="og:site_name" content="md2chat">
+<meta property="og:locale:alternate" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="pt_BR">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:locale:alternate" content="de_DE">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta property="og:locale:alternate" content="hi_IN">
+<meta property="og:title" content="Markdown 표·코드·수식·Mermaid를 채팅 이미지로 | md2chat"><meta property="og:description" content="텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다."><meta property="og:url" content="https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html">
+<meta property="og:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png"><meta property="og:image:alt" content="md2chat Markdown 입력 및 채팅 미리보기">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 표·코드·수식·Mermaid를 채팅 이미지로 | md2chat"><meta name="twitter:description" content="텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다."><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","@id":"https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html#article","mainEntityOfPage":"https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html","headline":"Markdown 표·코드·수식·Mermaid를 채팅 이미지로","description":"텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다.","url":"https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html","inLanguage":"ko","dateModified":"2026-10-18","author":{"@type":"Organization","name":"md2chat contributors","url":"https://github.com/forgeturl/md2chat"},"citation":["https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md"]}</script>
+<!-- seo:end --></head>
+<body><div class="shell guide"><header class="nav"><a class="brand" href="../">md2chat</a><nav class="nav-links" aria-label="탐색"><a href="../../editor.html?lang=ko">편집기 사용</a><a href="../#download">데스크톱 다운로드</a><details class="site-language-picker"><summary class="language-trigger" aria-label="언어"><img src="../../assets/ui-icons/languages.svg" width="18" height="18" alt=""><span>한국어</span><img src="../../assets/ui-icons/chevron-down.svg" width="18" height="18" alt=""></summary>
+<nav class="language-menu" aria-label="언어"><div class="language-options"><a class="language-option" data-site-locale="zh-CN" lang="zh-CN" hreflang="zh-CN" href="../../guides/markdown-formatting.html"><span>简体中文</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="en" lang="en" hreflang="en" href="../../en/guides/markdown-formatting.html"><span>English</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="es" lang="es" hreflang="es" href="../../es/guides/markdown-formatting.html"><span>Español</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="pt-BR" lang="pt-BR" hreflang="pt-BR" href="../../pt-br/guides/markdown-formatting.html"><span>Português</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="ja" lang="ja" hreflang="ja" href="../../ja/guides/markdown-formatting.html"><span>日本語</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="ko" lang="ko" hreflang="ko" href="../../ko/guides/markdown-formatting.html" aria-current="page"><span>한국어</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="de" lang="de" hreflang="de" href="../../de/guides/markdown-formatting.html"><span>Deutsch</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="fr" lang="fr" hreflang="fr" href="../../fr/guides/markdown-formatting.html"><span>Français</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a><a class="language-option" data-site-locale="hi" lang="hi" hreflang="hi" href="../../hi/guides/markdown-formatting.html"><span>हिन्दी</span><img src="../../assets/ui-icons/check.svg" width="18" height="18" alt=""></a></div></nav></details></nav></header>
+<main><h1>Markdown 표·코드·수식·Mermaid를 채팅 이미지로</h1><p class="lead">텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다.</p><p class="reviewed">내용 확인일：<time datetime="2026-10-18">2026-10-18</time></p>
+<nav class="guide-contents" aria-label="이 페이지의 내용"><a href="#answer-0">바로 답하기</a><a href="#answer-1">표와 코드</a><a href="#answer-2">수식과 도표</a><a href="#answer-3">최소 예제로 확인</a><a href="#steps">사용 순서</a><a href="#example">재현 가능한 공개 예제</a><a href="#evidence">구현 및 검증 기록</a></nav>
+<section id="answer-0"><h2>바로 답하기</h2><p>제목·강조·목록·작업 항목·링크·표·이미지·코드·LaTeX·Mermaid를 지원합니다. 일반 문장을 편집 가능한 상태로 유지하고 복잡한 블록만 원래 순서로 이미지화합니다. 원시 HTML은 텍스트로 취급합니다.</p></section>
+<section id="answer-1"><h2>표와 코드</h2><p>채팅에는 표 이미지, 이메일에는 편집 가능한 HTML 표를 제공합니다. 코드는 구문 강조와 줄바꿈을 하며 여러 이미지로 나눌 수 있습니다. 알 수 없는 언어도 원문 배치를 유지하고 인라인 코드는 텍스트로 남습니다.</p></section>
+<section id="answer-2"><h2>수식과 도표</h2><p>LaTeX 원본과 mermaid 코드 펜스를 유지하세요. 로컬에서 PNG로 렌더링합니다. 표 셀 안의 수식은 현재 원본을 남깁니다. 외부 TeX 확장, 사용자 Mermaid 설정, 외부 도표 리소스는 지원하지 않습니다.</p></section>
+<section id="answer-3"><h2>최소 예제로 확인</h2><p>아래 예제를 초안에 붙여 넣고 텍스트·표 이미지·텍스트 순서를 확인하세요. 일반 단어를 수정해 텍스트인지 확인합니다. 미리보기만으로 대상 앱 검증이 되지는 않습니다.</p></section>
+<section id="steps"><h2>사용 순서</h2><ol><li>원본 Markdown을 복사하여 md2chat에 붙여 넣습니다.</li><li>미리보기에서 본문, 표 이미지, 마지막 문단을 확인합니다.</li><li>대상에 맞게 복사한 후 자신의 초안에서 순서와 텍스트 편집 여부를 확인합니다.</li></ol></section>
+<section id="example"><h2>재현 가능한 공개 예제</h2><pre><code># 주말 독서 모임
+
+시작: 토요일에 만나요.
+
+| 활동 | 시간 |
+| --- | --- |
+| 자유 독서 | 20분 |
+| 토론 | 30분 |
+
+마무리: 책을 챙겨 오세요.</code></pre><p>자신의 초안에서 처음 문장, 표 이미지, 마지막 문장의 순서를 확인하세요. 일반 텍스트는 편집할 수 있어야 합니다.</p><p><a class="button" href="../../editor.html?example=chat-table&amp;lang=ko">편집기에서 이 예제 사용</a></p></section>
+<section id="evidence"><h2>구현 및 검증 기록</h2><ul><li><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">구현 및 검증 기록 · compatibility.md</a></li></ul></section>
+
+<section><h2>관련 가이드</h2><ul><li><a href="./ai-markdown-to-chat.html">AI 답변과 Markdown을 채팅에 공유하는 방법</a></li><li><a href="./markdown-to-dingtalk.html">Markdown 표와 이미지를 DingTalk에 붙여 넣기</a></li><li><a href="./markdown-to-wechat.html">Markdown을 편집 가능한 WeChat 텍스트와 이미지로 변환</a></li><li><a href="./chat-compatibility.html">DingTalk·WeChat·Feishu·WeCom·이메일 호환성</a></li><li><a href="./markdown-to-feishu.html">Markdown 텍스트와 이미지를 Feishu에 붙여 넣기</a></li><li><a href="./markdown-to-wecom.html">Markdown 텍스트와 이미지를 WeCom에 순서대로 공유</a></li><li><a href="./clipboard-images-missing.html">Markdown을 채팅에 붙여 넣으면 이미지가 사라질 때</a></li></ul></section></main>
+<footer class="footer"><a href="https://github.com/forgeturl/md2chat/blob/main/docs/compatibility.md">구현 및 검증 기록</a><a href="https://github.com/forgeturl/md2chat/issues">문제 신고</a></footer></div><script src="../../assets/site-language.js?v=0.6.16&amp;h=6f2ac099c798"></script></body></html>

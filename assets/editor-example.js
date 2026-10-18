@@ -7,6 +7,6 @@
  const requested = params.get('lang');
  const locale = md2chatI18n.resolve(md2chatI18n.locales.some(item => item.code === requested) ? requested : preference,languages);
  document.getElementById('markdown-input').textContent = params.get('example') === 'chat-table'
-  ? md2chatGuideExamples[locale === 'zh-CN' ? 'zh-CN' : 'en']
+  ? md2chatGuideExamples[locale] || md2chatGuideExamples.en
   : md2chatDemo.source(text => md2chatI18n.translate(text,locale));
 })();

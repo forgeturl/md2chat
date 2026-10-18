@@ -4,12 +4,19 @@
 
 ## Product
 
-- [中文首页](https://forgeturl.github.io/md2chat/): 将 AI 回答和 Markdown 转为聊天图文。普通文字可编辑，表格、代码、公式与 Mermaid 转图片；提供 macOS、Windows 桌面版和网页编辑器。免费开源，本机处理。
-- [English home](https://forgeturl.github.io/md2chat/en/): Turn AI answers and Markdown into chat-ready content. Keep text editable and render tables, code, equations and Mermaid as images. Free, open-source, local processing for macOS, Windows and the web.
+- [简体中文](https://forgeturl.github.io/md2chat/): 将 AI 回答和 Markdown 转为聊天图文。普通文字可编辑，表格、代码、公式与 Mermaid 转图片；提供 macOS、Windows 桌面版和网页编辑器。免费开源，本机处理。
+- [English](https://forgeturl.github.io/md2chat/en/): Turn AI answers and Markdown into chat-ready content. Keep text editable and render tables, code, equations and Mermaid as images. Free, open-source, local processing for macOS, Windows and the web.
+- [Español](https://forgeturl.github.io/md2chat/es/): Convierte respuestas de IA y Markdown en texto e imágenes para chats. Conserva el texto editable y transforma tablas, código, fórmulas y Mermaid en imágenes. Gratis, de código abierto y con procesamiento local para macOS, Windows y web.
+- [Português](https://forgeturl.github.io/md2chat/pt-br/): Transforme respostas de IA e Markdown em texto e imagens para chats. Mantenha o texto editável e converta tabelas, código, fórmulas e Mermaid em imagens. Grátis, código aberto e processamento local em macOS, Windows e web.
+- [日本語](https://forgeturl.github.io/md2chat/ja/): AI の回答や Markdown をチャット用の文章と画像に変換。本文は編集可能なまま、表・コード・数式・Mermaid は画像に。macOS、Windows、Web に対応する無料のオープンソースツールです。
+- [한국어](https://forgeturl.github.io/md2chat/ko/): AI 답변과 Markdown을 채팅용 텍스트와 이미지로 변환하세요. 일반 텍스트는 편집 가능하게 유지하고 표·코드·수식·Mermaid는 이미지로 만듭니다. macOS, Windows, 웹에서 무료 오픈 소스로 로컬 처리합니다.
+- [Deutsch](https://forgeturl.github.io/md2chat/de/): KI-Antworten und Markdown als Text und Bilder für Chats aufbereiten. Text bleibt bearbeitbar; Tabellen, Code, Formeln und Mermaid werden Bilder. Kostenlos, quelloffen und lokal für macOS, Windows und Web.
+- [Français](https://forgeturl.github.io/md2chat/fr/): Transformez les réponses IA et le Markdown en texte et images pour vos chats. Le texte reste modifiable ; tableaux, code, formules et Mermaid deviennent des images. Gratuit, libre et local sur macOS, Windows et le Web.
+- [हिन्दी](https://forgeturl.github.io/md2chat/hi/): AI उत्तर और Markdown को चैट के लिए टेक्स्ट और चित्रों में बदलें। सामान्य टेक्स्ट संपादन योग्य रहता है; तालिकाएँ, कोड, सूत्र और Mermaid चित्र बनते हैं। macOS, Windows और वेब पर मुफ़्त, ओपन सोर्स और स्थानीय प्रोसेसिंग।
 - [Web editor](https://forgeturl.github.io/md2chat/editor.html): Local conversion; browser and destination-client limitations apply.
 - [Source, releases and compatibility](https://github.com/forgeturl/md2chat): MIT-licensed source and validation records.
 
-## 中文指南
+## 简体中文
 
 - [DeepSeek、Codex、Cursor 的 Markdown 回答，怎么发到聊天里？](https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html): 将 AI 工具中复制到的 Markdown 转成聊天图文：文字保持可编辑，表格、代码、公式和 Mermaid 转图片；了解复制方式与客户端兼容边界。
 - [Markdown 怎么发到钉钉？保留文字、表格和图片](https://forgeturl.github.io/md2chat/guides/markdown-to-dingtalk.html): 解释钉钉粘贴 Markdown 和图文时图片丢失的原因，以及 md2chat 的 macOS 原生图文复制和 Windows、网页限制。
@@ -20,7 +27,7 @@
 - [Markdown 怎么发到企业微信？按顺序保留文字与图片](https://forgeturl.github.io/md2chat/guides/markdown-to-wecom.html): 企业微信图文使用分段复制：每段分别粘贴文字或 PNG，保留 Markdown 表格与前后文字，附 Mac 输入框验证依据。
 - [Markdown 复制到聊天后图片丢失怎么办？](https://forgeturl.github.io/md2chat/guides/clipboard-images-missing.html): 按来源、预览、复制入口和目标输入框逐步排查图片缺失，区分浏览器限制、飞书富文本输入框和企微分段粘贴。
 
-## English guides
+## English
 
 - [How to share AI answers and Markdown in a chat](https://forgeturl.github.io/md2chat/en/guides/ai-markdown-to-chat.html): Turn Markdown from ChatGPT, Claude, DeepSeek, Codex or Cursor into editable text and images, with clear limits for each chat client.
 - [How to paste Markdown, tables and images into DingTalk](https://forgeturl.github.io/md2chat/en/guides/markdown-to-dingtalk.html): Use md2chat desktop to prepare editable text and images for DingTalk, and understand the different Mac and Windows validation boundaries.
@@ -30,6 +37,83 @@
 - [How to paste Markdown text and images into Feishu](https://forgeturl.github.io/md2chat/en/guides/markdown-to-feishu.html): Use md2chat desktop with the expanded Feishu rich-text input, including the tested Mac workflow and Windows acceptance limits.
 - [How to share Markdown text and images in WeCom](https://forgeturl.github.io/md2chat/en/guides/markdown-to-wecom.html): Copy and paste text and PNG segments in order, with the tested Mac WeCom draft workflow and explicit platform limits.
 - [Why do images disappear when pasting Markdown into chat?](https://forgeturl.github.io/md2chat/en/guides/clipboard-images-missing.html): Troubleshoot missing images by checking the source, preview, destination copy option and chat input separately.
+
+## Español
+
+- [Cómo compartir respuestas de IA y Markdown en un chat](https://forgeturl.github.io/md2chat/es/guides/ai-markdown-to-chat.html): Prepara respuestas de ChatGPT, Claude, DeepSeek, Codex o Cursor como texto editable e imágenes, con límites claros por destino.
+- [Cómo pegar tablas e imágenes de Markdown en DingTalk](https://forgeturl.github.io/md2chat/es/guides/markdown-to-dingtalk.html): Utiliza md2chat de escritorio y distingue las pruebas de Mac de la validación pendiente en Windows.
+- [Convertir Markdown a WeChat manteniendo texto editable](https://forgeturl.github.io/md2chat/es/guides/markdown-to-wechat.html): Convierte tablas, código y fórmulas en imágenes y verifica el resultado en tu cliente de WeChat.
+- [Compatibilidad con DingTalk, WeChat, Feishu, WeCom y correo](https://forgeturl.github.io/md2chat/es/guides/chat-compatibility.html): Compara procedimientos y separa formatos implementados, borradores probados y envíos confirmados.
+- [Tablas, código, fórmulas y Mermaid de Markdown como imágenes](https://forgeturl.github.io/md2chat/es/guides/markdown-formatting.html): Aprende qué permanece editable y qué se convierte en PNG con un ejemplo de tabla reproducible.
+- [Cómo pegar texto e imágenes Markdown en Feishu](https://forgeturl.github.io/md2chat/es/guides/markdown-to-feishu.html): Usa escritorio y el editor ampliado de Feishu, con pruebas de Mac y límites explícitos de Windows.
+- [Compartir Markdown e imágenes en WeCom por segmentos](https://forgeturl.github.io/md2chat/es/guides/markdown-to-wecom.html): Copia texto y PNG en orden y conoce las pruebas en borradores de Mac y sus límites.
+- [Qué hacer si desaparecen imágenes al pegar Markdown en un chat](https://forgeturl.github.io/md2chat/es/guides/clipboard-images-missing.html): Separa origen, vista previa, opción de copia y entrada del chat para localizar la pérdida de imágenes.
+
+## Português
+
+- [Como compartilhar respostas de IA e Markdown em chats](https://forgeturl.github.io/md2chat/pt-br/guides/ai-markdown-to-chat.html): Prepare Markdown do ChatGPT, Claude, DeepSeek, Codex ou Cursor como texto editável e imagens, respeitando cada destino.
+- [Como colar tabelas e imagens Markdown no DingTalk](https://forgeturl.github.io/md2chat/pt-br/guides/markdown-to-dingtalk.html): Use md2chat para desktop e diferencie os testes de Mac da validação pendente no Windows.
+- [Converter Markdown para WeChat com texto editável](https://forgeturl.github.io/md2chat/pt-br/guides/markdown-to-wechat.html): Transforme tabelas, código e fórmulas em imagens e confira o resultado no seu WeChat.
+- [Compatibilidade com DingTalk, WeChat, Feishu, WeCom e e-mail](https://forgeturl.github.io/md2chat/pt-br/guides/chat-compatibility.html): Compare procedimentos sem confundir formatos implementados, rascunhos testados e envios confirmados.
+- [Tabelas, código, fórmulas e Mermaid como imagens para chats](https://forgeturl.github.io/md2chat/pt-br/guides/markdown-formatting.html): Saiba o que permanece editável e o que vira PNG usando uma tabela reproduzível.
+- [Como colar texto e imagens Markdown no Feishu](https://forgeturl.github.io/md2chat/pt-br/guides/markdown-to-feishu.html): Use desktop e a entrada expandida, com evidências do Mac e limites explícitos do Windows.
+- [Compartilhar Markdown e imagens no WeCom por segmentos](https://forgeturl.github.io/md2chat/pt-br/guides/markdown-to-wecom.html): Copie texto e PNG em ordem e conheça os testes de rascunhos Mac e seus limites.
+- [O que fazer quando imagens somem ao colar Markdown no chat](https://forgeturl.github.io/md2chat/pt-br/guides/clipboard-images-missing.html): Separe fonte, prévia, opção de cópia e entrada do chat para encontrar a falha.
+
+## 日本語
+
+- [AI の回答や Markdown をチャットに共有するには](https://forgeturl.github.io/md2chat/ja/guides/ai-markdown-to-chat.html): ChatGPT、Claude、DeepSeek、Codex、Cursor の Markdown を、文章が編集可能なチャット用コンテンツに変換する手順です。
+- [Markdown の文章・表・画像を DingTalk に貼り付ける](https://forgeturl.github.io/md2chat/ja/guides/markdown-to-dingtalk.html): デスクトップ版の操作手順と、Mac と Windows で異なる検証範囲を説明します。
+- [Markdown を WeChat の文章と画像に変換する](https://forgeturl.github.io/md2chat/ja/guides/markdown-to-wechat.html): 文章を編集可能なまま、表・コード・数式を画像にして、WeChat の下書きで確認する方法です。
+- [DingTalk・WeChat・Feishu・WeCom・メールの互換性](https://forgeturl.github.io/md2chat/ja/guides/chat-compatibility.html): 実装済みの形式、下書きの実測、送信後の確認を区別して、送信先の手順を比較します。
+- [Markdown の表・コード・数式・Mermaid をチャット用画像に](https://forgeturl.github.io/md2chat/ja/guides/markdown-formatting.html): 編集可能な部分と PNG に変わる部分を、再現できる表の例で説明します。
+- [Markdown の文章と画像を Feishu に貼り付ける](https://forgeturl.github.io/md2chat/ja/guides/markdown-to-feishu.html): 展開したリッチテキスト入力を使う手順と、Mac の実測・Windows の未検証範囲です。
+- [Markdown の文章と画像を WeCom に順番に貼り付ける](https://forgeturl.github.io/md2chat/ja/guides/markdown-to-wecom.html): 文章と PNG の分割コピー、Mac 下書きの実測と未検証の範囲を説明します。
+- [Markdown をチャットに貼り付けると画像が消える場合](https://forgeturl.github.io/md2chat/ja/guides/clipboard-images-missing.html): 原文、プレビュー、コピー方法、チャット入力を分けて原因を確認します。
+
+## 한국어
+
+- [AI 답변과 Markdown을 채팅에 공유하는 방법](https://forgeturl.github.io/md2chat/ko/guides/ai-markdown-to-chat.html): ChatGPT, Claude, DeepSeek, Codex, Cursor의 Markdown을 편집 가능한 텍스트와 이미지로 변환합니다.
+- [Markdown 표와 이미지를 DingTalk에 붙여 넣기](https://forgeturl.github.io/md2chat/ko/guides/markdown-to-dingtalk.html): 데스크톱 사용법과 Mac·Windows의 서로 다른 검증 범위를 설명합니다.
+- [Markdown을 편집 가능한 WeChat 텍스트와 이미지로 변환](https://forgeturl.github.io/md2chat/ko/guides/markdown-to-wechat.html): 표·코드·수식을 이미지로 만들고 일반 텍스트는 유지한 뒤 WeChat 초안에서 확인합니다.
+- [DingTalk·WeChat·Feishu·WeCom·이메일 호환성](https://forgeturl.github.io/md2chat/ko/guides/chat-compatibility.html): 구현 형식, 초안 붙여넣기, 전송 결과를 구분하여 대상별 방법을 비교합니다.
+- [Markdown 표·코드·수식·Mermaid를 채팅 이미지로](https://forgeturl.github.io/md2chat/ko/guides/markdown-formatting.html): 텍스트로 남는 부분과 PNG로 바뀌는 부분을 재현 가능한 표 예제로 설명합니다.
+- [Markdown 텍스트와 이미지를 Feishu에 붙여 넣기](https://forgeturl.github.io/md2chat/ko/guides/markdown-to-feishu.html): 펼친 서식 입력창 사용법과 Mac 검증 기록, Windows의 검증 한계를 설명합니다.
+- [Markdown 텍스트와 이미지를 WeCom에 순서대로 공유](https://forgeturl.github.io/md2chat/ko/guides/markdown-to-wecom.html): 텍스트와 PNG를 구간별로 복사하는 방법과 Mac 초안 검증 범위를 설명합니다.
+- [Markdown을 채팅에 붙여 넣으면 이미지가 사라질 때](https://forgeturl.github.io/md2chat/ko/guides/clipboard-images-missing.html): 원본·미리보기·복사 옵션·채팅 입력을 나눠 이미지 누락 원인을 확인합니다.
+
+## Deutsch
+
+- [KI-Antworten und Markdown in einem Chat teilen](https://forgeturl.github.io/md2chat/de/guides/ai-markdown-to-chat.html): Markdown aus ChatGPT, Claude, DeepSeek, Codex oder Cursor als bearbeitbaren Text und Bilder aufbereiten.
+- [Markdown-Tabellen und Bilder in DingTalk einfügen](https://forgeturl.github.io/md2chat/de/guides/markdown-to-dingtalk.html): Desktop-Vorgehen und die unterschiedlichen Prüfgrenzen auf Mac und Windows.
+- [Markdown für WeChat mit bearbeitbarem Text umwandeln](https://forgeturl.github.io/md2chat/de/guides/markdown-to-wechat.html): Tabellen, Code und Formeln als Bilder aufbereiten und das Ergebnis im eigenen WeChat prüfen.
+- [Kompatibilität mit DingTalk, WeChat, Feishu, WeCom und E-Mail](https://forgeturl.github.io/md2chat/de/guides/chat-compatibility.html): Implementierte Formate, getestete Entwürfe und bestätigte Sendungen getrennt vergleichen.
+- [Markdown-Tabellen, Code, Formeln und Mermaid als Chat-Bilder](https://forgeturl.github.io/md2chat/de/guides/markdown-formatting.html): Welche Inhalte bearbeitbar bleiben und welche PNG werden, mit reproduzierbarem Tabellenbeispiel.
+- [Markdown-Text und Bilder in Feishu einfügen](https://forgeturl.github.io/md2chat/de/guides/markdown-to-feishu.html): Desktop und erweiterte Feishu-Eingabe nutzen, mit Mac-Belegen und klaren Windows-Grenzen.
+- [Markdown-Text und Bilder segmentweise in WeCom teilen](https://forgeturl.github.io/md2chat/de/guides/markdown-to-wecom.html): Text und PNG in Reihenfolge kopieren; getestete Mac-Entwürfe und noch offene Grenzen.
+- [Wenn Bilder beim Einfügen von Markdown in Chats verschwinden](https://forgeturl.github.io/md2chat/de/guides/clipboard-images-missing.html): Quelle, Vorschau, Kopieroption und Chateingabe getrennt prüfen, um fehlende Bilder einzugrenzen.
+
+## Français
+
+- [Partager des réponses IA et du Markdown dans un chat](https://forgeturl.github.io/md2chat/fr/guides/ai-markdown-to-chat.html): Préparez le Markdown de ChatGPT, Claude, DeepSeek, Codex ou Cursor comme texte modifiable et images.
+- [Coller des tableaux et images Markdown dans DingTalk](https://forgeturl.github.io/md2chat/fr/guides/markdown-to-dingtalk.html): Utilisez la version de bureau et distinguez les preuves Mac des validations Windows encore nécessaires.
+- [Convertir Markdown pour WeChat avec du texte modifiable](https://forgeturl.github.io/md2chat/fr/guides/markdown-to-wechat.html): Transformez tableaux, code et formules en images puis vérifiez le résultat dans votre WeChat.
+- [Compatibilité DingTalk, WeChat, Feishu, WeCom et e-mail](https://forgeturl.github.io/md2chat/fr/guides/chat-compatibility.html): Comparez les méthodes en séparant formats implémentés, brouillons testés et envois confirmés.
+- [Tableaux, code, formules et Mermaid en images pour les chats](https://forgeturl.github.io/md2chat/fr/guides/markdown-formatting.html): Découvrez ce qui reste modifiable et ce qui devient PNG avec un tableau reproductible.
+- [Coller du texte et des images Markdown dans Feishu](https://forgeturl.github.io/md2chat/fr/guides/markdown-to-feishu.html): Utilisez le bureau et la saisie enrichie déployée, avec preuves Mac et limites Windows.
+- [Partager texte et images Markdown dans WeCom par segments](https://forgeturl.github.io/md2chat/fr/guides/markdown-to-wecom.html): Copiez texte et PNG dans l’ordre, avec tests de brouillons Mac et limites explicites.
+- [Que faire si des images disparaissent au collage dans un chat ?](https://forgeturl.github.io/md2chat/fr/guides/clipboard-images-missing.html): Isolez source, aperçu, copie et saisie du chat pour trouver la cause des images manquantes.
+
+## हिन्दी
+
+- [AI उत्तर और Markdown चैट में कैसे साझा करें](https://forgeturl.github.io/md2chat/hi/guides/ai-markdown-to-chat.html): ChatGPT, Claude, DeepSeek, Codex या Cursor का Markdown संपादन योग्य टेक्स्ट और चित्रों में बदलें।
+- [Markdown तालिकाएँ और चित्र DingTalk में चिपकाएँ](https://forgeturl.github.io/md2chat/hi/guides/markdown-to-dingtalk.html): डेस्कटॉप प्रक्रिया और Mac व Windows के अलग परीक्षण दायरे समझें।
+- [Markdown से WeChat के लिए संपादन योग्य टेक्स्ट और चित्र](https://forgeturl.github.io/md2chat/hi/guides/markdown-to-wechat.html): तालिकाएँ, कोड और सूत्र चित्र बनाएँ तथा अपने WeChat में परिणाम जाँचें।
+- [DingTalk, WeChat, Feishu, WeCom और ईमेल अनुकूलता](https://forgeturl.github.io/md2chat/hi/guides/chat-compatibility.html): लागू प्रारूप, जाँचे गए ड्राफ़्ट और पुष्ट भेजे गए संदेशों का अंतर समझें।
+- [Markdown तालिका, कोड, सूत्र और Mermaid को चैट चित्र बनाएँ](https://forgeturl.github.io/md2chat/hi/guides/markdown-formatting.html): सार्वजनिक तालिका उदाहरण से जानें कि क्या संपादन योग्य रहता है और क्या PNG बनता है।
+- [Markdown टेक्स्ट और चित्र Feishu में चिपकाएँ](https://forgeturl.github.io/md2chat/hi/guides/markdown-to-feishu.html): डेस्कटॉप और खुले रिच-टेक्स्ट इनपुट का उपयोग, Mac के प्रमाण और Windows की सीमाएँ।
+- [Markdown टेक्स्ट और चित्र WeCom में क्रमिक खंडों से साझा करें](https://forgeturl.github.io/md2chat/hi/guides/markdown-to-wecom.html): टेक्स्ट और PNG क्रम से कॉपी करें तथा Mac ड्राफ़्ट परीक्षण की सीमा जानें।
+- [Markdown चैट में चिपकाने पर चित्र गायब हों तो क्या करें](https://forgeturl.github.io/md2chat/hi/guides/clipboard-images-missing.html): स्रोत, पूर्वावलोकन, कॉपी विकल्प और चैट इनपुट को अलग जाँचकर समस्या खोजें।
 
 ## Compatibility and evidence
 

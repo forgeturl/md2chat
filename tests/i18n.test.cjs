@@ -46,21 +46,23 @@ test('dynamic conversion counts stay accurate in translated status messages', ()
  assert.equal(i18n.translate(source,'en'),'Original 1 · Tables 2 · Equations 3 · Diagrams 4 · Code 5 · Total 15 images');
  assert.equal(i18n.translate('已复制第 2/4 段，请到企微粘贴后再继续。','en'),'Copied part 2/4. Paste it in WeCom before continuing.');
 });
-test('one homepage picker navigates to full Chinese/English pages without changing editor routing', async () => {
+test('all nine public languages navigate to complete pages without changing editor routing', async () => {
  function windowFor(pageLocale, routes={}) {
   const navigations=[],saved=[],events=[];
   const element={nodeType:1,childNodes:[],closest:()=>null,hasAttribute:()=>false,getAttribute:()=>pageLocale};
   const win={
    document:{documentElement:element,readyState:'loading',addEventListener(){},querySelectorAll:()=>[],
-    querySelector:()=>pageLocale?{getAttribute:name=>routes[name]||null}:null},
+    querySelector:selector=>pageLocale?{getAttribute:()=>routes[selector.match(/data-site-locale="([^"]+)"/)?.[1]]||null}:null},
    navigator:{languages:['en-US']},location:{search:'',assign:url=>navigations.push(url)},
    localStorage:{getItem:()=>null,setItem:(key,value)=>saved.push([key,value])},
    dispatchEvent:event=>events.push(event),CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}}
   };
   return {win,navigations,saved,events};
  }
- for(const [from,to,url] of [['zh-CN','en','./en/'],['en','zh-CN','../'],['zh-CN','auto','./en/']]){
-  const state=windowFor(from,{['data-language-'+(to==='auto'?'en':to.toLowerCase())]:url});
+ const {editions,route}=require('../scripts/site-locales.cjs');
+ for(const {code} of editions){
+  const from=code==='zh-CN'?'en':'zh-CN',to=code,url='./'+route(code);
+  const state=windowFor(from,{[code]:url});
   i18n.start(state.win);await i18n.set(to);
   assert.deepEqual(state.navigations,[url]);
   assert.deepEqual(state.saved,[['md2chat.language',to]]);
@@ -71,8 +73,7 @@ test('one homepage picker navigates to full Chinese/English pages without changi
  assert.deepEqual(editor.navigations,[]);
  assert.equal(editor.win.document.documentElement.lang,'ja');
  assert.equal(editor.events.at(-1).detail.locale,'ja');
- const home=windowFor('zh-CN',{'data-language-en':'./en/'});
- i18n.start(home.win);await i18n.set('ja');
- assert.deepEqual(home.navigations,[]);
- assert.equal(home.win.document.documentElement.lang,'ja','other UI languages stay available in the same picker');
+ const home=windowFor('zh-CN',{en:'./en/'});
+ i18n.start(home.win);await i18n.set('auto');
+ assert.deepEqual(home.navigations,['./en/']);
 });

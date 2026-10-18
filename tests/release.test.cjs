@@ -28,7 +28,8 @@ test('first-party frontend has no persistence or native API dependency',()=>{
  assert(!js.includes('clipboard-source'));assert(!js.includes('NSPasteboard'));
 });
 test('build has a narrow public-file allowlist',()=>{
- const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','guides','en','sitemap.xml','llms.txt','LICENSE','THIRD_PARTY_NOTICES.md']"));
+ const code=fs.readFileSync(path.join(root,'scripts/build.cjs'),'utf8');assert(code.includes("['index.html','editor.html','assets','guides',...editions.map(item=>item.directory).filter(Boolean),'sitemap.xml','llms.txt','LICENSE','THIRD_PARTY_NOTICES.md']"));
+ assert.deepEqual(require('../scripts/site-locales.cjs').editions.map(item=>item.directory),['','en','es','pt-br','ja','ko','de','fr','hi']);
 });
 test('latest download links and Tauri configuration match the public release asset contract',()=>{
  const {expectedAssets,installerAssets}=require('../scripts/release-assets.cjs');

@@ -106,7 +106,9 @@
   function apply(value) {
    preference = valid(value) ? value : 'auto'; locale = resolve(preference, languages);
    doc.documentElement.lang = locale;
-   walk(doc.documentElement);
+   // Public pages are fully authored in the URL language at build time.
+   // Translating them again can mix languages or alter names in the text.
+   if (!codes.has(pageLocale)) walk(doc.documentElement);
    for (const select of doc.querySelectorAll('[data-locale-select]')) renderSelect(select);
    win.dispatchEvent(new win.CustomEvent('md2chat:language', {detail:{locale,preference}}));
   }
@@ -114,10 +116,10 @@
   let busy = false, revision = 0;
   async function set(value) {
    if (!valid(value) || busy) return;
-   // The same picker serves static homepages and the shared editor. Only
-   // homepages opt into full Chinese/English page navigation.
+   // Public pages always navigate to another complete edition; the editor
+   // retains in-place UI switching and never replaces the user's input.
    const nextLocale = resolve(value, languages);
-   const pageTarget = doc.querySelector('[data-site-locale-select]')?.getAttribute('data-language-'+nextLocale.toLowerCase());
+   const pageTarget = doc.querySelector('[data-site-locale="'+nextLocale+'"]')?.getAttribute('href');
    if (pageTarget && nextLocale !== pageLocale) {
     persist(value); win.location.assign(pageTarget); return;
    }

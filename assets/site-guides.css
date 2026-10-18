@@ -1,6 +1,7 @@
 .guide { max-width:960px; }
 .guide .nav { flex-wrap:wrap; gap:16px; }
 .guide .nav-links { display:flex; flex-wrap:wrap; gap:16px; }
+.guide .site-language-picker { margin-left:auto; }
 .guide h1 { font-size:clamp(30px,5vw,46px); line-height:1.35; overflow-wrap:anywhere; }
 .guide .reviewed { font-size:14px; color:var(--muted); }
 .guide .guide-contents { display:flex; flex-wrap:wrap; gap:10px 18px; padding:20px; background:#f0f5ef; border-radius:12px; margin:24px 0; }
@@ -11,7 +12,7 @@
 .guide a { overflow-wrap:anywhere; }
 .guide .footer { display:flex; flex-wrap:wrap; gap:16px; }
 @media(max-width:640px) {
- .guide .nav-links { display:flex; font-size:14px; gap:12px; }
+ .guide .nav-links { display:flex; width:100%; font-size:14px; gap:12px; }
  .guide .button { white-space:normal; text-align:center; }
  .guide .guide-contents { padding:14px; }
 }
