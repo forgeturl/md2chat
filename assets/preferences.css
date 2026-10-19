@@ -64,3 +64,18 @@ h2{margin:0;font-size:14px;line-height:1.5;font-weight:650}
 .language-select { max-width:240px; min-height:38px; padding:8px 24px 8px 10px; border:1px solid #cdd6e4; border-radius:7px; background:#fff; color:#263348; font:inherit; font-size:14px; }
 [data-locale-status] { color:#b42318; font-size:14px; }
 [data-locale-status]:empty { display:none; }
+.shortcut-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.shortcut-copy{flex:1;min-width:88px}
+.shortcut-state{display:block;margin-top:3px;color:var(--muted);font-size:12px}
+.shortcut-state[data-state="unavailable"],#shortcuts-status[data-state="error"]{color:#a52c24}
+#shortcuts-warning{color:#a52c24}
+.shortcut-state[data-state="registered"]{color:var(--accent)}
+#shortcut-settings button{padding:6px 9px;border:1px solid #cbdcd1;border-radius:6px;background:#fff;color:var(--ink);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+#shortcut-settings button:hover:not(:disabled){background:var(--accent-soft)}
+#shortcut-settings button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#shortcut-settings button:disabled{opacity:.5;cursor:default}
+#shortcut-settings .shortcut-record{min-width:112px;font-weight:550;color:var(--accent);background:#f6faf8}
+.shortcut-actions{display:flex;gap:8px;margin-top:10px}
+.shortcut-capture{margin-top:12px;padding:14px;background:var(--accent-soft);border:1px solid #b5d2c2;border-radius:8px}
+.shortcut-capture output{display:block;min-height:24px;font-size:15px;font-weight:550;overflow-wrap:anywhere}
+@media(max-width:560px){.shortcut-row{flex-wrap:wrap}.shortcut-copy{flex-basis:100%}.shortcut-row .shortcut-record{flex:1}}

@@ -9,6 +9,8 @@ on:
       - '!src-tauri/src/clipboard/macos.rs'
       - 'src-tauri/src/lib.rs'
       - 'src-tauri/src/shell.rs'
+      - 'src-tauri/src/shortcuts/**'
+      - 'src-tauri/src/preferences.rs'
       - 'src-tauri/src/images.rs'
       - 'src-tauri/build.rs'
       - 'src-tauri/tauri.conf.json'
@@ -50,6 +52,8 @@ jobs:
           New-Item -ItemType Directory -Force release/qa | Out-Null
           npm run desktop:test:windows 2>&1 | Tee-Object -FilePath release/qa/windows-clipboard.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test shortcuts and desktop regression
+        run: node scripts/native.cjs cargo test --locked --manifest-path src-tauri/Cargo.toml
       - name: Upload evidence and manual DingTalk cases
         if: always()
         uses: actions/upload-artifact@v7

@@ -4,6 +4,7 @@ mod images;
 mod locale;
 mod preferences;
 mod shell;
+mod shortcuts;
 mod updates;
 
 use serde_json::{json, Value};
@@ -207,6 +208,7 @@ async fn desktop_smoke_result(
     #[cfg(debug_assertions)]
     if report["status"] == "passed" {
         report["shell"] = shell::smoke_check(app.clone()).await?;
+        report["shortcuts"] = shortcuts::smoke_check(app.clone()).await?;
     }
     let path = std::env::var("MD2CHAT_SMOKE_REPORT")
         .map(std::path::PathBuf::from)
@@ -445,6 +447,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(RuntimeState::default())
+        .on_window_event(|window, event| {
+            if window.label() == "preferences"
+                && matches!(
+                    event,
+                    tauri::WindowEvent::Focused(false)
+                        | tauri::WindowEvent::Destroyed
+                        | tauri::WindowEvent::CloseRequested { .. }
+                )
+            {
+                shortcuts::cancel_window_session(window.app_handle());
+            }
+        })
         .on_page_load(|window, payload| {
             if window.label() == "main"
                 && matches!(payload.event(), tauri::webview::PageLoadEvent::Started)
@@ -479,6 +493,10 @@ pub fn run() {
             locale::locale_set,
             preferences::preferences_get,
             preferences::preferences_set,
+            shortcuts::shortcuts_get,
+            shortcuts::shortcuts_set,
+            shortcuts::shortcuts_session,
+            shortcuts::shortcuts_end_session,
             shell::tray_panel::tray_panel_state,
             shell::tray_panel::tray_panel_action,
             shell::tray_panel::tray_panel_hide,
@@ -497,6 +515,7 @@ pub fn run() {
             clipboard::register_app_owner(_main_window.hwnd()?.0 as usize)
                 .map_err(std::io::Error::other)?;
             shell::setup(app)?;
+            shortcuts::setup(app.handle());
             updates::setup(app.handle());
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {

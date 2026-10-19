@@ -94,6 +94,14 @@
  Object.defineProperty(window, 'md2chatPreferences', {value: Object.freeze({
   get: () => invoke('preferences_get'), set: patch => invoke('preferences_set', {patch})
  })});
+ Object.defineProperty(window, 'md2chatShortcuts', {value: Object.freeze({
+  get: () => invoke('shortcuts_get'),
+  set: configuration => invoke('shortcuts_set', {configuration}),
+  session: mode => invoke('shortcuts_session', {mode}),
+  endSession: sessionId => invoke('shortcuts_end_session', {sessionId}),
+  subscribe: callback => subscribe('md2chat:shortcuts-state', callback),
+  onTest: callback => subscribe('md2chat:shortcut-test', callback)
+ })});
  Object.defineProperty(window, 'md2chatLocale', {value: Object.freeze({
   get: () => invoke('locale_get'), set: (preference, detected) => invoke('locale_set', {preference, detected}),
   subscribe: callback => subscribe('md2chat:locale', callback)

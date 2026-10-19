@@ -11,6 +11,8 @@
   <script src="../assets/i18n.js" defer></script>
   <script src="../assets/language-picker.js" defer></script>
   <script src="../assets/preferences.js" defer></script>
+  <script src="../assets/shortcuts.js" defer></script>
+  <script src="../assets/shortcut-settings.js" defer></script>
 <link rel="stylesheet" href="../assets/language-picker.css">
 </head>
 <body>
@@ -61,6 +63,60 @@
           </ol>
         </fieldset>
         <p id="pin-note" class="section-note">拖动或使用上移、下移调整顺序；全部格式仍可在“剪贴板转换”中使用。</p>
+      </section>
+
+      <section id="shortcut-settings" class="preferences-section" aria-labelledby="shortcuts-title" aria-busy="true">
+        <div class="settings-card">
+          <label class="setting-row">
+            <span class="setting-copy"><span id="shortcuts-title" class="setting-title">全局快捷键</span><span class="setting-description">复制内容后，按快捷键转换为指定格式。md2chat 需保持运行。</span></span>
+            <span class="switch-control"><input id="shortcuts-enabled" type="checkbox" role="switch" aria-describedby="shortcuts-note" disabled><span class="switch-track" aria-hidden="true"></span></span>
+          </label>
+          <div class="shortcut-row" data-shortcut-target="image" data-label="转图片">
+            <div class="shortcut-copy"><span class="setting-title">转图片</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+          <div class="shortcut-row" data-shortcut-target="wechat" data-label="微信格式">
+            <div class="shortcut-copy"><span class="setting-title">微信格式</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+          <div class="shortcut-row" data-shortcut-target="dingtalk" data-label="钉钉格式">
+            <div class="shortcut-copy"><span class="setting-title">钉钉格式</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+          <div class="shortcut-row" data-shortcut-target="feishu" data-label="飞书格式">
+            <div class="shortcut-copy"><span class="setting-title">飞书格式</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+          <div class="shortcut-row" data-shortcut-target="wecom" data-label="企业微信格式">
+            <div class="shortcut-copy"><span class="setting-title">企业微信格式</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+          <div class="shortcut-row" data-shortcut-target="email" data-label="邮件格式">
+            <div class="shortcut-copy"><span class="setting-title">邮件格式</span><span data-shortcut-status class="shortcut-state">未配置</span></div>
+            <button type="button" class="shortcut-record" data-shortcut-action="record" disabled>点击录制</button>
+            <button type="button" data-shortcut-action="suggest" disabled>换一组建议</button>
+            <button type="button" data-shortcut-action="clear" disabled>清除</button>
+          </div>
+        </div>
+        <p id="shortcuts-note" class="section-note">默认关闭。支持一至两个修饰键加一个字母或数字；关闭时可提前配置，启用时检查可用性。</p>
+        <p class="section-note">已注册表示当前可接收按键，无法保证与其他软件的应用内快捷键完全不冲突。企微图文仍按分段流程处理。</p>
+        <div id="shortcuts-capture" class="shortcut-capture" hidden>
+          <output id="shortcuts-captured-key" aria-live="polite"></output>
+          <div class="shortcut-actions"><button id="shortcuts-save" type="button" disabled>保存快捷键</button><button id="shortcuts-cancel" type="button">取消</button></div>
+        </div>
+        <div class="shortcut-actions"><button id="shortcuts-test" type="button" disabled>测试快捷键</button><button id="shortcuts-retry" type="button" disabled>重新检查</button></div>
+        <p id="shortcuts-status" class="section-note" role="status" aria-live="polite">正在读取快捷键设置…</p>
+        <p id="shortcuts-warning" class="section-note" role="alert" hidden></p>
       </section>
 
       <section class="preferences-section" aria-labelledby="appearance-title">

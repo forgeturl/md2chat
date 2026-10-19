@@ -22,6 +22,8 @@ pub(crate) struct Preferences {
     pub pinned_targets: Vec<String>,
     pub show_tray_label: bool,
     pub language: String,
+    #[serde(default, deserialize_with = "crate::shortcuts::deserialize_saved")]
+    pub shortcuts: crate::shortcuts::Configuration,
 }
 
 impl Default for Preferences {
@@ -30,6 +32,7 @@ impl Default for Preferences {
             pinned_targets: Vec::new(),
             show_tray_label: false,
             language: "auto".into(),
+            shortcuts: crate::shortcuts::Configuration::default(),
         }
     }
 }
@@ -205,6 +208,22 @@ pub(crate) fn save_language(app: &AppHandle, language: &str) -> Result<(), Strin
     Ok(())
 }
 
+pub(crate) fn save_shortcuts(
+    app: &AppHandle,
+    shortcuts: &crate::shortcuts::Configuration,
+) -> Result<(), String> {
+    let state = app.state::<PreferencesState>();
+    let mut current = state.value.lock().map_err(|_| "暂时无法保存首选项。")?;
+    if current.shortcuts != *shortcuts {
+        let mut next = current.clone();
+        next.shortcuts = shortcuts.clone();
+        write_preferences(&state.file, &next)
+            .map_err(|_| "无法写入本机首选项，请检查磁盘空间和目录权限。")?;
+        *current = next;
+    }
+    Ok(())
+}
+
 fn platform() -> &'static str {
     if cfg!(target_os = "macos") {
         "darwin"
@@ -361,6 +380,7 @@ mod tests {
             pinned_targets: patch.pinned_targets.unwrap(),
             show_tray_label: true,
             language: "ja".into(),
+            ..Preferences::default()
         };
         write_preferences(&file, &expected).unwrap();
         assert_eq!(read_preferences(&file).unwrap(), expected);
@@ -405,6 +425,7 @@ mod tests {
             pinned_targets: vec!["wecom".into(), "dingtalk".into()],
             show_tray_label: true,
             language: "ja".into(),
+            ..Preferences::default()
         };
         write_preferences(&file, &expected).unwrap();
         assert_eq!(read_preferences(&file).unwrap(), expected);
@@ -427,6 +448,24 @@ mod tests {
         assert_eq!(value.language, "auto");
         assert_eq!(value.pinned_targets, ["email"]);
         assert!(value.show_tray_label);
+        assert_eq!(value.shortcuts, crate::shortcuts::Configuration::default());
+    }
+
+    #[test]
+    fn broken_shortcut_settings_do_not_reset_existing_preferences() {
+        for shortcuts in [
+            json!(null),
+            json!({"enabled":"yes"}),
+            json!({"enabled":true,"bindings":{"email":{"modifiers":[],"key":"KeyC"}}}),
+        ] {
+            let value: Preferences = serde_json::from_value(json!({
+                "pinnedTargets":["email","image"],"showTrayLabel":true,"language":"ja","shortcuts":shortcuts
+            })).unwrap();
+            assert_eq!(value.pinned_targets, ["email", "image"]);
+            assert_eq!(value.language, "ja");
+            assert!(value.show_tray_label);
+            assert_eq!(value.shortcuts, crate::shortcuts::Configuration::default());
+        }
     }
 
     #[test]

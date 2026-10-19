@@ -37,6 +37,7 @@ test('automatic Windows validation covers native clipboard integration without w
   'src-tauri/src/clipboard/windows.rs','src-tauri/src/clipboard/native.rs','src-tauri/src/clipboard/mod.rs',
   'src-tauri/src/clipboard/payload.rs','src-tauri/src/clipboard/cache.rs','src-tauri/src/clipboard/summary.rs',
   'src-tauri/src/clipboard/future/helper.rs','src-tauri/src/lib.rs','src-tauri/src/shell.rs','src-tauri/src/images.rs',
+  'src-tauri/src/shortcuts/mod.rs','src-tauri/src/shortcuts/registry.rs','src-tauri/src/preferences.rs',
   'src-tauri/build.rs','src-tauri/tauri.conf.json','scripts/native.cjs','scripts/native-env.cjs',
   'scripts/build-desktop.cjs','scripts/inspect-windows-clipboard.ps1','tests/windows-clipboard-workflow.test.cjs',
   'examples/windows-clipboard/two-images.md','.github/workflows/windows-clipboard.yml'
@@ -44,7 +45,7 @@ test('automatic Windows validation covers native clipboard integration without w
  for(const file of [
   'assets/app.js','assets/tauri-bridge.js','assets/wecom-segments.js','assets/landing.css','editor.html','index.html',
   'package.json','package-lock.json','src-tauri/Cargo.toml','src-tauri/Cargo.lock','src-tauri/src/clipboard/macos.rs',
-  'src-tauri/src/preferences.rs','src-tauri/src/updates.rs','docs/release-notes.md'
+  'src-tauri/src/updates.rs','docs/release-notes.md'
  ])assert(!matchesPushPath(push.paths,file),file+' must not trigger Windows validation');
 });
 test('standalone Windows validation builds the frontend once through its native test prehook',()=>{
@@ -54,4 +55,7 @@ test('standalone Windows validation builds the frontend once through its native 
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
  assert.equal(pkg.scripts['predesktop:test:windows'],'node scripts/build-desktop.cjs');
  assert.match(pkg.scripts['desktop:test:windows'],/clipboard::tests::native_roundtrip.*--ignored.*--test-threads=1/);
+ const regression=steps.findIndex(step=>step.name==='Test shortcuts and desktop regression');
+ assert(regression>steps.findIndex(step=>step.run?.includes('npm run desktop:test:windows')));
+ assert.equal(steps[regression].run,'node scripts/native.cjs cargo test --locked --manifest-path src-tauri/Cargo.toml');
 });
