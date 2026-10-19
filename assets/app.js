@@ -224,7 +224,7 @@ if(window.md2chatDesktop){
   for(const name of ['tabindex','aria-label','aria-describedby'])wrapper.removeAttribute(name);
  }
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉、Mac 飞书复制所需图片临时保存在本机';
- document.getElementById('copy-help').textContent='点击平台图标复制，再到对应聊天框粘贴。Mac 飞书请先展开富文本输入框，再一次粘贴图文。Mac 钉钉使用原生图文；Windows 钉钉使用 Chromium 兼容图文，粘贴后请核对结果。企微图文请逐段复制粘贴。Windows 飞书、邮件为实验性适配。关闭窗口后可从菜单栏／托盘重新打开。';
+ document.getElementById('copy-help').textContent='桌面版可直接使用下方的平台按钮；不同平台的粘贴方式略有不同。';
  document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
@@ -262,7 +262,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  if(copying||desktopRequired(copyButton))return;
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=target==='image'?null:ChatTargets.profile(target);
- if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“转图片”。':'预览已更新，请点击平台图标复制。';return;}
+ if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“图片”。':'预览已更新，请点击平台图标复制。';return;}
  if(target==='wecom'&&cachedPayload.segments.some(part=>part.type==='image')){
   try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
   catch(error){showCopyNotice(error.message,true);}

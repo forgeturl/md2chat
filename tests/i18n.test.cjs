@@ -46,6 +46,56 @@ test('dynamic conversion counts stay accurate in translated status messages', ()
  assert.equal(i18n.translate(source,'en'),'Original 1 · Tables 2 · Equations 3 · Diagrams 4 · Code 5 · Total 15 images');
  assert.equal(i18n.translate('已复制第 2/4 段，请到企微粘贴后再继续。','en'),'Copied part 2/4. Paste it in WeCom before continuing.');
 });
+test('desktop update and help UI has authored translations, including native install prompts', () => {
+ const fs=require('node:fs');
+ const updates=fs.readFileSync(require.resolve('../assets/updates.js'),'utf8');
+ const html=fs.readFileSync(require.resolve('../editor.html'),'utf8');
+ const help=html.slice(html.indexOf('<dialog id="help-dialog"'),html.indexOf('<dialog id="diagnostic-dialog"'));
+ const native=fs.readFileSync(require.resolve('../src-tauri/src/updates.rs'),'utf8');
+ const messages=new Set();
+ for(const match of updates.matchAll(/'([^'\n]+)'/g)){
+  if(/[\u3400-\u9fff]/.test(match[1])&&!/[<>]/.test(match[1]))messages.add(match[1]);
+ }
+ for(const text of [help,updates])for(const match of text.matchAll(/>\s*([^<>]+?)\s*</g)){
+  if(/[\u3400-\u9fff]/.test(match[1]))messages.add(match[1]);
+ }
+ for(const match of native.matchAll(/locale::tr\([^,]+,\s*"([^"]+)"\)/g))messages.add(match[1]);
+ for(const message of messages)for(const {code} of data.locales){
+  assert.equal(typeof data.messages[message]?.[code],'string',`${code}: missing desktop message ${message}`);
+ }
+});
+test('native preference save errors translate both the rollback notice and the specific reason', () => {
+ const prefix='未能保存，已恢复原设置。',reason='无法写入本机首选项，请检查磁盘空间和目录权限。';
+ for(const {code} of data.locales){
+  const value=i18n.translate(prefix+reason,code);
+  assert(value.includes(i18n.translate(reason,code)));
+  if(!['zh-CN','ja'].includes(code))assert(!/[\u3400-\u9fff]/.test(value),`${code}: ${value}`);
+ }
+});
+test('UI labels and platform tooltips translate while editor and preview content stay untouched', async () => {
+ function element(selectors=[],values={}) {
+  return {nodeType:1,childNodes:[],parentElement:null,values:{...values},
+   closest(query){return query.split(',').some(value=>selectors.includes(value))?this:this.parentElement?.closest(query)||null;},
+   hasAttribute(key){return Object.hasOwn(this.values,key);},getAttribute(key){return this.values[key]??null;},
+   setAttribute(key,value){this.values[key]=value;}};
+ }
+ const root=element(),editor=element(['[contenteditable]'],{'aria-label':'粘贴图文或 Markdown 内容'}),preview=element(['#message'],{'aria-label':'转换预览内容'});
+ const pasted=element([],{'title':'软件更新'}),userText={nodeType:3,nodeValue:'软件更新',parentElement:pasted};
+ pasted.parentElement=editor;pasted.childNodes=[userText];editor.childNodes=[pasted];
+ const profiles=require('../assets/chat-targets.js').profiles;
+ const buttons=Object.values(profiles).map(profile=>element([],{title:'复制到'+profile.label+'：'+profile.note}));
+ root.childNodes=[editor,preview,...buttons];for(const child of root.childNodes)child.parentElement=root;
+ const win={document:{documentElement:root,readyState:'loading',addEventListener(){},querySelectorAll:()=>[],querySelector:()=>null},
+  navigator:{languages:['zh-CN']},localStorage:{getItem:()=> 'zh-CN',setItem(){}},location:{search:''},dispatchEvent(){},CustomEvent:class{}};
+ i18n.start(win);
+ for(const {code} of data.locales){
+  await i18n.set(code);
+  assert.equal(editor.getAttribute('aria-label'),i18n.translate('粘贴图文或 Markdown 内容',code));
+  assert.equal(preview.getAttribute('aria-label'),i18n.translate('转换预览内容',code));
+  assert.equal(userText.nodeValue,'软件更新');assert.equal(pasted.getAttribute('title'),'软件更新');
+  if(!['zh-CN','ja'].includes(code))for(const button of buttons)assert(!/[\u3400-\u9fff]/.test(button.getAttribute('title')),code+': '+button.getAttribute('title'));
+ }
+});
 test('image composition errors use document-neutral wording and translate in every locale', () => {
  const fs=require('node:fs');
  const source=fs.readFileSync(require.resolve('../assets/clipboard-image.js'),'utf8');

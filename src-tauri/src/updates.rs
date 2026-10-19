@@ -133,10 +133,9 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
                 let _ = app
                     .notification()
                     .builder()
-                    .title("md2chat 有新版本")
-                    .body(format!(
-                        "v{version} 已发布，可从菜单栏／托盘的「检查更新」查看。"
-                    ))
+                    .title(crate::locale::tr(app, "md2chat 有新版本"))
+                    .body(crate::locale::tr(app, "{version} 已发布，可从菜单栏／托盘的「检查更新」查看。")
+                        .replace("{version}", &format!("v{version}")))
                     .show();
             }
             Ok(view)
@@ -244,12 +243,12 @@ pub async fn update_install(
         use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
         confirm_app
             .dialog()
-            .message("应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。")
-            .title("现在安装新版 md2chat？")
+            .message(crate::locale::tr(&confirm_app, "应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。"))
+            .title(crate::locale::tr(&confirm_app, "现在安装新版 md2chat？"))
             .kind(MessageDialogKind::Warning)
             .buttons(MessageDialogButtons::OkCancelCustom(
-                "重启并安装".into(),
-                "取消".into(),
+                crate::locale::tr(&confirm_app, "重启并安装"),
+                crate::locale::tr(&confirm_app, "取消"),
             ))
             .blocking_show()
     })

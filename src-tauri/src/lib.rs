@@ -404,15 +404,15 @@ pub fn start_conversion(app: tauri::AppHandle, target: String) {
                 let _ = app
                     .notification()
                     .builder()
-                    .title("剪贴板转换完成")
-                    .body(body)
+                    .title(locale::tr(&app, "剪贴板转换完成"))
+                    .body(locale::tr(&app, body))
                     .show();
             }
             Err(error) => {
                 use tauri_plugin_dialog::DialogExt;
                 app.dialog()
-                    .message(error)
-                    .title("剪贴板转换未完成")
+                    .message(locale::tr(&app, &error))
+                    .title(locale::tr(&app, "剪贴板转换未完成"))
                     .show(|_| {});
             }
         }

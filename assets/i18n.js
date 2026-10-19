@@ -28,6 +28,9 @@
   const format = (key, values) => (data.messages[key]?.[locale] || data.messages[key]?.en || key)
    .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
   let match;
+  const savePrefix = '未能保存，已恢复原设置。';
+  if (source.startsWith(savePrefix)) return translate(savePrefix, locale) + ' ' + translate(source.slice(savePrefix.length), locale);
+  if ((match = /^复制到(微信|钉钉|飞书|企微|邮件)：([\s\S]+)$/.exec(source))) return translate('复制到'+match[1], locale) + ' · ' + translate(match[2], locale);
   if ((match = /^第 (\d+) 张图片无法读取，请检查原图后重试。$/.exec(source))) return format('第 {n} 张图片无法读取，请检查原图后重试。',{n:match[1]});
   if ((match = /^第 (\d+) 张图片尺寸无效，请检查原图后重试。$/.exec(source))) return format('第 {n} 张图片尺寸无效，请检查原图后重试。',{n:match[1]});
   if ((match = /^原文图片 (\d+) 张 \+ 表格图片 (\d+) 张 \+ 公式 (\d+) 张 \+ 图表 (\d+) 张 \+ 代码 (\d+) 张 = 共 (\d+) 张图片。$/.exec(source)))
@@ -44,7 +47,7 @@
   return source;
  }
  let locale = 'en', preference = 'auto';
- const api = {locales:data.locales, match, detect, valid, resolve, translate, t:source => translate(source, locale),
+ const api = {locales:data.locales, match, detect, valid, resolve, translate, has:source => Object.hasOwn(data.messages,source), t:source => translate(source, locale),
   get locale() { return locale; }, get preference() { return preference; }, start};
  function start(win) {
   const doc = win.document;
@@ -74,7 +77,9 @@
    if (current !== output) node.nodeValue = output;
   }
   function attrs(element) {
-   if (element.closest('script,style,[data-no-i18n],#message,#diagnostic-report')) return;
+   if (element.closest('script,style,[data-no-i18n]')) return;
+   const content = element.closest('[contenteditable],#message,#diagnostic-report');
+   if (content && content !== element) return;
    const saved = attributes.get(element) || {};
    for (const name of ['aria-label','title','data-placeholder','placeholder']) {
     if (!element.hasAttribute(name)) continue;
@@ -89,8 +94,8 @@
   function walk(node) {
    if (node.nodeType === 3) { text(node); return; }
    if (node.nodeType !== 1 && node.nodeType !== 9) return;
-   if (node.nodeType === 1 && node.closest(excluded)) return;
    if (node.nodeType === 1) attrs(node);
+   if (node.nodeType === 1 && node.closest(excluded)) return;
    for (const child of node.childNodes) walk(child);
   }
   function renderSelect(select) {

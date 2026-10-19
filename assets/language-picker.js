@@ -18,8 +18,11 @@
   list.setAttribute('aria-labelledby',panel.id+'-heading'); heading.id = panel.id+'-heading';
   panel.append(heading,list); wrapper.append(trigger,panel);
   select.hidden = true;
-  let options = [];
-  function close(focus=false) { panel.hidden=true; trigger.setAttribute('aria-expanded','false'); if(focus)trigger.focus(); }
+  let options = [], restoreFocus = false;
+  function close(focus=false) {
+   panel.hidden=true; trigger.setAttribute('aria-expanded','false');
+   if (focus) {if (select.disabled) restoreFocus=true; else trigger.focus();}
+  }
   function sync() {
    const api = window.md2chatI18n;
    trigger.disabled = select.disabled;
@@ -32,7 +35,7 @@
     const button=document.createElement('button'); button.type='button'; button.className='language-option'; button.tabIndex=-1;
     button.setAttribute('role','option'); button.dataset.value=option.value;
     button.setAttribute('aria-selected',String(option.value===select.value));
-    const name=document.createElement('span');name.textContent=option.value==='auto'?api.t('跟随浏览器'):option.textContent;
+    const name=document.createElement('span');name.textContent=option.value==='auto'?api.t(window.md2chatDesktop?'跟随系统':'跟随浏览器'):option.textContent;
     button.append(name,icon('check'));
     if(option.value==='auto')button.classList.add('language-follow-browser');
     button.addEventListener('click',()=>{
@@ -67,7 +70,13 @@
   wrapper.addEventListener('focusout',event=>{if(!wrapper.contains(event.relatedTarget))close();});
   document.addEventListener('pointerdown',event=>{if(!wrapper.contains(event.target))close();});
   window.addEventListener('md2chat:language',sync);
-  new MutationObserver(()=>{trigger.disabled=select.disabled;}).observe(select,{attributes:true,attributeFilter:['disabled']});
+  new MutationObserver(()=>{
+   trigger.disabled=select.disabled;
+   if (restoreFocus && !select.disabled) {
+    restoreFocus=false;
+    if (document.activeElement===document.body || wrapper.contains(document.activeElement)) trigger.focus();
+   }
+  }).observe(select,{attributes:true,attributeFilter:['disabled']});
   sync();
  }
  function init(){for(const select of document.querySelectorAll('[data-locale-select]'))enhance(select);}
