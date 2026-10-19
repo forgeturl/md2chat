@@ -5,7 +5,7 @@
 })(globalThis,root=>{
  'use strict';
  const CONTENT_WIDTH=1100,PADDING=32,FONT_SIZE=20,LINE_HEIGHT=30,GAP=16,SCALE=2,MIN_FIT_SCALE=1;
- const MAX_PIXELS=20000000,MAX_TEXT=200000,MAX_PARTS=500,MAX_RUNS=20000;
+ const MAX_PIXELS=20000000,MAX_DIMENSION=32767,MAX_TEXT=200000,MAX_PARTS=500,MAX_RUNS=20000;
  const MAX_IMAGE_SOURCE=15*1024*1024,MAX_SOURCE=60*1024*1024,MAX_DECODED_PIXELS=40000000,MAX_PNG_BYTES=10*1024*1024;
  const imageSource=/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i;
  const tooLarge=()=>new Error('生成的图片过大（最多 2,000 万像素），请减少内容或分段转换。');
@@ -49,9 +49,9 @@
   if(!result.some(part=>part.type==='image'||part.text.trim()))throw new Error('没有可转为图片的内容。');
   return result;
  }
- function checkHeight(bottom,scale){
-  const width=Math.ceil((CONTENT_WIDTH+PADDING*2)*scale),height=Math.ceil(Math.ceil(bottom+PADDING)*scale);
-  if(!Number.isSafeInteger(height)||height<=0||width*height>MAX_PIXELS)throw tooLarge();
+ function checkHeight(bottom,scale,contentWidth){
+  const width=Math.ceil((Math.ceil(contentWidth)+PADDING*2)*scale),height=Math.ceil(Math.ceil(bottom+PADDING)*scale);
+  if(!Number.isSafeInteger(height)||height<=0||height>MAX_DIMENSION||width*height>MAX_PIXELS)throw tooLarge();
   return height;
  }
  // Image dimensions are natural bitmap dimensions; measure receives text and its style.
@@ -60,7 +60,7 @@
   if(typeof measure!=='function')throw new Error('文字测量暂不可用，请重试。');
   if(typeof Intl.Segmenter!=='function')throw new Error('当前环境不支持完整文字排版，请更新应用后重试。');
   const segmenter=new Intl.Segmenter(undefined,{granularity:'grapheme'});
-  let y=PADDING,hasPart=false;
+  let y=PADDING,hasPart=false,contentWidth=1;
   for(const part of content){
    if(part.type==='text'&&!part.text)continue;
    if(hasPart)y+=GAP;
@@ -68,12 +68,13 @@
    if(part.type==='image'){
     if(!Number.isFinite(part.width)||!Number.isFinite(part.height)||part.width<=0||part.height<=0)throw new Error('图片尺寸无效，请检查原图后重试。');
     const ratio=Math.min(1,CONTENT_WIDTH/part.width,(part.displayWidth??part.width)/part.width),width=part.width*ratio,height=part.height*ratio;
-    checkHeight(y+height,scale);
+    contentWidth=Math.max(contentWidth,width);
+    checkHeight(y+height,scale,contentWidth);
     nodes.push({type:'image',src:part.src,x:PADDING,y,width,height});y+=height;
     continue;
    }
    let row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]},runIndex=0,runEnd=part.runs[0]?.text.length||0;
-   const flush=()=>{checkHeight(y+LINE_HEIGHT,scale);nodes.push(row);y+=LINE_HEIGHT;row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]};};
+   const flush=()=>{contentWidth=Math.max(contentWidth,row.width);checkHeight(y+LINE_HEIGHT,scale,contentWidth);nodes.push(row);y+=LINE_HEIGHT;row={type:'text',x:PADDING,y,width:0,height:LINE_HEIGHT,runs:[]};};
    const widthOf=(text,run)=>{
     const width=measure(text,run);
     if(!Number.isFinite(width)||width<0)throw new Error('文字排版失败，请重试。');
@@ -94,8 +95,9 @@
    }
    flush();
   }
-  const width=CONTENT_WIDTH+PADDING*2,height=Math.ceil(y+PADDING);
-  checkHeight(y,scale);
+  // Keep the wrapping limit, but only allocate the width actually used by text and images.
+  const width=Math.ceil(contentWidth)+PADDING*2,height=Math.ceil(y+PADDING);
+  checkHeight(y,scale,contentWidth);
   return {nodes,width,height,pixelWidth:Math.ceil(width*scale),pixelHeight:Math.ceil(height*scale),scale};
  }
  async function decodeImage(src,index){
@@ -129,7 +131,7 @@
   let base;
   try{base=layout(content,measure,MIN_FIT_SCALE);}
   catch(error){if(error.message===tooLarge().message)throw tooLong();throw error;}
-  const largest=Math.min(SCALE,Math.floor(Math.sqrt(MAX_PIXELS/(base.width*base.height))*20)/20),scales=[];
+  const largest=Math.min(SCALE,Math.floor(Math.min(Math.sqrt(MAX_PIXELS/(base.width*base.height)),MAX_DIMENSION/base.height)*20)/20),scales=[];
   for(let scale=largest;scale>MIN_FIT_SCALE;scale=Math.round((scale-0.25)*100)/100)scales.push(scale);
   return [...scales,MIN_FIT_SCALE];
  }

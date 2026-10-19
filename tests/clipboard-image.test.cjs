@@ -6,6 +6,39 @@ const PNG='data:image/png;base64,AAAA';
 const measure=text=>[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].length*20;
 const textOf=node=>node.runs.map(run=>run.text).join('');
 
+test('short text and a narrow diagram size the output to the widest content plus margins',async()=>{
+ const parts=[{type:'text',text:'【流程示例】\n文字与图表，按原顺序发出去。'},
+  {type:'image',src:PNG,width:800,height:600,displayWidth:400}];
+ const page=layout(parts,measure);
+ assert.equal(page.width,464);
+ assert.equal(page.pixelWidth,928);
+ assert.equal(page.height,440);
+ const {render}=browser({imageWidth:800,imageHeight:600});
+ const image=await render(parts);
+ assert.equal(image.width,928);
+ assert.equal(image.height,880);
+});
+
+test('content width follows styled text, rounds up fractional widths, and keeps the wrapping limit',()=>{
+ const parts=[{type:'text',text:'标题',runs:[{text:'标题',bold:true}]},{type:'image',src:PNG,width:20,height:20}];
+ const page=layout(parts,(_text,run)=>run.bold?41.25:20);
+ assert.equal(page.width,106);
+ assert.equal(page.nodes[0].width,41.25);
+ const wide=layout([{type:'text',text:'字'.repeat(60)}],measure);
+ assert.equal(wide.width,1164);
+ assert.deepEqual(wide.nodes.map(textOf),['字'.repeat(55),'字'.repeat(5)]);
+});
+
+test('narrow long content fits its actual pixel area while excessive canvas height is rejected',()=>{
+ const page=layout([{type:'image',src:PNG,width:100,height:9000}],measure);
+ assert.equal(page.pixelWidth,328);
+ assert.equal(page.pixelHeight,18128);
+ const narrow=[{type:'text',text:'行\n'.repeat(600)}];
+ assert.throws(()=>layout(narrow,measure),/2,000 万像素/);
+ const fitted=layout(narrow,measure,fitScales(narrow,measure)[0]);
+ assert(fitted.scale<2&&fitted.scale>=1&&fitted.pixelHeight<=32767);
+});
+
 test('composition preserves text/image order, blank lines, styles, and source data',()=>{
  const input=[{type:'text',text:'标题\n\n正文',runs:[{text:'标题',bold:true},{text:'\n\n'},{text:'正文',italic:true,strikethrough:true,code:true}]},{type:'image',src:PNG,width:2200,height:600},{type:'text',text:'结尾'}];
  const before=JSON.stringify(input),page=layout(input,measure);
@@ -56,8 +89,8 @@ test('composition rejects unsupported sources, malformed runs, excessive text/pa
  assert.throws(()=>layout([{type:'text',text:'ab',runs:[{text:'a'}]}],measure),/样式内容无效/);
  assert.throws(()=>layout([{type:'text',text:'a'.repeat(200001)}],measure),/文字过长/);
  assert.throws(()=>layout(Array.from({length:501},()=>({type:'text',text:'a'})),measure),/段落过多/);
- assert.throws(()=>layout([{type:'image',src:PNG,width:100,height:9000}],measure),/2,000 万像素/);
- assert.throws(()=>layout([{type:'text',text:'行\n'.repeat(200)}],measure),/2,000 万像素/);
+ assert.throws(()=>layout([{type:'image',src:PNG,width:1100,height:9000}],measure),/2,000 万像素/);
+ assert.throws(()=>layout([{type:'text',text:('行'.repeat(55)+'\n').repeat(200)}],measure),/2,000 万像素/);
  assert.throws(()=>layout([{type:'image',src:PNG,width:0,height:10}],measure),/图片尺寸无效/);
  assert.throws(()=>layout([{type:'image',src:PNG,width:100,height:10,displayWidth:-1}],measure),/图片显示尺寸无效/);
 });
@@ -88,7 +121,7 @@ test('render produces one white 2x PNG, with styled text and images drawn in sou
 test('decoding and layout failures reject before any large canvas allocation',async()=>{
  const bad=browser({badImage:true});await assert.rejects(()=>bad.render([{type:'image',src:PNG}]),/第 1 张图片无法读取/);
  assert(bad.allocations.every(([width,height])=>width*height<=45000));
- const tall=browser({imageWidth:100,imageHeight:9000});await assert.rejects(()=>tall.render([{type:'image',src:PNG}]),/2,000 万像素/);
+ const tall=browser({imageWidth:1100,imageHeight:9000});await assert.rejects(()=>tall.render([{type:'image',src:PNG}]),/2,000 万像素/);
  assert(tall.allocations.every(([width,height])=>width*height<=45000));
  const untrusted=browser();await assert.rejects(()=>untrusted.render([{type:'image',src:'https://example.com/a.png'}]),/内嵌/);
  assert.equal(untrusted.operations.length,0);
@@ -101,7 +134,7 @@ test('excessive encoded PNG size reports an actionable error and releases the bi
 });
 
 test('fit mode keeps long content in one image by lowering resolution, never below 1x',()=>{
- const lines=n=>({type:'text',text:Array.from({length:n},(_,i)=>'第'+i+'行').join('\n')});
+ const lines=n=>({type:'text',text:Array.from({length:n},()=> '行'.repeat(55)).join('\n')});
  assert.throws(()=>layout([lines(400)],measure),/2,000 万像素/);
  const scales=fitScales([lines(400)],measure);
  assert(scales[0]<2&&scales[0]>1&&scales.at(-1)===1);
