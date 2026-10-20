@@ -96,7 +96,7 @@
      }
      case 'def':break;
      case 'chatMathBlock':blocks.push({type:'math',tex:t.tex});break;
-     case 'heading':emit([append('【',{bold:true}),...inline(t.tokens,{bold:true}),append('】',{bold:true})],quote);break;
+     case 'heading':emit(inline(t.tokens,{bold:true,heading:t.depth}),quote);break;
      case 'paragraph':case 'text':emit(t.tokens?inline(t.tokens):[append(t.text||'')],quote);break;
      case 'blockquote':walk(t.tokens,depth,quote+'│ ');break;
      case 'list':

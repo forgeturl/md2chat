@@ -232,7 +232,7 @@ mod tests {
         let png = crate::images::encode_png(&image::DynamicImage::new_rgba8(8, 4)).unwrap();
         let src = format!("data:image/png;base64,{}", STANDARD.encode(png));
         let formats = wecom_formats(&[
-            json!({"type":"text","text":"前文😀\n第二行","runs":[{"text":"前文😀\n第二行","bold":true}]}),
+            json!({"type":"text","text":"前文😀\n第二行","runs":[{"text":"前文😀\n第二行","bold":true,"heading":2}]}),
             json!({"type":"image","src":src,"displayWidth":4}),
             json!({"type":"text","text":"中间"}),
             json!({"type":"image","src":src}),
@@ -267,6 +267,16 @@ mod tests {
                 super::super::string(text).unwrap(),
                 "前文😀\n第二行\n\u{fffc}\n中间\n\u{fffc}\n后文"
             );
+            let font: Id = send3(
+                value,
+                "attribute:atIndex:effectiveRange:",
+                ns_string("NSFont").unwrap(),
+                0usize,
+                std::ptr::null_mut::<Range>(),
+            );
+            let manager: Id = send0(class("NSFontManager"), "sharedFontManager");
+            let traits: usize = send1(manager, "traitsOfFont:", font);
+            assert_ne!(traits & 2, 0, "heading font must remain bold in RTFD");
             // Each replacement character must carry a real PNG attachment, not a literal placeholder.
             let length: usize = send0(value, "length");
             let mut images = 0;

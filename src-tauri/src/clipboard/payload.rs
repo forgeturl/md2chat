@@ -61,6 +61,11 @@ fn style(run: &Value) -> Value {
     json!({"bold":run["bold"]==true,"italic":run["italic"]==true,"strikethrough":run["strikethrough"]==true,"underLine":false,"indent":0,"lightColor":"#222222","darkColor":"#eeeeee"})
 }
 
+// Keep in sync with ChatTargets.headingStyle and docs/platform-capabilities.md.
+fn plain_headings(target: &str, mac: bool) -> bool {
+    target == "wechat" || (!mac && matches!(target, "dingtalk" | "wecom"))
+}
+
 fn cangjie_text(text: &str) -> Value {
     // DingTalk's text leaf must contain a string. HTML formatting elements
     // nested here cause the client to discard the entire styled text run.
@@ -150,7 +155,17 @@ pub fn build(
             "text" => {
                 let text = string(part, "text")?;
                 plain.push(text.to_owned());
-                let all_runs = runs(part);
+                let mut all_runs = runs(part);
+                if plain_headings(target, mac) {
+                    for run in &mut all_runs {
+                        if run["heading"]
+                            .as_u64()
+                            .is_some_and(|level| (1..=6).contains(&level))
+                        {
+                            run["bold"] = json!(false);
+                        }
+                    }
+                }
                 if feishu_native {
                     feishu.push(part.clone());
                 }
@@ -394,6 +409,66 @@ pub fn encode_feishu(fragment: &Value) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn heading_capabilities_match_shared_platform_matrix() {
+        let matrix: Vec<Value> = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/heading-capabilities.json"
+        ))
+        .unwrap();
+        for case in matrix {
+            let target = case["target"].as_str().unwrap();
+            let platform = case["platform"].as_str().unwrap();
+            if platform == "web" || target == "image" {
+                continue;
+            }
+            let bold = case["style"] == "bold";
+            let mut runs = Vec::new();
+            for level in 1..=6 {
+                runs.push(json!({"text":format!("标题{level}\n\n"),"bold":true,"heading":level}));
+            }
+            runs.push(json!({"text":"【手写标题】\n","bold":true,"heading":2}));
+            runs.push(json!({"text":"正文加粗","bold":true}));
+            let text = runs
+                .iter()
+                .map(|run| run["text"].as_str().unwrap())
+                .collect::<String>();
+            let p = build(
+                vec![json!({"type":"text","text":text,"runs":runs})],
+                target,
+                Path::new("unused-cache"),
+                platform == "win32",
+                platform == "darwin",
+            )
+            .unwrap();
+            assert_eq!(p.plain, text, "{target}/{platform}");
+            // Standard HTML wraps a full multiline run; DingTalk wraps each line.
+            let heading_html = p.html.replace("<br>", "");
+            for level in 1..=6 {
+                assert_eq!(
+                    heading_html.contains(&format!("<strong>标题{level}</strong>")),
+                    bold,
+                    "{target}/{platform}/{level}"
+                );
+            }
+            assert!(p.html.contains("【手写标题】"));
+            assert!(p.html.contains("<strong>正文加粗</strong>"));
+            if target == "feishu" {
+                let ops = p.fragment["deltas"]["0"]["ops"].as_array().unwrap();
+                assert_eq!(ops[0]["attributes"]["bold"], "true");
+                assert!(!p.fragment.to_string().contains("heading"));
+            }
+            if target == "dingtalk" && platform == "darwin" {
+                let items = p.rich["contents"][0]["text"]["items"].as_array().unwrap();
+                assert_eq!(items[0]["style"]["bold"], true);
+                assert!(!p.rich.to_string().contains("heading"));
+            }
+            if target == "dingtalk" && platform == "win32" {
+                let tree = windows_cangjie(&p.html);
+                assert_eq!(tree[2][2][2][2], "标题1");
+                assert!(!tree.to_string().contains("strong"));
+            }
+        }
+    }
     #[test]
     fn feishu_pickle_utf16_and_padding() {
         let f = json!({"中文":"😀"});

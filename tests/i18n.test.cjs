@@ -32,7 +32,7 @@ test('all demo locales render precisely the text from the displayed source, foll
   const t = key => i18n.translate(key, code);
   const source = demo.source(t), blocks = markdown.compactImages(markdown.parse(source));
   assert.deepEqual(blocks.map(b=>b.type), ['text','text','mermaid']);
-  assert.equal(blocks[0].text, '【'+t('流程示例')+'】');
+  assert.equal(blocks[0].text, t('流程示例'));
   assert.equal(blocks[1].text, t('文字')+t('与')+t('图表')+t('，按原顺序发出去。'));
   assert.equal(blocks[1].runs.filter(r=>r.bold).map(r=>r.text).join(''),t('文字'));
   assert.equal(blocks[1].runs.filter(r=>r.italic).map(r=>r.text).join(''),t('图表'));

@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const chat=require('../assets/chat-markdown.js');
 const plain=s=>chat.parse(s).map(b=>b.text||'').join('\n');
 test('headings, emphasis, tasks, nested lists and references',()=>{
- assert.equal(plain('# 标题'),'【标题】');assert.equal(plain('标题\n==='),'【标题】');
+ assert.equal(plain('# 标题'),'标题');assert.equal(plain('标题\n==='),'标题');
  const runs=chat.parse('**粗 *粗斜*** ~~删除~~ `a_b`')[0].runs;
  assert(runs.some(r=>r.text==='粗斜'&&r.bold&&r.italic));assert(runs.some(r=>r.strikethrough));assert(runs.some(r=>r.text==='a_b'&&r.code));
  assert.equal(plain('- [x] 完成\n- [ ] 待办'),'✅ 完成\n⬜ 待办');

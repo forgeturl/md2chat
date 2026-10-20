@@ -303,7 +303,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
   showCopyNotice(feishuNative?'✓ 已复制，请先展开飞书富文本输入框，再一次粘贴图文':'✓ 已复制到剪贴板，请到'+profile.label+(target==='email'?'编辑器':'聊天框')+'粘贴');
   if(cachedSource===source){
    for(const b of copyButtons)b.setAttribute('aria-pressed',String(b===copyButton));
-   message.innerHTML=target==='email'?ChatTargets.render(parts,target).html:payload.preview;
+   message.innerHTML=ChatTargets.render(parts,target,window.md2chatDesktop?.platform||'web').html;
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
    status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已写入 Chromium 兼容图文，请到钉钉粘贴并确认图片完整。':copyTargetNote(target));
   }

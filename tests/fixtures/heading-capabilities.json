@@ -1,0 +1,20 @@
+[
+ {"target":"wechat","platform":"web","style":"plain","available":true},
+ {"target":"wechat","platform":"darwin","style":"plain","available":true},
+ {"target":"wechat","platform":"win32","style":"plain","available":true},
+ {"target":"dingtalk","platform":"web","style":"plain","available":false},
+ {"target":"dingtalk","platform":"darwin","style":"bold","available":true},
+ {"target":"dingtalk","platform":"win32","style":"plain","available":true},
+ {"target":"feishu","platform":"web","style":"bold","available":false},
+ {"target":"feishu","platform":"darwin","style":"bold","available":true},
+ {"target":"feishu","platform":"win32","style":"bold","available":true},
+ {"target":"wecom","platform":"web","style":"plain","available":true},
+ {"target":"wecom","platform":"darwin","style":"bold","available":true},
+ {"target":"wecom","platform":"win32","style":"plain","available":true},
+ {"target":"email","platform":"web","style":"bold","available":true},
+ {"target":"email","platform":"darwin","style":"bold","available":true},
+ {"target":"email","platform":"win32","style":"bold","available":true},
+ {"target":"image","platform":"web","style":"bold","available":false},
+ {"target":"image","platform":"darwin","style":"bold","available":true},
+ {"target":"image","platform":"win32","style":"bold","available":true}
+]

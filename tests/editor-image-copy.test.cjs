@@ -74,7 +74,7 @@ test('copying a platform after image conversion restores editable output from th
   return {images:0,native:false};
  };
  await f.click();
- assert.equal(f.context.message.innerHTML,'editable preview');
+ assert.match(f.context.message.innerHTML,/完整正文/);assert.doesNotMatch(f.context.message.innerHTML,/<img /);
  assert.equal(f.context.lastCopyTarget,'wechat');
 });
 test('a failed preview refresh retains its error instead of announcing an updated preview',async()=>{

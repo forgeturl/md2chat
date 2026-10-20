@@ -9,14 +9,20 @@
  });
  const esc=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
  function profile(target){if(!Object.hasOwn(profiles,target))throw new Error('不支持的目标平台');return profiles[target];}
- function runsHtml(part){
-  const runs=Array.isArray(part.runs)&&part.runs.length<10000&&part.runs.every(r=>r&&typeof r.text==='string')&&part.runs.map(r=>r.text).join('')===part.text?part.runs:[{text:part.text}];
-  return runs.map(r=>{let s=esc(r.text).replaceAll('\n','<br>');if(r.bold)s='<strong>'+s+'</strong>';if(r.italic)s='<em>'+s+'</em>';if(r.strikethrough)s='<s>'+s+'</s>';return s;}).join('');
+ // Keep in sync with clipboard/payload.rs and docs/platform-capabilities.md.
+ function headingStyle(target,platform='web'){
+  if(target==='image')return 'bold';
+  profile(target);
+  return target==='wechat'||target==='dingtalk'&&platform!=='darwin'||target==='wecom'&&platform!=='darwin'?'plain':'bold';
  }
- function render(parts,target){
+ function runsHtml(part,target,platform){
+  const runs=Array.isArray(part.runs)&&part.runs.length<10000&&part.runs.every(r=>r&&typeof r.text==='string')&&part.runs.map(r=>r.text).join('')===part.text?part.runs:[{text:part.text}];
+  return runs.map(r=>{let s=esc(r.text).replaceAll('\n','<br>');const heading=Number.isInteger(r.heading)&&r.heading>=1&&r.heading<=6;if(r.bold&&(!heading||headingStyle(target,platform)==='bold'))s='<strong>'+s+'</strong>';if(r.italic)s='<em>'+s+'</em>';if(r.strikethrough)s='<s>'+s+'</s>';return s;}).join('');
+ }
+ function render(parts,target,platform='web'){
   profile(target);let images=0;
   const html=parts.map(p=>{
-   if(p.type==='text')return '<div style="margin:0;line-height:1.5;white-space:pre-wrap">'+runsHtml(p)+'</div>';
+   if(p.type==='text')return '<div style="margin:0;line-height:1.5;white-space:pre-wrap">'+runsHtml(p,target,platform)+'</div>';
    if(p.type==='table'&&target==='email')return '<table cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">'+p.rows.map((row,i)=>'<tr>'+row.map(cell=>'<'+(i?'td':'th')+' style="border:1px solid #ccd5df;text-align:left;'+(i?'':'background:#edf2f8;')+'">'+esc(cell).replaceAll('\n','<br>')+'</'+(i?'td':'th')+'>').join('')+'</tr>').join('')+'</table>';
    if(p.type!=='image'||!/^data:image\/(png|jpe?g|webp|gif|bmp);base64,[A-Za-z0-9+/=]+$/i.test(p.src))throw new Error('图片必须是完整的内嵌图片');
    const naturalWidth=Number.isFinite(p.width)&&p.width>0?p.width:null;
@@ -27,5 +33,5 @@
   const body=target==='email'?'<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.5">'+html+'</div>':html;
   return {html:'<meta charset="utf-8">'+body,plain:parts.map(p=>p.type==='text'?p.text:p.type==='table'?p.rows.map(r=>r.join(' | ')).join('\n'):'[图片]').join('\n'),imageCount:images};
  }
- return {profiles,profile,render};
+ return {profiles,profile,headingStyle,render};
 });

@@ -106,6 +106,16 @@ function browser({badImage=false,imageWidth=600,imageHeight=300,pngBytes=10}={})
  return {render:environment.ClipboardImage.render,operations,allocations,canvas};
 }
 
+test('converted headings draw bold at the body font size without injected brackets',async()=>{
+ const markdown=require('../assets/chat-markdown.js');
+ const {segments}=await require('../assets/chat-payload.js').build('# 标题\n\n###### 小标题\n\n正文',{markdown,renderers:{}});
+ const {render,operations}=browser();await render(segments);
+ const drawn=operations.filter(op=>op[0]==='text');
+ assert.equal(drawn.map(op=>op[1]).join(''),'标题小标题正文');
+ assert(drawn.filter(op=>op[1]!=='正文').every(op=>op[2].startsWith('600 20px')));
+ assert(drawn.find(op=>op[1]==='正文')[2].startsWith('400 20px'));
+});
+
 test('render produces one white 2x PNG, with styled text and images drawn in source order',async()=>{
  const {render,operations,canvas}=browser();
  const result=await render([{type:'text',text:'粗体',runs:[{text:'粗体',bold:true,italic:true,code:true,strikethrough:true}]},{type:'image',src:PNG},{type:'text',text:'结束'}]);
