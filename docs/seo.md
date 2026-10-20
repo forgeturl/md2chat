@@ -1,6 +1,6 @@
 # 搜索与 AI 检索维护
 
-中文指南由 `scripts/site-content.cjs` 维护，英文指南由 `scripts/site-content-en.cjs` 维护，中英文首页事实由 `scripts/site-home.cjs` 维护。其他七种语言的首页、指南、标签、步骤和公开示例位于 `scripts/site-copy/`，由 `scripts/site-copy.cjs` 汇总；`scripts/site-locales.cjs` 是语言、路径与 Open Graph locale 的统一映射。`scripts/seo.cjs` 生成静态正文、语言互链、结构化数据、站点地图、`llms.txt` 和编辑器示例。真实功能、限制和兼容性证据应随功能一起更新；不使用工作消息做关键词或示例，不用英文正文填充未完成的译文。
+中文指南由 `scripts/site-content.cjs` 维护，英文指南由 `scripts/site-content-en.cjs` 维护，中英文首页事实由 `scripts/site-home.cjs` 维护。其他七种语言的首页、指南、标签、步骤和公开示例位于 `scripts/site-copy/`，由 `scripts/site-copy.cjs` 汇总；`scripts/site-locales.cjs` 是语言、路径与 Open Graph locale 的统一映射。`scripts/seo.cjs` 生成静态正文、语言互链、结构化数据、站点地图、`llms.txt` 和编辑器示例。其他八种语言的生成页面集中在 `site/locales/`，由预览与构建映射到原有公开网址；多语言同步规范见 [多语言维护](localization.md)。真实功能、限制和兼容性证据应随功能一起更新；不使用工作消息做关键词或示例，不用英文正文填充未完成的译文。
 
 ## 每次发布
 
@@ -14,7 +14,7 @@
 
 - 九种语言各有一份完整静态首页与八篇场景指南，加上共享编辑器，共 82 个公开 HTML 页面。中文保留根路径，英文为 `/en/`，其他为 `/es/`、`/pt-br/`、`/ja/`、`/ko/`、`/de/`、`/fr/`、`/hi/`；葡萄牙语 hreflang 使用 `pt-BR`。
 - 每个首页及指南使用自身 canonical，并完整互链九种语言与 `x-default`（中文原地址）。页面的 title、description、HTML lang、Open Graph、分享描述及 SoftwareApplication / TechArticle 数据与实际译文一致。站点地图覆盖所有页面；共享编辑器仍保留单一 canonical，不生成九份相同编辑器。
-- 首页和指南只保留一个原生多语言下拉按钮，菜单内九个真实链接均可被发现；无 JavaScript 也能使用。切换指南语言保留同一篇文章，不退回首页。直接访问与刷新以 URL 的语言为准，不因浏览器或旧偏好自动跳走。编辑器和桌面应用继续原地切换界面，已有输入不被替换。
+- 首页和指南只保留一个原生多语言下拉按钮，菜单内九个真实链接均可被发现；无 JavaScript 也能使用。切换指南语言保留同一篇文章，不退回首页。直接访问与刷新以 URL 的语言为准，不因浏览器或旧偏好自动跳走。编辑器和桌面应用原地切换界面，未编辑的内置示例（含指南载入示例）随语言同步；编辑、粘贴、拖入或清空后保留用户内容，撤销回示例原文也不恢复自动替换。语言选择器使用地球图标并显示语言本名。
 - 独立 title/description、HTTPS canonical、Open Graph / Twitter 分享信息。
 - 所有静态页面引用的 JavaScript / CSS 使用内容指纹，官网独立部署即使不升桌面版本也能更新资源 URL；指纹计算先统一 CRLF / LF，避免平台间无效差异。
 - 与可见产品事实一致的 SoftwareApplication / TechArticle JSON-LD；没有虚构评分、评论或兼容性。

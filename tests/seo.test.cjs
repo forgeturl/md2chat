@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {files,run}=require('../scripts/seo.cjs'),{origin,guides}=require('../scripts/site-content.cjs');
 const root=path.resolve(__dirname,'..');
-const {editions,route}=require('../scripts/site-locales.cjs');
+const {editions,route,sourcePath}=require('../scripts/site-locales.cjs');
 const {content}=require('../scripts/site-copy.cjs');
 test('published SEO metadata is current, canonical and discoverable without JavaScript',()=>{
  run(false);const output=files();
@@ -9,7 +9,7 @@ test('published SEO metadata is current, canonical and discoverable without Java
   const url=origin+name.replace(/index\.html$/,'');
   assert(page.includes('rel="canonical" href="'+url+'"'));assert(page.match(/<title>[^<]+<\/title>/));assert(page.match(/name="description" content="[^"]+"/));assert(page.includes('property="og:image"'));assert(output['sitemap.xml'].includes('<loc>'+url+'</loc>'));
   for(const [,json] of page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)){const schema=JSON.parse(json);assert.equal(schema['@context'],'https://schema.org');assert(!schema.aggregateRating);}
-  for(const [,link] of page.matchAll(/(?:href|src)="((?:\.{1,2}\/)+[^"#?]+)"/g))assert(fs.existsSync(path.resolve(root,path.dirname(name),link)),name+': '+link);
+  for(const [,link] of page.matchAll(/(?:href|src)="((?:\.{1,2}\/)+[^"#?]+)"/g))assert(fs.existsSync(path.join(root,sourcePath(path.posix.normalize(path.posix.join(path.posix.dirname(name),link))))),name+': '+link);
  }
  for(const g of guides){assert(output['index.html'].includes('./guides/'+g.slug+'.html'));assert(output['llms.txt'].includes(g.slug));}
 });
@@ -18,12 +18,13 @@ test('SEO check accepts Windows CRLF checkout without hiding stale content',()=>
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'md2chat-seo-crlf-'));
  try{
   fs.cpSync(path.join(root,'assets'),path.join(dir,'assets'),{recursive:true});
-  for(const name of [...Object.keys(files()),'scripts/seo.cjs','scripts/site-content.cjs','scripts/site-content-en.cjs','scripts/site-home.cjs','scripts/site-copy.cjs','scripts/site-locales.cjs',...fs.readdirSync(path.join(root,'scripts/site-copy')).map(name=>'scripts/site-copy/'+name),'assets/locales.json','package.json']){
+  for(const publicName of [...Object.keys(files()),'scripts/seo.cjs','scripts/site-content.cjs','scripts/site-content-en.cjs','scripts/site-home.cjs','scripts/site-copy.cjs','scripts/site-locales.cjs',...fs.readdirSync(path.join(root,'scripts/site-copy')).map(name=>'scripts/site-copy/'+name),'assets/locales.json','package.json']){
+   const name=sourcePath(publicName);
    fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});
    fs.writeFileSync(path.join(dir,name),fs.readFileSync(path.join(root,name),'utf8').replaceAll('\r\n','\n').replaceAll('\n','\r\n'));
   }
   execFileSync(process.execPath,[path.join(dir,'scripts/seo.cjs')],{stdio:'pipe'});
-  const generated=Object.keys(files());
+  const generated=Object.keys(files()).map(sourcePath);
   const before=generated.map(name=>fs.readFileSync(path.join(dir,name),'utf8').replaceAll('\r\n','\n'));
   for(let i=0;i<2;i++)execFileSync(process.execPath,[path.join(dir,'scripts/seo.cjs'),'--write'],{stdio:'pipe'});
   assert.deepEqual(generated.map(name=>fs.readFileSync(path.join(dir,name),'utf8')),before,'regeneration must be idempotent');
@@ -121,10 +122,10 @@ test('all nine editions contain real translated product facts, complete guides a
   assert(page.includes(esc(copy.home.definition)));assert(page.includes(esc(copy.home.description)));
   assert.equal((page.match(/<h1\b/g)||[]).length,1);
   assert(output['llms.txt'].includes('- ['+name+']('+origin+route(code)+')'));
-  const rendered={textContent:''};
+  const rendered={textContent:'',addEventListener(){}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'assets/editor-example.js'),'utf8'),{
    navigator:{languages:['en']},localStorage:{getItem:()=> 'en'},location:{search:'?example=chat-table&lang='+code},URLSearchParams,
-   md2chatI18n:i18n,md2chatGuideExamples:examples,document:{getElementById:()=>rendered}
+   md2chatI18n:i18n,md2chatGuideExamples:examples,window:{addEventListener(){}},document:{getElementById:()=>rendered}
   });
   assert.equal(rendered.textContent,examples[code],'guide CTA must seed its own language: '+code);
   for(const guide of copy.guides){

@@ -143,11 +143,19 @@ button:focus-visible,a:focus-visible,summary:focus-visible,#message:focus-visibl
 .update-release{margin-top:24px}
 .update-release-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .update-release-heading h3{font-size:14px;font-weight:600;margin:0}
-.update-release-heading span{font-size:12px;color:var(--muted);background:#f0f2f5;border-radius:5px;padding:2px 7px}
+.update-details-link{font-size:12px;color:var(--accent);text-align:right}
 .update-notes{white-space:normal;overflow-wrap:anywhere;font-size:14px;line-height:1.75;color:var(--muted)}
 .update-notes ul{padding-left:20px;margin:0}
 .update-notes li+li{margin-top:10px}
 .update-notes p,.update-notes h4{margin:10px 0}
+.update-notes .update-release-count{margin:0 0 14px;font-size:13px}
+.update-version-notes+.update-version-notes{margin-top:16px}
+.update-version-notes h4{color:var(--ink);font-size:13px}
+.update-notes li+li{margin-top:5px}
+.update-notes details>summary{cursor:pointer;color:var(--accent);font-size:13px;margin:14px 0}
+.update-history[open]{padding-bottom:4px}
+.update-important{padding:12px 14px;border-radius:8px;background:#fff7e6;color:#754b12;margin:0 0 14px;font-size:13px}
+.update-important strong{display:block;margin-bottom:4px}
 .update-footnote{font-size:13px;line-height:1.7;color:var(--muted);margin:20px 0 0}
 .update-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 26px;border-top:1px solid var(--line);background:#fafbfc;flex:none}
 .update-footer>a{font-size:13px;color:var(--muted)}

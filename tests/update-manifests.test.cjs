@@ -47,3 +47,11 @@ test('verification agrees with the upstream minisign-verify known signature fixt
  assert.doesNotThrow(() => verifyUpdaterSignature(Buffer.from('test'), signature, key));
  assert.throws(() => verifyUpdaterSignature(Buffer.from('modified'), signature, key), /verification failed/);
 });
+
+test('new metadata transports translated history while retaining readable notes for older clients',()=>fixture((dir,signing)=>{
+ const summary={version:'0.7.0',summary:Object.fromEntries(require('../scripts/release-summaries.cjs').locales.map(code=>[code,['Short update.']]))};
+ const info=writeManifest(dir,'0.7.0','- Short update.',signing.publicKey,undefined,[summary]);
+ assert.deepEqual(info.releases,[summary]);assert.equal(info.notes,'- Short update.');
+ change(dir,info=>{delete info.releases[0].summary.fr;});
+ assert.throws(()=>validateManifests(dir,'0.7.0',signing.publicKey),/all nine languages/);
+}));

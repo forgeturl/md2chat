@@ -1,7 +1,7 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const port=Number(process.env.MD2CHAT_PORT||18768);
-const {editions}=require('./site-locales.cjs');
+const {editions,sourcePath}=require('./site-locales.cjs');
 const localized=new RegExp('^/('+editions.map(item=>item.directory).filter(Boolean).join('|')+')/(?:index\\.html|guides/[a-z0-9-]+\\.html)$');
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8'};
 http.createServer((req,res)=>{
@@ -13,7 +13,7 @@ http.createServer((req,res)=>{
   if(editions.some(item=>item.directory&&route==='/'+item.directory+'/'))route+='index.html';
   // Only public site assets are exposed by the development server.
   if(route!=='/index.html'&&route!=='/editor.html'&&route!=='/sitemap.xml'&&route!=='/llms.txt'&&!route.startsWith('/guides/')&&!route.startsWith('/assets/')&&!localized.test(route)){res.writeHead(404);res.end();return;}
-  const file=path.resolve(root,'.'+route);
+  const file=path.resolve(root,sourcePath(route.slice(1)));
   if(!file.startsWith(root+path.sep)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
   res.end(req.method==='HEAD'?undefined:fs.readFileSync(file));

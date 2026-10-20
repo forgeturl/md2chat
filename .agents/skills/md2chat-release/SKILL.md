@@ -9,14 +9,14 @@ description: 准备 md2chat 新版本、编写版本更新说明或正式发布�
 
 ## 准备版本
 
-1. 根据用户指定的版本号或升级级别与本次发布范围，撰写实际完成的变更说明正文，保存到临时文件；正文不带版本标题，由命令添加。说明应能让用户判断此次升级的变化，兼容性或验收范围沿用已验证事实。
+1. 根据用户指定版本与实际完成范围，准备详细说明正文（不带版本标题）和九语言摘要 JSON（不带版本号），各存到临时文件。遵循 [更新摘要规则](../../../docs/update-summaries.md)：用户摘要每版 1～3 条，必要提醒单列，技术细节归入详细说明；兼容性和验收范围沿用已验证事实。
 2. 从仓库根目录运行：
 
    ```sh
-   npm run release:prepare -- patch --notes-file PATH
+   npm run release:prepare -- patch --notes-file PATH --summary-file SUMMARY_JSON_PATH
    ```
 
-   将 `patch` 按发布范围替换为 `minor`、`major` 或明确的 `X.Y.Z`。该命令校验 GitHub Latest 后，同步 package 与 lock 版本，并在 `docs/release-notes.md` 首部添加本次说明、保留历史。校验失败时解决具体原因后重试；网络、鉴权或限流错误不视为首次发布。
+   将 `patch` 按发布范围替换为 `minor`、`major` 或明确的 `X.Y.Z`。命令校验 GitHub Latest、摘要九语言和历史完整性后，同步版本、详细说明与 `docs/update-summaries.json`，保留历史。校验失败时解决具体原因后重试；网络、鉴权或限流错误不视为首次发布。
 3. 审阅版本与说明差异，运行 `npm run check`，再运行 `npm run release:verify -- --tag vX.Y.Z`。以命令全部通过和发布文件变更可审阅为准备完成条件。准备请求完成在此，保留变更供用户审阅。
 
 ## 正式发布

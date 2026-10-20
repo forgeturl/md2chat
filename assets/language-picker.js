@@ -10,7 +10,7 @@
   trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false');
   const icon = name => { const img = document.createElement('img'); img.src = new URL(name+'.svg',icons).href; img.alt=''; img.width=18; img.height=18; return img; };
   const label = document.createElement('span'), badge = document.createElement('span'); badge.className = 'language-auto';
-  trigger.append(icon('languages'),label,badge,icon('chevron-down'));
+  trigger.append(icon('globe'),label,badge,icon('chevron-down'));
   const panel = document.createElement('div'); panel.className = 'language-menu'; panel.id = 'language-menu-'+(++nextId); panel.hidden = true;
   trigger.setAttribute('aria-controls',panel.id);
   const heading = document.createElement('div'); heading.className = 'language-menu-heading';

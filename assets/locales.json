@@ -6175,6 +6175,83 @@
       "de": "In WeCom für Mac lassen sich Text und Bilder zusammen auf einmal einfügen. Normaler Text bleibt bearbeitbar.",
       "fr": "Sur WeCom pour Mac, collez le texte et les images en une seule fois. Le texte ordinaire reste modifiable.",
       "hi": "Mac WeCom में पूरा टेक्स्ट और चित्र एक साथ पेस्ट कर सकते हैं। सामान्य टेक्स्ट संपादित किया जा सकता है।"
+    },
+    "查看完整更新说明 ↗": {
+      "zh-CN": "查看完整更新说明 ↗",
+      "en": "Full release notes ↗",
+      "es": "Notas completas ↗",
+      "pt-BR": "Notas completas ↗",
+      "ja": "更新内容の詳細 ↗",
+      "ko": "전체 업데이트 내용 ↗",
+      "de": "Vollständige Versionshinweise ↗",
+      "fr": "Notes de version complètes ↗",
+      "hi": "पूरी अपडेट जानकारी ↗"
+    },
+    "本次升级包含 {n} 个版本的更新": {
+      "zh-CN": "本次升级包含 {n} 个版本的更新",
+      "en": "This upgrade includes updates from {n} versions",
+      "es": "Esta actualización incluye cambios de {n} versiones",
+      "pt-BR": "Esta atualização inclui mudanças de {n} versões",
+      "ja": "今回のアップグレードには {n} バージョン分の更新が含まれます",
+      "ko": "이번 업그레이드에는 {n}개 버전의 변경 사항이 포함됩니다",
+      "de": "Dieses Upgrade enthält Änderungen aus {n} Versionen",
+      "fr": "Cette mise à niveau inclut les changements de {n} versions",
+      "hi": "इस अपग्रेड में {n} संस्करणों के बदलाव शामिल हैं"
+    },
+    "更早的 {n} 个版本": {
+      "zh-CN": "更早的 {n} 个版本",
+      "en": "{n} earlier versions",
+      "es": "{n} versiones anteriores",
+      "pt-BR": "{n} versões anteriores",
+      "ja": "以前の {n} バージョン",
+      "ko": "이전 {n}개 버전",
+      "de": "{n} frühere Versionen",
+      "fr": "{n} versions précédentes",
+      "hi": "{n} पुराने संस्करण"
+    },
+    "升级提醒": {
+      "zh-CN": "升级提醒",
+      "en": "Upgrade notice",
+      "es": "Aviso de actualización",
+      "pt-BR": "Aviso de atualização",
+      "ja": "アップグレード時の注意",
+      "ko": "업그레이드 안내",
+      "de": "Hinweis zum Upgrade",
+      "fr": "À savoir avant la mise à niveau",
+      "hi": "अपग्रेड सूचना"
+    },
+    "该版本尚未提供多语言摘要，可展开原文或查看完整说明。": {
+      "zh-CN": "该版本尚未提供多语言摘要，可展开原文或查看完整说明。",
+      "en": "This version has no multilingual summary yet. Expand the original notes or view the full release notes.",
+      "es": "Esta versión aún no tiene resumen multilingüe. Abre las notas originales o consulta las notas completas.",
+      "pt-BR": "Esta versão ainda não tem resumo multilíngue. Abra as notas originais ou veja as notas completas.",
+      "ja": "このバージョンには多言語の概要がありません。原文を展開するか、更新内容の詳細をご覧ください。",
+      "ko": "이 버전에는 다국어 요약이 없습니다. 원문을 펼치거나 전체 내용을 확인하세요.",
+      "de": "Für diese Version gibt es noch keine mehrsprachige Zusammenfassung. Originalhinweise aufklappen oder vollständige Hinweise öffnen.",
+      "fr": "Cette version n’a pas encore de résumé multilingue. Déployez le texte original ou consultez les notes complètes.",
+      "hi": "इस संस्करण का बहुभाषी सार अभी उपलब्ध नहीं है। मूल जानकारी खोलें या पूरी अपडेट जानकारी देखें।"
+    },
+    "查看原始更新说明": {
+      "zh-CN": "查看原始更新说明",
+      "en": "Show original release notes",
+      "es": "Mostrar notas originales",
+      "pt-BR": "Mostrar notas originais",
+      "ja": "更新内容の原文を表示",
+      "ko": "업데이트 원문 보기",
+      "de": "Originale Versionshinweise anzeigen",
+      "fr": "Afficher les notes originales",
+      "hi": "मूल अपडेट जानकारी देखें"
+    },
+    "安装前请保存输入内容。": {
+      "zh-CN": "安装前请保存输入内容。",
+      "en": "Save your input before installing.",
+      "es": "Guarda el contenido antes de instalar.",
+      "pt-BR": "Salve o conteúdo antes de instalar.",
+      "ja": "インストール前に入力内容を保存してください。",
+      "ko": "설치 전에 입력 내용을 저장하세요.",
+      "de": "Eingaben vor der Installation speichern.",
+      "fr": "Enregistrez votre contenu avant l’installation.",
+      "hi": "इंस्टॉल करने से पहले अपना पाठ सहेज लें।"
     }
   }
 }

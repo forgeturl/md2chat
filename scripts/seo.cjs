@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path');
 const {createHash}=require('node:crypto');
 const {origin,guides}=require('./site-content.cjs');
 const {content}=require('./site-copy.cjs');
-const {editions,route}=require('./site-locales.cjs');
+const {editions,route,sourcePath}=require('./site-locales.cjs');
 const home=Object.fromEntries(editions.map(({code})=>[code,content[code].home]));
 const translations=require('../assets/locales.json').messages;
 const root=path.resolve(__dirname,'..'),version=require('../package.json').version;
@@ -57,7 +57,7 @@ function languagePicker(locale,slug=''){
  const file=slug?route(locale,slug):route(locale)+'index.html';
  const depth=file.split('/').length-1,prefix=depth?'../'.repeat(depth):'./';
  const icon=name=>`<img src="${prefix}assets/ui-icons/${name}.svg" width="18" height="18" alt="">`;
- return `<details class="site-language-picker"><summary class="language-trigger" aria-label="${esc(content[locale].labels.language)}">${icon('languages')}<span>${esc(editions.find(item=>item.code===locale).name)}</span>${icon('chevron-down')}</summary>
+ return `<details class="site-language-picker"><summary class="language-trigger" aria-label="${esc(content[locale].labels.language)}">${icon('globe')}<span>${esc(editions.find(item=>item.code===locale).name)}</span>${icon('chevron-down')}</summary>
 <nav class="language-menu" aria-label="${esc(content[locale].labels.language)}"><div class="language-options">${editions.map(item=>`<a class="language-option" data-site-locale="${item.code}" lang="${item.code}" hreflang="${item.code}" href="${prefix+route(item.code,slug)}"${item.code===locale?' aria-current="page"':''}><span>${esc(item.name)}</span>${icon('check')}</a>`).join('')}</div></nav></details>`;
 }
 function homepage(source,locale,list){
@@ -139,7 +139,7 @@ function files(){
 function run(write){
  let failed=false;
  for(const [name,content] of Object.entries(files())){
-  const file=path.join(root,name);
+  const file=path.join(root,sourcePath(name));
   if(write){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,content);}
   else if(!fs.existsSync(file)||fs.readFileSync(file,'utf8').replaceAll('\r\n','\n')!==content){console.error('SEO output outdated: '+name);failed=true;}
  }

@@ -4,6 +4,8 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const {run}=require('../scripts/release.cjs');
+const {locales}=require('../scripts/release-summaries.cjs');
+const summary=()=>({summary:Object.fromEntries(locales.map(code=>[code,['A concise update.']]))});
 
 const latestUrl='https://api.github.com/repos/forgeturl/md2chat/releases/latest';
 const repositoryUrl='https://api.github.com/repos/forgeturl/md2chat';
@@ -23,6 +25,8 @@ async function fixture(fn,{version='0.6.2',notes}={}){
  fs.writeFileSync(path.join(root,'docs/release-notes.md'),historicalNotes);
  const notesFile=path.join(root,'input-notes.md');
  fs.writeFileSync(notesFile,newNotes);
+ fs.writeFileSync(notesFile+'.json',json(summary()));
+ fs.writeFileSync(path.join(root,'docs/update-summaries.json'),json([{...summary(),version},...([...historicalNotes.matchAll(/^#{1,6}\s+v(\d+\.\d+\.\d+)\s*$/gm)].map(m=>m[1]).filter(v=>v!==version).map(v=>({...summary(),version:v})))]));
  const logs=[];
  const options={root,fetchImpl:async()=>latest(),env:{},log:(...args)=>logs.push(args.map(String).join(' '))};
  try{return await fn({root,notesFile,historicalNotes,pkg,lock,logs,options});}
@@ -47,7 +51,7 @@ async function rejectsWithoutWriting(root,action){
  await assert.rejects(action);
  assert.deepEqual(snapshot(root),before,'a rejected release operation must preserve every fixture file');
 }
-const prepareArgs=(notesFile,version='patch')=>['prepare',version,'--notes-file',notesFile];
+const prepareArgs=(notesFile,version='patch')=>['prepare',version,'--notes-file',notesFile,'--summary-file',notesFile+'.json'];
 
 test('prepare synchronizes package and lock versions and preserves historical notes and unrelated data',async()=>{
  for(const [bump,expected] of [['patch','0.6.3'],['minor','0.7.0'],['major','1.0.0'],['2.3.4','2.3.4']]){
@@ -71,7 +75,7 @@ test('version comparison is numeric and accepts 0.10.0 after 0.9.9',async()=>fix
 },{version:'0.9.9'}));
 
 test('prepare defaults to a patch increment when the increment argument is omitted',async()=>fixture(async({root,notesFile,options})=>{
- await run(['prepare','--notes-file',notesFile],options);
+ await run(['prepare','--notes-file',notesFile,'--summary-file',notesFile+'.json'],options);
  assert.equal(readJson(root,'package.json').version,'0.6.3');
 }));
 
@@ -249,3 +253,31 @@ test('GitHub authentication is optional and tokens are sent as headers without b
   assert(!logs.join('\n').includes(token),'access token must never be printed in successful command output');
  });
 });
+
+test('preparation requires complete translated summaries and updates their history atomically',async()=>fixture(async({root,notesFile,options})=>{
+ const previous=readJson(root,'docs/update-summaries.json');
+ const input=summary();input.important=summary().summary;
+ fs.writeFileSync(notesFile+'.json',json(input));
+ await run(prepareArgs(notesFile),options);
+ const catalog=readJson(root,'docs/update-summaries.json');
+ assert.deepEqual(catalog,[{...input,version:'0.6.3'},...previous]);
+}));
+test('incomplete summaries and concurrent summary edits stop preparation without partial writes',async()=>{
+ await fixture(async({root,notesFile,options})=>{
+  const input=summary();delete input.summary.ja;fs.writeFileSync(notesFile+'.json',json(input));
+  await rejectsWithoutWriting(root,()=>run(prepareArgs(notesFile),options));
+ });
+ await fixture(async({root,notesFile,options})=>{
+  options.fetchImpl=async()=>{editJson(root,'docs/update-summaries.json',catalog=>{catalog[0].summary.en=['Concurrent edit.'];});return latest();};
+  await assert.rejects(()=>run(prepareArgs(notesFile),options),/changed during validation/);
+  assert.equal(readJson(root,'package.json').version,'0.6.2');
+  assert.equal(readJson(root,'docs/update-summaries.json')[0].summary.en[0],'Concurrent edit.');
+ });
+});
+test('a confirmed unpublished predecessor can be skipped when preparing a successor but cannot be published',async()=>fixture(async({root,notesFile,options})=>{
+ editJson(root,'docs/update-summaries.json',catalog=>{catalog[0]={version:'0.6.2',unpublished:true};});
+ options.fetchImpl=async()=>latest('0.6.1');
+ await rejectsWithoutWriting(root,()=>run(['verify','--tag','v0.6.2'],options));
+ await run(prepareArgs(notesFile),options);
+ assert.equal(readJson(root,'docs/update-summaries.json')[1].unpublished,true);
+}));

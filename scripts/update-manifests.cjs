@@ -26,6 +26,7 @@ function validateManifests(directory, version, publicKey = process.env.TAURI_UPD
  if (!info || info.version !== version || typeof info.notes !== 'string' || !info.notes.trim() || !info.platforms
   || Object.keys(info.platforms).sort().join(',') !== Object.keys(platformAssets).sort().join(',')) throw new Error('Invalid Tauri update manifest');
  if (typeof info.pub_date !== 'string' || !Number.isFinite(Date.parse(info.pub_date))) throw new Error('Invalid update publication date');
+ if (info.releases !== undefined) require('./release-summaries.cjs').validateCatalog(info.releases, version);
  for (const [platform, name] of Object.entries(platformAssets)) {
   const entry = info.platforms[platform];
   if (entry.url !== repository + 'v' + version + '/' + name) throw new Error('Unexpected update asset URL');
@@ -38,8 +39,9 @@ function validateManifests(directory, version, publicKey = process.env.TAURI_UPD
  for (const name of installerAssets) if (!fs.statSync(path.join(directory, name)).size) throw new Error('Empty installer: ' + name);
  return info;
 }
-function writeManifest(directory, version, notes, publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY, now = new Date()) {
+function writeManifest(directory, version, notes, publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY, now = new Date(), releases) {
  const info = {version, notes, pub_date: now.toISOString(), platforms: {}};
+ if (releases) info.releases = require('./release-summaries.cjs').validateCatalog(releases, version);
  for (const [platform, name] of Object.entries(platformAssets)) info.platforms[platform] = {
   signature: fs.readFileSync(path.join(directory, name + '.sig'), 'utf8').trim(),
   url: repository + 'v' + version + '/' + name
@@ -55,8 +57,10 @@ if (require.main === module) {
  const version = require('../package.json').version;
  const releaseNotes = fs.readFileSync(path.resolve(__dirname, '../docs/release-notes.md'), 'utf8');
  require('./release.cjs').validateNotes(releaseNotes, version);
- const notes = releaseNotes.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split(/^# v\d+\.\d+\.\d+\s*$/m)[1]?.trim();
- if (!notes) throw new Error('Missing current release notes');
- writeManifest(directory, version, notes);
+ const releases = require('./release-summaries.cjs').readCatalog(path.resolve(__dirname, '..'), version, releaseNotes);
+ // Older clients still get short, readable notes; newer clients use localized history.
+ const current = releases[0];
+ const notes = [...current.summary['zh-CN'], ...(current.important?.['zh-CN'] || [])].map(line => '- ' + line).join('\n');
+ writeManifest(directory, version, notes, undefined, undefined, releases);
 }
 module.exports = {validateManifests, writeManifest, verifyUpdaterSignature};

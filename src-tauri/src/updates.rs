@@ -61,7 +61,7 @@ fn configured(app: &tauri::AppHandle) -> bool {
 
 pub fn setup(app: &tauri::AppHandle) {
     app.manage(State {
-        view: Mutex::new(json!({"phase":"idle","currentVersion":app.package_info().version.to_string(),"version":"","notes":"","progress":0,"message":""})),
+        view: Mutex::new(json!({"phase":"idle","currentVersion":app.package_info().version.to_string(),"version":"","notes":"","releases":[],"progress":0,"message":""})),
         candidate: Mutex::new(None), downloaded: Mutex::new(None), working: AtomicBool::new(false),
         notified: Mutex::new(std::collections::HashSet::new()),
     });
@@ -120,7 +120,7 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
                 .collect::<String>();
             let view = publish(
                 app,
-                json!({"phase":"available","version":update.version,"notes":notes,"message":"发现新版本，请查看更新内容。"}),
+                json!({"phase":"available","version":update.version,"notes":notes,"releases":update.raw_json.get("releases").filter(|v| v.is_array()).cloned().unwrap_or_else(|| json!([])),"message":"发现新版本，请查看更新内容。"}),
             );
             *state.candidate.lock().map_err(|_| "更新状态不可用")? = Some(update);
             if state
@@ -144,7 +144,7 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
             *state.candidate.lock().map_err(|_| "更新状态不可用")? = None;
             Ok(publish(
                 app,
-                json!({"phase":"current","version":"","notes":"","message":"当前已是最新版本。"}),
+                json!({"phase":"current","version":"","notes":"","releases":[],"message":"当前已是最新版本。"}),
             ))
         }
         Err(error) => {

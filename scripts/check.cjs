@@ -12,3 +12,5 @@ for (const directory of ['assets', 'scripts']) {
 
 const locales = spawnSync(process.execPath, [path.join(root, 'scripts/generate-locales.cjs'), '--check'], {stdio:'inherit'});
 if (locales.status !== 0) process.exit(locales.status || 1);
+require('./release-summaries.cjs').readCatalog(root, require('../package.json').version, fs.readFileSync(path.join(root, 'docs/release-notes.md'), 'utf8'));
+require('./check-readmes.cjs').checkReadmes(root);

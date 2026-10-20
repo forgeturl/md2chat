@@ -11,4 +11,9 @@ function route(locale,slug=''){
  if(!edition)throw new Error('Unsupported site language: '+locale);
  return (edition.directory?edition.directory+'/':'')+(slug?'guides/'+slug+'.html':'');
 }
-module.exports={editions,route};
+// Source folders are grouped; public URLs stay unchanged for existing links.
+function sourcePath(publicPath) {
+ return editions.some(item=>item.directory && (publicPath === item.directory || publicPath.startsWith(item.directory+'/')))
+  ? 'site/locales/' + publicPath : publicPath;
+}
+module.exports={editions,route,sourcePath};

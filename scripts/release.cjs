@@ -1,13 +1,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {randomUUID} = require('node:crypto');
+const summaries = require('./release-summaries.cjs');
 
 const usage = `Usage:
-  npm run release:prepare -- [patch|minor|major|X.Y.Z] --notes-file PATH
+  npm run release:prepare -- [patch|minor|major|X.Y.Z] --notes-file PATH --summary-file PATH
   npm run release:verify -- --tag vX.Y.Z
 
 Preparation defaults to patch and only edits version files and release notes.
 The notes file contains this release's body, without a version heading.
+The summary file is JSON with summary (and optional important) arrays in all nine languages; the command adds the version.
 GitHub access is required; GH_TOKEN or GITHUB_TOKEN is optional for public repositories.`;
 
 function parseVersion(value) {
@@ -32,7 +34,7 @@ function nextVersion(current, increment) {
  return increment;
 }
 function readState(root) {
- const names = ['package.json', 'package-lock.json', 'docs/release-notes.md'];
+ const names = ['package.json', 'package-lock.json', 'docs/release-notes.md', summaries.file];
  for (const name of ['src-tauri/Cargo.toml', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json']) {
   if (fs.existsSync(path.join(root, name))) names.push(name);
  }
@@ -122,23 +124,27 @@ function parseArgs(args) {
  for (let i = 0; i < rest.length; i++) {
   const arg = rest[i];
   if (arg.startsWith('--')) {
-   if (!['--notes-file', '--tag'].includes(arg) || options[arg] !== undefined || !rest[i + 1] || rest[i + 1].startsWith('--')) throw new Error(usage);
+   if (!['--notes-file', '--summary-file', '--tag'].includes(arg) || options[arg] !== undefined || !rest[i + 1] || rest[i + 1].startsWith('--')) throw new Error(usage);
    options[arg] = rest[++i];
   } else positional.push(arg);
  }
- if (command === 'prepare' && (!options['--notes-file'] || options['--tag'] || positional.length > 1)) throw new Error(usage);
- if (command === 'verify' && (!options['--tag'] || options['--notes-file'] || positional.length)) throw new Error(usage);
+ if (command === 'prepare' && (!options['--notes-file'] || !options['--summary-file'] || options['--tag'] || positional.length > 1)) throw new Error(usage);
+ if (command === 'verify' && (!options['--tag'] || options['--notes-file'] || options['--summary-file'] || positional.length)) throw new Error(usage);
  return {command, options, increment: positional[0] || 'patch'};
 }
 async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = globalThis.fetch, env = process.env, log = console.log} = {}) {
  if ((args.length === 1 && args[0] === '--help') || (args.length === 2 && ['prepare', 'verify'].includes(args[0]) && args[1] === '--help')) {log(usage);return;}
  const {command, options, increment} = parseArgs(args), state = readState(root);
  let version = state.pkg.version, body;
+ let catalog = summaries.validateCatalog(JSON.parse(state.originals.get(path.join(root, summaries.file))), version, state.notes, {allowUnpublishedHead: command === 'prepare'});
  if (command === 'prepare') {
   version = nextVersion(version, increment);
   body = fs.readFileSync(path.resolve(options['--notes-file']), 'utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim();
   if (/^#{1,6}\s+v\d+\.\d+\.\d+\s*$/m.test(body)) throw new Error('Provide only the release-notes body; the version heading is added automatically.');
   validateBody(body);
+  const entry = JSON.parse(fs.readFileSync(path.resolve(options['--summary-file']), 'utf8'));
+  if (entry.version !== undefined) throw new Error('Omit the summary version; the preparation command adds it.');
+  catalog = summaries.validateCatalog([{...entry, version}, ...catalog], version, '# v' + version + '\n\n' + body + '\n\n' + state.notes);
  } else {
   if (options['--tag'] !== 'v' + version) throw new Error('The release tag must match package.json: v' + version + '.');
   validateNotes(state.notes, version);
@@ -150,7 +156,8 @@ async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = glob
   const contents = new Map([
    [path.join(root, 'package.json'), JSON.stringify(state.pkg, null, 2) + '\n'],
    [path.join(root, 'package-lock.json'), JSON.stringify(state.lock, null, 2) + '\n'],
-   [path.join(root, 'docs/release-notes.md'), '# v' + version + '\n\n' + body + '\n\n' + state.notes]
+   [path.join(root, 'docs/release-notes.md'), '# v' + version + '\n\n' + body + '\n\n' + state.notes],
+   [path.join(root, summaries.file), JSON.stringify(catalog, null, 2) + '\n']
   ]);
   const cargoPath = path.join(root, 'src-tauri/Cargo.toml');
   if (state.originals.has(cargoPath)) contents.set(cargoPath, state.originals.get(cargoPath).replace(/(\[package\][\s\S]*?^version\s*=\s*")[^"]+(".*$)/m, '$1' + version + '$2'));

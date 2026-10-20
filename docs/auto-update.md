@@ -1,6 +1,6 @@
 # Tauri 桌面自动更新与签名发布
 
-桌面版使用 Tauri 2、Rust 和系统 WebView，不捆绑 Electron 或 Node.js。应用内更新读取固定 GitHub Releases `latest.json`，展示版本与纯文字更新说明；下载、安装由用户主动触发。安装前提示输入正文会清空，不在普通退出时自动安装。更新请求不包含输入正文或图片。
+桌面版使用 Tauri 2、Rust 和系统 WebView，不捆绑 Electron 或 Node.js。应用内更新读取固定 GitHub Releases `latest.json`，按当前语言展示升级区间内各版本的简短摘要，最近 3 个默认可见，其他版本折叠；重要提醒始终显示，完整说明链接指向目标版本。摘要数据、旧版兼容及维护要求见 [更新摘要规则](update-summaries.md)。下载、安装由用户主动触发。安装前提示输入正文会清空，不在普通退出时自动安装。更新请求不包含输入正文或图片。
 
 Tauri 使用独立的更新签名密钥验证下载内容。这与 Mac Developer ID 代码签名是两件事，两者都要配置。当前迁移不提供 Electron 自动换装或旧数据迁移。
 

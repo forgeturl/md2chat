@@ -1,5 +1,7 @@
 # md2chat · 贴贴 Markdown
 
+[简体中文](README.md) · [English](docs/readme/en.md) · [Español](docs/readme/es.md) · [Português](docs/readme/pt-BR.md) · [日本語](docs/readme/ja.md) · [한국어](docs/readme/ko.md) · [Deutsch](docs/readme/de.md) · [Français](docs/readme/fr.md) · [हिन्दी](docs/readme/hi.md)
+
 让 Markdown 更适合聊天。把从 DeepSeek、Codex、Cursor、ChatGPT、Claude 等 AI 工具复制的 Markdown，或自己写的文档，转成适合聊天的图文。保留可编辑文字，把表格、代码、公式和 Mermaid 转成图片，再按原文顺序组合。
 
 AI 回答常用 Markdown，但并非所有输出或复制方式都相同。这些名称表示内容来源，不代表官方集成或已逐一实测；转换后请检查预览和目标客户端粘贴结果。[AI 内容转换说明与官方资料](https://forgeturl.github.io/md2chat/guides/ai-markdown-to-chat.html)。任务列表使用 ✅ / ⬜，文字仍可编辑。
@@ -98,7 +100,9 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 ## 项目结构
 
-- `index.html`、`assets/landing*.css`：产品宣传与下载页面。
+- `index.html`、`assets/landing*.css`：中文产品宣传与下载页面。
+- `site/locales/`：其他八种语言的静态首页和指南；构建与预览仍输出原有 `/en/`、`/ja/` 等网址。
+- `docs/readme/`：其他八种语言的 README。
 - `editor.html`、`assets/app.js`：网页/桌面共用转换界面。
 - `assets/chat-markdown.js`、`assets/renderers.js`、`assets/code-images.js`：解析与图片渲染。
 - `src-tauri/`：Rust 桌面主进程、菜单栏／托盘、系统登录项、窗口和原生剪贴板。
@@ -110,6 +114,12 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 桌面 WebView 只加载打包的本地界面，不提供 Node.js 集成。按窗口限制 Tauri 命令权限，拒绝任意外部页面导航；仅允许指定 GitHub 和官网链接经系统浏览器打开。IPC 验证调用方和内容，复制接口只接受内嵌图片，缓存写入路径由主进程决定。本地图片读取接口只接受本机绝对路径，经文件类型、大小和图片解码校验后返回内嵌图片，不接受目录、符号链接或远程共享路径；粘贴 HTML 中的任意文件引用仍不可读取。
 
+## 多语言维护
+
+界面、内置示例、官网、README 和更新摘要支持九种语言。未编辑的默认示例随界面语言切换；编辑、粘贴、拖入或清空后保留用户内容。更新弹窗展示升级区间内每个版本的简短摘要，最近三个版本默认可见，重要提醒始终显示。完整技术说明保留发布原文。
+
+后续开发遵循 [多语言维护规范](docs/localization.md)：新增或修改用户文案时同步九种语言，运行 `npm run check` 检查翻译、README 同步状态及网站输出；翻译在开发时编写，运行时按用户选择自动切换。
+
 ## SEO / GEO 维护
 
 官网包含静态使用指南、canonical、分享元数据、应用结构化数据、sitemap 和 llms.txt。每次发布自动检查页面、链接与内容清单，见 [维护步骤](docs/seo.md)。修改公开说明后运行 `npm run seo:generate`；不承诺搜索收录、排名或 AI 引用。
@@ -120,13 +130,13 @@ Actions 每天北京时间 02:23 清理较旧且已结束的运行，为每个�
 
 提交 main 或发起 PR 运行快速 `Check`，不构建或部署官网。仅更新官网时，可在 Actions 中选择 `Deploy website`，以 `main` 手动运行；该流程只检查并打包静态网站、部署 GitHub Pages，不编译桌面安装包，不创建版本或 Release。Windows 独立剪贴板验证仅在原生剪贴板及相关执行代码变化时自动运行，也可手动触发；网页界面和版本号更新不会单独启动该验证。正式发布与手动测试包共用一次 Ubuntu 前置 `npm run check`，Mac / Windows 保留各自的 Rust 原生测试，正式发布继续执行 Windows 系统剪贴板验证。发布桌面版与官网时：
 
-1. 将本次已完成变更的更新说明正文写入文件（不带版本标题，命令会自动添加），再运行统一准备命令，例如：
+1. 将本次已完成变更的详细说明正文写入文件（不带版本标题），另存符合 [更新摘要规则](docs/update-summaries.md) 的九语言摘要 JSON（不带版本号），再运行统一准备命令，例如：
 
    ```sh
-   npm run release:prepare -- patch --notes-file /tmp/md2chat-release-notes.md
+   npm run release:prepare -- patch --notes-file /tmp/md2chat-release-notes.md --summary-file /tmp/md2chat-update-summary.json
    ```
 
-   `patch` 可替换为 `minor`、`major` 或明确的 `X.Y.Z` 稳定版本号。命令先校验版本、说明和 GitHub Latest；通过后同步 `package.json`、`package-lock.json`、Rust package / lock 版本，并把新版本说明放到 `docs/release-notes.md` 首部，保留历史。Tauri 配置直接引用 package 版本。准备命令只修改这些文件，不提交、不创建标签、不推送。
+   `patch` 可替换为 `minor`、`major` 或明确的 `X.Y.Z` 稳定版本号。命令先校验版本、详细说明、九语言摘要和 GitHub Latest；通过后同步 `package.json`、`package-lock.json`、Rust package / lock 版本，并把新版本详细说明和摘要分别放到 `docs/release-notes.md`、`docs/update-summaries.json` 首部，保留历史。Tauri 配置直接引用 package 版本。准备命令只修改这些文件，不提交、不创建标签、不推送。
 2. 审阅变更，运行 `npm run check`；将下方 `vX.Y.Z` 替换为准备好的版本，校验正式发布条件：
 
    ```sh
