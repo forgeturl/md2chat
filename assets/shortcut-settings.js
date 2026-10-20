@@ -12,6 +12,7 @@
   const capturedKey = document.getElementById('shortcuts-captured-key');
   const save = document.getElementById('shortcuts-save');
   const cancel = document.getElementById('shortcuts-cancel');
+  const testActions = test.parentElement;
   const rows = new Map(Array.from(root.querySelectorAll('[data-shortcut-target]'), row => [row.dataset.shortcutTarget, row]));
   let snapshot = null, busy = false, mode = null, sessionId = null, candidate = null, recordingTarget = null;
   let timer, cancelPending = false, disposed = false, statusSource;
@@ -51,6 +52,13 @@
       state.textContent = binding ? t(labels[snapshot.statuses?.[target]] || labels.disabled) : t('未配置');
       state.dataset.state = snapshot?.statuses?.[target] || 'disabled';
     }
+    const activeRow = mode === 'record' ? rows.get(recordingTarget) : null;
+    if (activeRow) {
+      if (capture.previousElementSibling !== activeRow) activeRow.after(capture);
+    } else if (capture.nextElementSibling !== testActions) testActions.before(capture);
+    if (mode) {
+      if (status.parentElement !== capture) capturedKey.after(status);
+    } else if (status.nextElementSibling !== warning) warning.before(status);
     capture.hidden = !mode;
     capturedKey.textContent = mode === 'test' ? t('按下已配置的快捷键，仅检测按键，不转换剪贴板。')
       : candidate ? keys.format(candidate, snapshot.platform) : t('请按下一组快捷键…');
@@ -120,7 +128,9 @@
 
   async function start(nextMode, target) {
     if (busy || !snapshot || mode) return;
-    busy = true; mode = nextMode; recordingTarget = target; cancelPending = false; render();
+    busy = true; mode = nextMode; recordingTarget = target; cancelPending = false;
+    message(nextMode === 'test' ? '按下已配置的快捷键，仅检测按键，不转换剪贴板。' : '请使用一至两个修饰键和一个字母或数字。');
+    render();
     try {
       const value = await bridge.session(nextMode);
       sessionId = value.sessionId;
@@ -129,10 +139,15 @@
       if (cancelPending || disposed) { await endSession(); return; }
       document.addEventListener('keydown', onKey, true);
       timer = setTimeout(() => { void stop(); }, 55000);
-      message(nextMode === 'test' ? '按下已配置的快捷键，仅检测按键，不转换剪贴板。' : '请使用一至两个修饰键和一个字母或数字。');
-      cancel.focus();
     } catch (error) { resetSession(); message(safeError(error), true); }
     finally { busy = false; render(); }
+    // Disabled controls cannot receive focus. Reveal the panel only after
+    // startup has enabled its controls, including when the rows fill the window.
+    if (mode === nextMode && sessionId && !disposed) {
+      rows.get(recordingTarget)?.scrollIntoView({block: 'nearest'});
+      capture.scrollIntoView({block: 'nearest'});
+      cancel.focus({preventScroll: true});
+    }
   }
 
   function onKey(event) {

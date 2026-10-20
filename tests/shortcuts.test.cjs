@@ -52,10 +52,25 @@ async function fixture(initial = {}) {
   removeEventListener: (name, callback) => { if (documentEvents.get(name) === callback) documentEvents.delete(name); }
  };
  class Element {
-  constructor() { this.events = new Map(); this.dataset = {}; this.disabled = false; this.hidden = false; }
+  constructor() { this.events = new Map(); this.dataset = {}; this.disabled = false; this.hidden = false; this.children = []; }
   addEventListener(name, callback) { this.events.set(name, callback); }
   setAttribute(name, value) { this[name] = value; }
-  focus() { document.activeElement = this; }
+  focus() { if (!this.disabled) document.activeElement = this; }
+  scrollIntoView(options) { this.scrollOptions = options; }
+  append(child) {
+   if (child.parentElement) child.parentElement.children.splice(child.parentElement.children.indexOf(child), 1);
+   child.parentElement = this; this.children.push(child);
+  }
+  before(child) {
+   const parent = this.parentElement;
+   parent.append(child); parent.children.pop(); parent.children.splice(parent.children.indexOf(this), 0, child);
+  }
+  after(child) {
+   const parent = this.parentElement;
+   parent.append(child); parent.children.pop(); parent.children.splice(parent.children.indexOf(this) + 1, 0, child);
+  }
+  get previousElementSibling() { return this.parentElement?.children[this.parentElement.children.indexOf(this) - 1]; }
+  get nextElementSibling() { return this.parentElement?.children[this.parentElement.children.indexOf(this) + 1]; }
   closest(selector) { return selector === '[data-shortcut-action]' ? this : this.row || null; }
  }
  for (const id of ['shortcut-settings', 'shortcuts-enabled', 'shortcuts-status', 'shortcuts-warning', 'shortcuts-retry', 'shortcuts-test', 'shortcuts-capture', 'shortcuts-captured-key', 'shortcuts-save', 'shortcuts-cancel']) elements.set(id, new Element());
@@ -69,6 +84,13 @@ async function fixture(initial = {}) {
   return [target, row];
  }));
  elements.get('shortcut-settings').querySelectorAll = () => [...rows.values()];
+ const root = elements.get('shortcut-settings'), card = new Element(), actions = new Element();
+ root.append(card);
+ for (const row of rows.values()) card.append(row);
+ root.append(elements.get('shortcuts-capture'));
+ elements.get('shortcuts-capture').append(elements.get('shortcuts-captured-key'));
+ root.append(actions); actions.append(elements.get('shortcuts-test')); actions.append(elements.get('shortcuts-retry'));
+ root.append(elements.get('shortcuts-status')); root.append(elements.get('shortcuts-warning'));
  function publish() {
   state.statuses = Object.fromEntries(Object.keys(state.configuration.bindings).map(target => [target,
    !state.configuration.enabled ? 'disabled' : state.recording ? 'paused' : 'registered']));
@@ -95,7 +117,7 @@ async function fixture(initial = {}) {
  vm.runInNewContext(fs.readFileSync(require.resolve('../assets/shortcut-settings.js'), 'utf8'), {window, document, setTimeout, clearTimeout});
  await tick();
  return {
-  elements, rows, calls, documentEvents,
+  elements, rows, calls, documentEvents, document,
   async language(code){locale=code;events.get('md2chat:language')?.();await tick();},
   async click(id) { const control = elements.get(id); if (!control.disabled) control.events.get('click')?.({target: control}); await tick(); },
   async action(target, action) { const control = rows.get(target).controls[action]; elements.get('shortcut-settings').events.get('click')({target: control}); await tick(); },
@@ -137,6 +159,26 @@ test('recording saves one valid combination only after confirmation and cleans u
  assert.equal(f.documentEvents.has('keydown'), false);
  assert.equal(f.elements.get('shortcuts-capture').hidden, true);
  assert(f.calls.findIndex(call => call[0] === 'endSession') < f.calls.findIndex(call => call[0] === 'set'));
+});
+
+test('recording expands below the selected format with inline feedback and restores after closing', async () => {
+ const f = await fixture();
+ const panel = f.elements.get('shortcuts-capture'), status = f.elements.get('shortcuts-status');
+ for (const target of ['dingtalk', 'image', 'email']) {
+ await f.action(target, 'record');
+ try {
+  assert.equal(f.document.activeElement, f.elements.get('shortcuts-cancel'));
+  assert.equal(panel.scrollOptions.block, 'nearest');
+  assert.equal(f.rows.get(target).nextElementSibling, panel);
+  assert.equal(status.parentElement, panel);
+  await f.key({key: 'C', code: 'KeyC', ctrlKey: false, altKey: false, metaKey: true, shiftKey: true});
+  assert.match(status.textContent, /常用编辑/);
+  assert.equal(f.elements.get('shortcuts-save').disabled, true);
+ } finally { await f.click('shortcuts-cancel'); }
+ assert.equal(panel.hidden, true);
+ assert.equal(panel.parentElement, f.elements.get('shortcut-settings'));
+ assert.equal(status.nextElementSibling, f.elements.get('shortcuts-warning'));
+ }
 });
 
 test('master switch saves the requested value and preserves bindings when toggled off and back on', async () => {

@@ -77,5 +77,6 @@ h2{margin:0;font-size:14px;line-height:1.5;font-weight:650}
 #shortcut-settings .shortcut-record{min-width:112px;font-weight:550;color:var(--accent);background:#f6faf8}
 .shortcut-actions{display:flex;gap:8px;margin-top:10px}
 .shortcut-capture{margin-top:12px;padding:14px;background:var(--accent-soft);border:1px solid #b5d2c2;border-radius:8px}
+.settings-card>.shortcut-capture{margin:0 12px 12px}
 .shortcut-capture output{display:block;min-height:24px;font-size:15px;font-weight:550;overflow-wrap:anywhere}
 @media(max-width:560px){.shortcut-row{flex-wrap:wrap}.shortcut-copy{flex-basis:100%}.shortcut-row .shortcut-record{flex:1}}
