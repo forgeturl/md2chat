@@ -1,0 +1,32 @@
+{
+  "version": "0.6.15",
+  "summary": {
+    "zh-CN": [
+      "调整 Windows 钉钉和飞书的图文复制，实际粘贴效果仍需在客户端确认。"
+    ],
+    "en": [
+      "Adjusted Windows DingTalk and Feishu copying; pasting still needs verification in those apps."
+    ],
+    "es": [
+      "Se ajustó la copia para DingTalk y Feishu en Windows; el pegado aún requiere verificación en esas apps."
+    ],
+    "pt-BR": [
+      "Ajustada a cópia no DingTalk e Feishu para Windows; a colagem ainda precisa ser verificada nos apps."
+    ],
+    "ja": [
+      "Windows 版 DingTalk・Feishu の図文コピーを調整しました。実際の貼り付けは引き続き確認が必要です。"
+    ],
+    "ko": [
+      "Windows DingTalk 및 Feishu 복사를 조정했으며 실제 앱에서 붙여넣기 확인이 필요합니다."
+    ],
+    "de": [
+      "Text-Bild-Kopieren für DingTalk und Feishu unter Windows angepasst; Einfügen muss in den Apps noch geprüft werden."
+    ],
+    "fr": [
+      "Copie ajustée pour DingTalk et Feishu sur Windows ; le collage reste à vérifier dans ces applications."
+    ],
+    "hi": [
+      "Windows DingTalk और Feishu में कॉपी में बदलाव; उन ऐप में पेस्ट की जाँच अभी बाकी है।"
+    ]
+  }
+}

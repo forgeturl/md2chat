@@ -1,0 +1,32 @@
+{
+  "version": "0.6.4",
+  "summary": {
+    "zh-CN": [
+      "调整 Windows 钉钉图文复制，图片能否成功粘贴仍需实测。"
+    ],
+    "en": [
+      "Adjusted Windows DingTalk copying; successful image pasting still needs testing in the app."
+    ],
+    "es": [
+      "Se ajustó la copia en DingTalk para Windows; el pegado de imágenes aún requiere pruebas en la app."
+    ],
+    "pt-BR": [
+      "Ajustada a cópia no DingTalk para Windows; a colagem de imagens ainda precisa de testes no app."
+    ],
+    "ja": [
+      "Windows 版 DingTalk の図文コピーを調整しました。画像の貼り付けは実機確認が必要です。"
+    ],
+    "ko": [
+      "Windows DingTalk 복사를 조정했습니다. 이미지 붙여넣기는 실제 앱에서 확인이 필요합니다."
+    ],
+    "de": [
+      "Kopieren für DingTalk unter Windows angepasst; das Einfügen von Bildern muss noch in der App getestet werden."
+    ],
+    "fr": [
+      "Copie ajustée pour DingTalk sur Windows ; le collage des images reste à tester dans l’application."
+    ],
+    "hi": [
+      "Windows DingTalk में कॉपी में बदलाव; चित्र पेस्ट होने की ऐप में जाँच अभी बाकी है।"
+    ]
+  }
+}

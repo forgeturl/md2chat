@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const locales = require('../assets/locales.json').locales.map(item => item.code);
-const file = 'docs/update-summaries.json';
+const directory = 'docs/releases';
 const versionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 function compare(a, b) {
  const left = a.split('.').map(Number), right = b.split('.').map(Number);
@@ -42,12 +42,31 @@ function validateCatalog(catalog, version, notes, {allowUnpublishedHead = false}
  }
  return catalog;
 }
+function entryFile(version) {
+ if (!versionPattern.test(version)) throw new Error('Invalid summary version.');
+ return directory + '/' + version.split('.').slice(0,2).join('.') + '/' + version + '.json';
+}
+function readSource(root) {
+ const originals = new Map(), catalog = [];
+ for (const group of fs.readdirSync(path.join(root, directory)).sort()) {
+  if (!/^\d+\.\d+$/.test(group)) throw new Error('Unexpected summary directory: ' + group);
+  for (const name of fs.readdirSync(path.join(root, directory, group)).sort()) {
+   const relative = directory + '/' + group + '/' + name, absolute = path.join(root, relative);
+   const content = fs.readFileSync(absolute, 'utf8'), entry = JSON.parse(content);
+   validateEntry(entry);
+   if (relative !== entryFile(entry.version)) throw new Error('Summary filename must match its version: ' + relative);
+   originals.set(absolute, content);catalog.push(entry);
+  }
+ }
+ catalog.sort((a,b) => compare(b.version,a.version));
+ return {catalog, originals};
+}
 function readCatalog(root, version, notes) {
- return validateCatalog(JSON.parse(fs.readFileSync(path.join(root, file), 'utf8')), version, notes);
+ return validateCatalog(readSource(root).catalog, version, notes);
 }
 if (require.main === module) {
  const root = path.resolve(__dirname, '..');
  readCatalog(root, require('../package.json').version, fs.readFileSync(path.join(root, 'docs/release-notes.md'), 'utf8'));
  console.log('Update summaries: all versions and nine languages checked.');
 }
-module.exports = {file, locales, validateEntry, validateCatalog, readCatalog};
+module.exports = {directory, entryFile, compare, locales, validateEntry, validateCatalog, readSource, readCatalog};

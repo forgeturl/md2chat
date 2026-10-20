@@ -1,6 +1,6 @@
 [package]
 name = "md2chat"
-version = "0.6.23"
+version = "0.6.24"
 description = "Markdown to editable chat messages"
 authors = ["md2chat contributors"]
 edition = "2021"
@@ -32,6 +32,7 @@ sha2 = "0.10"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 regex = "1"
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
 libc = "0.2"
 tokio = { version = "1", features = ["sync", "time"] }
 

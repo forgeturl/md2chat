@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: es; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
+<!-- language: es; source-sha256: 62acd6d3ecd00f7506d3cd1d28b689f2011e22c6b61c1eeeff69038b83fab54d -->
 
 Convierte Markdown de herramientas de IA o de tus propios documentos en texto e imágenes para el chat. El texto normal sigue siendo editable; tablas, código, fórmulas y diagramas Mermaid se convierten en imágenes conservando el orden. Las tareas usan ✅ / ⬜. Los nombres de herramientas de IA indican posibles fuentes de contenido, no integraciones oficiales ni compatibilidad verificada.
 
@@ -39,6 +39,8 @@ La barra de Mac o bandeja de Windows permite convertir el portapapeles sin cambi
 Interfaz, ejemplos, sitio, README y resúmenes de versiones admiten nueve idiomas. El menú del globo muestra los nombres originales. Los ejemplos sin editar cambian con el idioma; al editar, pegar, soltar o vaciar se conserva el contenido del usuario, incluso después de deshacer.
 
 Los resúmenes incluyen las versiones publicadas entre la instalada y la de destino. Se muestran primero las tres más recientes, las demás se pueden desplegar y los avisos importantes permanecen visibles. Las notas técnicas conservan su idioma original. Se buscan actualizaciones al iniciar y cada seis horas; descargar y reiniciar requieren una acción del usuario. Guarda el contenido antes de instalar. Los clientes antiguos reciben la interfaz nueva al instalar una versión que la incluya; la instalación entre versiones requiere pruebas con paquetes firmados.
+
+Los resúmenes históricos se cargan y guardan en caché según el idioma y el intervalo de actualización. Si fallan, se mantiene el resumen actual y se permite descargar el instalador. Cierra y vuelve a abrir el diálogo para reintentar; el historial cargado correctamente se reutiliza desde la caché. Los clientes antiguos siguen leyendo el campo compatible `notes`.
 
 ## Privacidad y diagnóstico
 

@@ -1,0 +1,32 @@
+{
+  "version": "0.6.3",
+  "summary": {
+    "zh-CN": [
+      "剪贴板排查新增图片信息，方便反馈粘贴问题。"
+    ],
+    "en": [
+      "Clipboard diagnostics now shows image information to help report pasting issues."
+    ],
+    "es": [
+      "El diagnóstico del portapapeles muestra información de imágenes para informar problemas de pegado."
+    ],
+    "pt-BR": [
+      "O diagnóstico da área de transferência mostra dados das imagens para relatar problemas de colagem."
+    ],
+    "ja": [
+      "貼り付け問題の報告に役立つ画像情報をクリップボード診断に追加しました。"
+    ],
+    "ko": [
+      "붙여넣기 문제를 보고할 수 있도록 클립보드 진단에 이미지 정보를 추가했습니다."
+    ],
+    "de": [
+      "Die Zwischenablage-Diagnose zeigt Bildinformationen für Meldungen zu Einfügeproblemen."
+    ],
+    "fr": [
+      "Le diagnostic du presse-papiers affiche des informations sur les images pour signaler les problèmes de collage."
+    ],
+    "hi": [
+      "पेस्ट की समस्या बताने के लिए क्लिपबोर्ड जाँच में चित्र की जानकारी जोड़ी गई है।"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "version": "0.6.13",
+  "summary": {
+    "zh-CN": [
+      "界面支持九种语言，官网和应用图标也已更新。"
+    ],
+    "en": [
+      "The interface now supports nine languages, with a refreshed website and app icons."
+    ],
+    "es": [
+      "La interfaz admite nueve idiomas e incluye un sitio e iconos renovados."
+    ],
+    "pt-BR": [
+      "A interface suporta nove idiomas, com site e ícones renovados."
+    ],
+    "ja": [
+      "画面が9言語に対応し、公式サイトとアプリアイコンも新しくなりました。"
+    ],
+    "ko": [
+      "화면이 9개 언어를 지원하며 웹사이트와 앱 아이콘도 새로워졌습니다."
+    ],
+    "de": [
+      "Die Oberfläche unterstützt neun Sprachen; Website und App-Symbole wurden erneuert."
+    ],
+    "fr": [
+      "L’interface prend en charge neuf langues, avec un site et des icônes renouvelés."
+    ],
+    "hi": [
+      "इंटरफ़ेस में नौ भाषाएँ हैं; वेबसाइट और ऐप के आइकन भी बदले गए हैं।"
+    ]
+  }
+}

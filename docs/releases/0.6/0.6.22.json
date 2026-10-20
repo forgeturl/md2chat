@@ -1,0 +1,32 @@
+{
+  "version": "0.6.22",
+  "summary": {
+    "zh-CN": [
+      "设置快捷键时，录制面板直接在当前项目下展开。"
+    ],
+    "en": [
+      "When setting a shortcut, the recording panel opens directly below that item."
+    ],
+    "es": [
+      "Al configurar un atajo, el panel de grabación se abre debajo de esa opción."
+    ],
+    "pt-BR": [
+      "Ao definir um atalho, o painel de gravação abre logo abaixo do item."
+    ],
+    "ja": [
+      "ショートカット設定時、該当項目のすぐ下にキー入力パネルが開きます。"
+    ],
+    "ko": [
+      "단축키 설정 시 해당 항목 바로 아래에 키 입력 패널이 열립니다."
+    ],
+    "de": [
+      "Beim Einrichten eines Tastenkürzels öffnet sich die Aufnahme direkt unter dem Eintrag."
+    ],
+    "fr": [
+      "Lors du réglage d’un raccourci, le panneau de saisie s’ouvre sous l’option concernée."
+    ],
+    "hi": [
+      "शॉर्टकट सेट करते समय रिकॉर्डिंग पैनल उसी विकल्प के नीचे खुलता है।"
+    ]
+  }
+}

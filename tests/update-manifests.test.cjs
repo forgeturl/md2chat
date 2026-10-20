@@ -51,7 +51,19 @@ test('verification agrees with the upstream minisign-verify known signature fixt
 test('new metadata transports translated history while retaining readable notes for older clients',()=>fixture((dir,signing)=>{
  const summary={version:'0.7.0',summary:Object.fromEntries(require('../scripts/release-summaries.cjs').locales.map(code=>[code,['Short update.']]))};
  const info=writeManifest(dir,'0.7.0','- Short update.',signing.publicKey,undefined,[summary]);
- assert.deepEqual(info.releases,[summary]);assert.equal(info.notes,'- Short update.');
- change(dir,info=>{delete info.releases[0].summary.fr;});
- assert.throws(()=>validateManifests(dir,'0.7.0',signing.publicKey),/all nine languages/);
+ assert.equal(info.releases,undefined);assert.deepEqual(info.releaseNotes.current,summary);assert.equal(info.notes,'- Short update.');
+ change(dir,info=>{delete info.releaseNotes.current.summary.fr;});
+ assert.throws(()=>validateManifests(dir,'0.7.0',signing.publicKey),/summary|mismatch/i);
+}));
+
+test('history assets are checksummed and failed replacement restores the previous metadata and files',()=>fixture((dir,signing)=>{
+ const summary=version=>({version,summary:Object.fromEntries(require('../scripts/release-summaries.cjs').locales.map(code=>[code,['Short update.']]))});
+ const info=writeManifest(dir,'0.7.0','Short update.',signing.publicKey,undefined,[summary('0.7.0')]);
+ require('../scripts/release-assets.cjs').writeChecksums(dir);
+ const sums=fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8');assert(sums.includes('update-history-v1.json'));assert(sums.includes('update-history-v1-ja-0.7-0.json'));
+ const names=fs.readdirSync(dir).filter(name=>name==='latest.json'||name.startsWith('update-history-v1'));
+ const originals=new Map(names.map(name=>[name,fs.readFileSync(path.join(dir,name))]));
+ fs.appendFileSync(path.join(dir,updaterAssets[0]),'corrupt');
+ assert.throws(()=>writeManifest(dir,'0.7.1','Next.',signing.publicKey,undefined,[summary('0.7.1'),summary('0.7.0')]),/signature/);
+ for(const [name,data] of originals)assert.deepEqual(fs.readFileSync(path.join(dir,name)),data);
 }));

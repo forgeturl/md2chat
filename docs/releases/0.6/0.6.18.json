@@ -1,0 +1,41 @@
+{
+  "version": "0.6.18",
+  "summary": {
+    "zh-CN": [
+      "桌面版可将整篇内容转成一张图片，也可从托盘使用。",
+      "转图片期间复制了新内容，会保留新内容并提示重试。"
+    ],
+    "en": [
+      "Convert an entire document to one image from the desktop editor or tray.",
+      "If you copy new content during image conversion, it is kept and you are asked to retry."
+    ],
+    "es": [
+      "Convierte todo el documento en una imagen desde el editor de escritorio o la bandeja.",
+      "Si copias contenido nuevo durante la conversión, se conserva y se te pide reintentar."
+    ],
+    "pt-BR": [
+      "Converta o documento inteiro em uma imagem pelo editor ou pela bandeja.",
+      "Se copiar novo conteúdo durante a conversão, ele será mantido e você poderá tentar novamente."
+    ],
+    "ja": [
+      "デスクトップ画面やトレイから、文書全体を1枚の画像に変換できます。",
+      "画像化中に別の内容をコピーした場合、新しい内容を保持して再試行を案内します。"
+    ],
+    "ko": [
+      "데스크톱 편집기나 트레이에서 문서 전체를 이미지 한 장으로 변환할 수 있습니다.",
+      "이미지 변환 중 새 내용을 복사하면 새 내용을 유지하고 재시도를 안내합니다."
+    ],
+    "de": [
+      "Ganze Dokumente lassen sich im Desktop-Editor oder im Infobereich in ein Bild umwandeln.",
+      "Während der Konvertierung neu kopierte Inhalte bleiben erhalten; eine Wiederholung wird angeboten."
+    ],
+    "fr": [
+      "Convertissez un document entier en une image depuis l’éditeur de bureau ou la barre système.",
+      "Tout nouveau contenu copié pendant la conversion est conservé, avec une invitation à réessayer."
+    ],
+    "hi": [
+      "डेस्कटॉप संपादक या ट्रे से पूरे दस्तावेज़ को एक चित्र में बदल सकते हैं।",
+      "चित्र रूपांतरण के दौरान नया पाठ कॉपी करने पर वह सुरक्षित रहता है और दोबारा कोशिश का संदेश मिलता है।"
+    ]
+  }
+}

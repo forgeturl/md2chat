@@ -79,11 +79,11 @@ test('release checksums require all platform assets before publication',()=>{
  try{
   for(const name of expectedAssets.slice(0,-1))fs.writeFileSync(path.join(dir,name),'sample');
   assert.throws(()=>writeChecksums(dir));assert(!fs.existsSync(path.join(dir,'SHA256SUMS.txt')));
-  fs.writeFileSync(path.join(dir,expectedAssets.at(-1)),'sample');writeChecksums(dir);
+  fs.writeFileSync(path.join(dir,expectedAssets.at(-1)),JSON.stringify({version:'0.6.23'}));writeChecksums(dir);
   const lines=fs.readFileSync(path.join(dir,'SHA256SUMS.txt'),'utf8').trim().split('\n');
   assert.equal(lines.length,expectedAssets.length);
   const digest=require('node:crypto').createHash('sha256').update('sample').digest('hex');
-  assert.deepEqual(lines,expectedAssets.map(name=>digest+'  '+name));
+  assert.deepEqual(lines,expectedAssets.map(name=>(name==='latest.json' ? require('node:crypto').createHash('sha256').update(JSON.stringify({version:'0.6.23'})).digest('hex') : digest)+'  '+name));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('desktop release compiles Mac architectures in parallel and packages one universal app',()=>{

@@ -1,0 +1,41 @@
+{
+  "version": "0.6.23",
+  "summary": {
+    "zh-CN": [
+      "标题不再自动添加【】，原文中的括号会保留。",
+      "复制后的预览会显示所选平台的标题样式。"
+    ],
+    "en": [
+      "Headings no longer get automatic 【】 brackets; brackets in your text stay.",
+      "After copying, the preview shows the heading style for the selected platform."
+    ],
+    "es": [
+      "Los títulos ya no añaden 【】; se conservan los corchetes del texto.",
+      "Tras copiar, la vista previa muestra el estilo de título de la plataforma elegida."
+    ],
+    "pt-BR": [
+      "Títulos não recebem mais 【】 automaticamente; os colchetes do texto são mantidos.",
+      "Após copiar, a prévia mostra o estilo de título da plataforma escolhida."
+    ],
+    "ja": [
+      "見出しに【】を自動追加しなくなりました。原文の括弧は保持されます。",
+      "コピー後のプレビューに、選択したサービスの見出しスタイルが反映されます。"
+    ],
+    "ko": [
+      "제목에 【】를 자동 추가하지 않으며 원문의 괄호는 유지합니다.",
+      "복사 후 미리보기에 선택한 플랫폼의 제목 스타일이 표시됩니다."
+    ],
+    "de": [
+      "Überschriften erhalten keine automatischen 【】 mehr; eigene Klammern bleiben erhalten.",
+      "Nach dem Kopieren zeigt die Vorschau den Überschriftenstil der gewählten Plattform."
+    ],
+    "fr": [
+      "Les titres n’ajoutent plus automatiquement 【】 ; vos propres crochets sont conservés.",
+      "Après la copie, l’aperçu affiche le style de titre de la plateforme choisie."
+    ],
+    "hi": [
+      "शीर्षकों में अपने आप 【】 नहीं जुड़ते; मूल पाठ के कोष्ठक बने रहते हैं।",
+      "कॉपी करने के बाद पूर्वावलोकन में चुने गए प्लेटफ़ॉर्म की शीर्षक शैली दिखती है।"
+    ]
+  }
+}

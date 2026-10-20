@@ -34,11 +34,13 @@ function nextVersion(current, increment) {
  return increment;
 }
 function readState(root) {
- const names = ['package.json', 'package-lock.json', 'docs/release-notes.md', summaries.file];
+ const names = ['package.json', 'package-lock.json', 'docs/release-notes.md'];
  for (const name of ['src-tauri/Cargo.toml', 'src-tauri/Cargo.lock', 'src-tauri/tauri.conf.json']) {
   if (fs.existsSync(path.join(root, name))) names.push(name);
  }
  const originals = new Map(names.map(name => [path.join(root, name), fs.readFileSync(path.join(root, name), 'utf8')]));
+ const source = summaries.readSource(root);
+ for (const [file, content] of source.originals) originals.set(file, content);
  const pkg = JSON.parse(originals.get(path.join(root, names[0]))), lock = JSON.parse(originals.get(path.join(root, names[1])));
  parseVersion(pkg.version);
  if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('package.json and both root package-lock.json versions must match.');
@@ -50,7 +52,7 @@ function readState(root) {
  if (tauri && JSON.parse(tauri).version !== '../package.json') throw new Error('Tauri must read its version from ../package.json.');
  const publish = pkg.build?.publish;
  if (publish?.provider !== 'github' || !/^[\w.-]+$/.test(publish.owner || '') || !/^[\w.-]+$/.test(publish.repo || '')) throw new Error('Configure the GitHub update repository in package.json build.publish.');
- return {pkg, lock, originals, notes: originals.get(path.join(root, names[2])), repository: publish.owner + '/' + publish.repo};
+ return {pkg, lock, originals, catalog: source.catalog, notes: originals.get(path.join(root, names[2])), repository: publish.owner + '/' + publish.repo};
 }
 function validateBody(body) {
  const lines = body.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/).map(line => line.trim()).filter(line => line && !/^#{1,6}\s/.test(line));
@@ -102,17 +104,21 @@ function requireNewer(version, latest) {
  if (latest !== null && compareVersions(version, latest) <= 0) throw new Error('Release v' + version + ' must be greater than GitHub Latest v' + latest + '.');
 }
 function writePreparedFiles(originals, contents) {
- for (const [file, original] of originals) if (fs.readFileSync(file, 'utf8') !== original) throw new Error('Release files changed during validation. Review the changes and prepare again.');
+ for (const [file, original] of originals) if (original === null ? fs.existsSync(file) : fs.readFileSync(file, 'utf8') !== original) throw new Error('Release files changed during validation. Review the changes and prepare again.');
  const staged = [], replaced = [];
  try {
   for (const [file, content] of contents) {
+   fs.mkdirSync(path.dirname(file), {recursive:true});
    const temporary = file + '.release-' + randomUUID() + '.tmp';
    staged.push([file, temporary]);
    fs.writeFileSync(temporary, content, {flag: 'wx'});
   }
   for (const [file, temporary] of staged) {fs.renameSync(temporary, file);replaced.push(file);}
  } catch (error) {
-  for (const file of replaced) fs.writeFileSync(file, originals.get(file));
+  for (const file of replaced) {
+   if (originals.get(file) === null) fs.rmSync(file, {force:true});
+   else fs.writeFileSync(file, originals.get(file));
+  }
   throw error;
  } finally {
   for (const [, temporary] of staged) fs.rmSync(temporary, {force: true});
@@ -136,7 +142,7 @@ async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = glob
  if ((args.length === 1 && args[0] === '--help') || (args.length === 2 && ['prepare', 'verify'].includes(args[0]) && args[1] === '--help')) {log(usage);return;}
  const {command, options, increment} = parseArgs(args), state = readState(root);
  let version = state.pkg.version, body;
- let catalog = summaries.validateCatalog(JSON.parse(state.originals.get(path.join(root, summaries.file))), version, state.notes, {allowUnpublishedHead: command === 'prepare'});
+ let catalog = summaries.validateCatalog(state.catalog, version, state.notes, {allowUnpublishedHead: command === 'prepare'});
  if (command === 'prepare') {
   version = nextVersion(version, increment);
   body = fs.readFileSync(path.resolve(options['--notes-file']), 'utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').trim();
@@ -145,6 +151,7 @@ async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = glob
   const entry = JSON.parse(fs.readFileSync(path.resolve(options['--summary-file']), 'utf8'));
   if (entry.version !== undefined) throw new Error('Omit the summary version; the preparation command adds it.');
   catalog = summaries.validateCatalog([{...entry, version}, ...catalog], version, '# v' + version + '\n\n' + body + '\n\n' + state.notes);
+  state.originals.set(path.join(root, summaries.entryFile(version)), null);
  } else {
   if (options['--tag'] !== 'v' + version) throw new Error('The release tag must match package.json: v' + version + '.');
   validateNotes(state.notes, version);
@@ -152,12 +159,14 @@ async function run(args, {root = path.resolve(__dirname, '..'), fetchImpl = glob
  const latestVersion = await fetchLatestVersion(state.repository, fetchImpl, env);
  requireNewer(version, latestVersion);
  if (command === 'prepare') {
+  const originalSummaries = [...state.originals.keys()].filter(file => file.startsWith(path.join(root, summaries.directory) + path.sep) && state.originals.get(file) !== null).sort();
+  if (JSON.stringify([...summaries.readSource(root).originals.keys()].sort()) !== JSON.stringify(originalSummaries)) throw new Error('Release files changed during validation. Review the changes and prepare again.');
   state.pkg.version = state.lock.version = state.lock.packages[''].version = version;
   const contents = new Map([
    [path.join(root, 'package.json'), JSON.stringify(state.pkg, null, 2) + '\n'],
    [path.join(root, 'package-lock.json'), JSON.stringify(state.lock, null, 2) + '\n'],
    [path.join(root, 'docs/release-notes.md'), '# v' + version + '\n\n' + body + '\n\n' + state.notes],
-   [path.join(root, summaries.file), JSON.stringify(catalog, null, 2) + '\n']
+   [path.join(root, summaries.entryFile(version)), JSON.stringify(catalog[0], null, 2) + '\n']
   ]);
   const cargoPath = path.join(root, 'src-tauri/Cargo.toml');
   if (state.originals.has(cargoPath)) contents.set(cargoPath, state.originals.get(cargoPath).replace(/(\[package\][\s\S]*?^version\s*=\s*")[^"]+(".*$)/m, '$1' + version + '$2'));

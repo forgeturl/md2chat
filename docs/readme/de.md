@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: de; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
+<!-- language: de; source-sha256: 62acd6d3ecd00f7506d3cd1d28b689f2011e22c6b61c1eeeff69038b83fab54d -->
 
 Wandelt Markdown aus KI-Werkzeugen oder eigenen Dokumenten in Text und Bilder für Chats um. Normaler Text bleibt bearbeitbar; Tabellen, Code, Formeln und Mermaid-Diagramme werden zu Bildern in der ursprünglichen Reihenfolge. Aufgabenlisten verwenden ✅ / ⬜. Namen von KI-Werkzeugen bezeichnen mögliche Inhaltsquellen, keine offiziellen Integrationen oder nachgewiesene Kompatibilität.
 
@@ -39,6 +39,8 @@ Desktop kann das gesamte Dokument in ein weißes PNG umwandeln. Text darin ist n
 Oberfläche, integrierte Beispiele, Website, README und Update-Zusammenfassungen unterstützen neun Sprachen. Das Globusmenü zeigt die Eigennamen. Unveränderte Beispiele folgen der Sprachwahl; nach Bearbeiten, Einfügen, Ablegen oder Leeren bleiben Nutzerinhalte erhalten, auch nach Rückgängig.
 
 Zusammenfassungen zeigen die veröffentlichten Versionen zwischen installierter und Zielversion. Die neuesten drei erscheinen zuerst, ältere lassen sich aufklappen; wichtige Hinweise bleiben sichtbar. Technische Details behalten ihre Originalsprache. Updates werden nach dem Start und alle sechs Stunden geprüft. Download und Neustart erfordern eine Nutzeraktion. Eingaben vor der Installation speichern. Alte Clients erhalten die neue Oberfläche nach Installation einer entsprechenden Version; tatsächliche Versionswechsel benötigen Tests mit signierten Paketen.
+
+Historische Zusammenfassungen werden nach Sprache und Upgrade-Bereich bei Bedarf geladen und zwischengespeichert. Bei Fehlern bleiben die aktuellen Hinweise sichtbar; der Download ist weiterhin möglich. Zum Wiederholen den Dialog schließen und erneut öffnen. Bereits erfolgreich geladene Historie wird aus dem Cache verwendet. Ältere Clients lesen weiterhin das kompatible Feld `notes`.
 
 ## Datenschutz und Diagnose
 

@@ -1,0 +1,32 @@
+{
+  "version": "0.6.19",
+  "summary": {
+    "zh-CN": [
+      "转图片时会收窄多余空白，让短内容更紧凑。"
+    ],
+    "en": [
+      "Image conversion trims excess blank space for more compact short content."
+    ],
+    "es": [
+      "La conversión a imagen reduce el espacio vacío en contenidos cortos."
+    ],
+    "pt-BR": [
+      "A conversão em imagem reduz espaços vazios em conteúdos curtos."
+    ],
+    "ja": [
+      "画像化時の余白を減らし、短い内容をコンパクトにします。"
+    ],
+    "ko": [
+      "이미지 변환 시 불필요한 여백을 줄여 짧은 내용을 더 간결하게 만듭니다."
+    ],
+    "de": [
+      "Die Bildkonvertierung reduziert überflüssigen Leerraum bei kurzen Inhalten."
+    ],
+    "fr": [
+      "La conversion en image réduit l’espace vide autour des contenus courts."
+    ],
+    "hi": [
+      "चित्र बनाते समय अतिरिक्त खाली जगह घटती है, जिससे छोटा पाठ अधिक सघन रहता है।"
+    ]
+  }
+}

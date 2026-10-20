@@ -1,0 +1,32 @@
+{
+  "version": "0.6.5",
+  "summary": {
+    "zh-CN": [
+      "Windows 钉钉新增分段复制备用方式，整段图文粘贴仍未解决。"
+    ],
+    "en": [
+      "Windows DingTalk adds a segmented-copy fallback; pasting full text and images remains unresolved."
+    ],
+    "es": [
+      "DingTalk para Windows añade copia por partes como alternativa; el pegado completo sigue sin resolverse."
+    ],
+    "pt-BR": [
+      "DingTalk para Windows inclui cópia em partes como alternativa; a colagem completa ainda não foi resolvida."
+    ],
+    "ja": [
+      "Windows 版 DingTalk に分割コピーを追加しました。図文の一括貼り付けは未解決です。"
+    ],
+    "ko": [
+      "Windows DingTalk에 분할 복사 대안을 추가했습니다. 전체 텍스트와 이미지 붙여넣기는 아직 해결되지 않았습니다."
+    ],
+    "de": [
+      "Windows DingTalk erhält abschnittsweises Kopieren als Ersatz; vollständiges Text-Bild-Einfügen ist noch ungelöst."
+    ],
+    "fr": [
+      "DingTalk sur Windows ajoute une copie par segments ; le collage complet du texte et des images reste non résolu."
+    ],
+    "hi": [
+      "Windows DingTalk में खंडों में कॉपी का विकल्प जोड़ा गया है; पूरा टेक्स्ट और चित्र पेस्ट करने की समस्या अभी बाकी है।"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "version": "0.6.6",
+  "summary": {
+    "zh-CN": [
+      "Mac 飞书新增整段图文复制，粘贴前请先展开富文本输入框。"
+    ],
+    "en": [
+      "Mac Feishu adds full-message text and image copying; expand the rich-text input before pasting."
+    ],
+    "es": [
+      "Feishu para Mac añade copia de texto e imágenes completos; expande el editor de texto enriquecido antes de pegar."
+    ],
+    "pt-BR": [
+      "Feishu para Mac permite copiar todo o texto e imagens; expanda o editor formatado antes de colar."
+    ],
+    "ja": [
+      "Mac 版 Feishu に文章と画像の一括コピーを追加しました。リッチテキスト入力を展開してから貼り付けてください。"
+    ],
+    "ko": [
+      "Mac Feishu에서 전체 텍스트와 이미지 복사를 지원합니다. 서식 입력창을 펼친 후 붙여넣으세요."
+    ],
+    "de": [
+      "Mac Feishu unterstützt ganze Text-Bild-Nachrichten; vor dem Einfügen die Rich-Text-Eingabe erweitern."
+    ],
+    "fr": [
+      "Feishu sur Mac permet de copier tout le texte et les images ; déployez l’éditeur enrichi avant de coller."
+    ],
+    "hi": [
+      "Mac Feishu में पूरा टेक्स्ट और चित्र कॉपी कर सकते हैं; पेस्ट से पहले समृद्ध पाठ इनपुट खोलें।"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ struct State {
     downloaded: Mutex<Option<Vec<u8>>>,
     notified: Mutex<std::collections::HashSet<String>>,
     working: AtomicBool,
+    history: tokio::sync::Mutex<crate::update_history::Cache>,
 }
 
 struct Operation<'a>(&'a AtomicBool);
@@ -64,6 +65,7 @@ pub fn setup(app: &tauri::AppHandle) {
         view: Mutex::new(json!({"phase":"idle","currentVersion":app.package_info().version.to_string(),"version":"","notes":"","releases":[],"progress":0,"message":""})),
         candidate: Mutex::new(None), downloaded: Mutex::new(None), working: AtomicBool::new(false),
         notified: Mutex::new(std::collections::HashSet::new()),
+        history: tokio::sync::Mutex::new(crate::update_history::Cache::default()),
     });
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -120,7 +122,7 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
                 .collect::<String>();
             let view = publish(
                 app,
-                json!({"phase":"available","version":update.version,"notes":notes,"releases":update.raw_json.get("releases").filter(|v| v.is_array()).cloned().unwrap_or_else(|| json!([])),"message":"发现新版本，请查看更新内容。"}),
+                json!({"phase":"available","version":update.version,"notes":notes,"releases":update.raw_json.get("releases").filter(|v| v.is_array()).cloned().unwrap_or_else(|| json!([])),"releaseNotes":update.raw_json.get("releaseNotes").cloned().unwrap_or(Value::Null),"message":"发现新版本，请查看更新内容。"}),
             );
             *state.candidate.lock().map_err(|_| "更新状态不可用")? = Some(update);
             if state
@@ -134,8 +136,13 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
                     .notification()
                     .builder()
                     .title(crate::locale::tr(app, "md2chat 有新版本"))
-                    .body(crate::locale::tr(app, "{version} 已发布，可从菜单栏／托盘的「检查更新」查看。")
-                        .replace("{version}", &format!("v{version}")))
+                    .body(
+                        crate::locale::tr(
+                            app,
+                            "{version} 已发布，可从菜单栏／托盘的「检查更新」查看。",
+                        )
+                        .replace("{version}", &format!("v{version}")),
+                    )
                     .show();
             }
             Ok(view)
@@ -144,7 +151,7 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
             *state.candidate.lock().map_err(|_| "更新状态不可用")? = None;
             Ok(publish(
                 app,
-                json!({"phase":"current","version":"","notes":"","releases":[],"message":"当前已是最新版本。"}),
+                json!({"phase":"current","version":"","notes":"","releases":[],"releaseNotes":null,"message":"当前已是最新版本。"}),
             ))
         }
         Err(error) => {
@@ -158,6 +165,35 @@ pub async fn check(app: &tauri::AppHandle) -> Result<Value, String> {
 pub fn update_status(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<Value, String> {
     crate::trusted(&window)?;
     Ok(snapshot(&app))
+}
+
+#[tauri::command]
+pub async fn update_history(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    version: String,
+    locale: String,
+) -> Result<Value, String> {
+    crate::trusted(&window)?;
+    let view = snapshot(&app);
+    if view["version"] != version {
+        return Err("更新信息已变化，请重新查看。".into());
+    }
+    let current = view["currentVersion"].as_str().ok_or("更新状态不可用")?;
+    let state = app.state::<State>();
+    let result = crate::update_history::load(
+        &view["releaseNotes"],
+        current,
+        &version,
+        &locale,
+        &state.history,
+        Duration::from_secs(30),
+    )
+    .await?;
+    if snapshot(&app)["version"] != version {
+        return Err("更新信息已变化，请重新查看。".into());
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -243,7 +279,10 @@ pub async fn update_install(
         use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
         confirm_app
             .dialog()
-            .message(crate::locale::tr(&confirm_app, "应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。"))
+            .message(crate::locale::tr(
+                &confirm_app,
+                "应用将退出并重新打开。当前输入不会保存，请先复制或保存需要的内容。",
+            ))
             .title(crate::locale::tr(&confirm_app, "现在安装新版 md2chat？"))
             .kind(MessageDialogKind::Warning)
             .buttons(MessageDialogButtons::OkCancelCustom(

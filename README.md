@@ -116,7 +116,7 @@ npm run desktop:dist:win # Windows x64 安装程序 EXE
 
 ## 多语言维护
 
-界面、内置示例、官网、README 和更新摘要支持九种语言。未编辑的默认示例随界面语言切换；编辑、粘贴、拖入或清空后保留用户内容。更新弹窗展示升级区间内每个版本的简短摘要，最近三个版本默认可见，重要提醒始终显示。完整技术说明保留发布原文。
+界面、内置示例、官网、README 和更新摘要支持九种语言。未编辑的默认示例随界面语言切换；编辑、粘贴、拖入或清空后保留用户内容。更新弹窗展示升级区间内每个版本的简短摘要，最近三个版本默认可见，重要提醒始终显示。历史摘要按当前语言和升级区间按需加载并缓存；加载失败时只显示本版摘要，仍可下载更新；关闭后重新打开会重试，加载成功后复用缓存。旧客户端继续读取兼容的 `notes` 字段。完整技术说明保留发布原文。
 
 后续开发遵循 [多语言维护规范](docs/localization.md)：新增或修改用户文案时同步九种语言，运行 `npm run check` 检查翻译、README 同步状态及网站输出；翻译在开发时编写，运行时按用户选择自动切换。
 
@@ -136,7 +136,7 @@ Actions 每天北京时间 02:23 清理较旧且已结束的运行，为每个�
    npm run release:prepare -- patch --notes-file /tmp/md2chat-release-notes.md --summary-file /tmp/md2chat-update-summary.json
    ```
 
-   `patch` 可替换为 `minor`、`major` 或明确的 `X.Y.Z` 稳定版本号。命令先校验版本、详细说明、九语言摘要和 GitHub Latest；通过后同步 `package.json`、`package-lock.json`、Rust package / lock 版本，并把新版本详细说明和摘要分别放到 `docs/release-notes.md`、`docs/update-summaries.json` 首部，保留历史。Tauri 配置直接引用 package 版本。准备命令只修改这些文件，不提交、不创建标签、不推送。
+   `patch` 可替换为 `minor`、`major` 或明确的 `X.Y.Z` 稳定版本号。命令先校验版本、详细说明、九语言摘要和 GitHub Latest；通过后同步 `package.json`、`package-lock.json`、Rust package / lock 版本，把详细说明放到 `docs/release-notes.md` 首部，并在 `docs/releases/<主.次>/<版本>.json` 新增摘要文件，保留历史。Tauri 配置直接引用 package 版本。准备命令只修改这些文件，不提交、不创建标签、不推送。
 2. 审阅变更，运行 `npm run check`；将下方 `vX.Y.Z` 替换为准备好的版本，校验正式发布条件：
 
    ```sh

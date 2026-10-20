@@ -13,7 +13,7 @@ class Element{
  showModal(){this.open=true;}
  close(){this.open=false;}
 }
-function fixture({initial,status,check,download,install}={}){
+function fixture({initial,status,check,download,install,history}={}){
  const nodes=new Map(),created=[],utility=new Element(),calls=[];let locale='en',listener,onOpen;
  const find=key=>{if(!nodes.has(key))nodes.set(key,new Element());return nodes.get(key);};
  const panel=new Element();panel.querySelector=find;panel.querySelectorAll=()=>[find('.update-close'),find('.update-dismiss')];
@@ -22,6 +22,7 @@ function fixture({initial,status,check,download,install}={}){
   download:async()=>{calls.push('download');return download?await download():{phase:'downloaded',currentVersion:'0.6.19',version:'0.6.20'};},
   install:async()=>{calls.push('install');return install?await install():{phase:'installing',currentVersion:'0.6.19',version:'0.6.20'};},
   subscribe:fn=>listener=fn,onOpen:fn=>onOpen=fn};
+ if(history)api.history=async(version,code)=>{calls.push('history:'+version+':'+code);return history(version,code);};
  const window={md2chatDesktop:{updates:api},md2chatI18n:{t:s=>i18n.translate(s,locale),has:i18n.has,get locale(){return locale;}},events:{},addEventListener(name,fn){this.events[name]=fn;}};
  const document={body:new Element(),getElementById:()=>utility,createElement:tag=>{const e=tag==='dialog'?panel:new Element();e.tagName=tag;created.push(e);return e;}};
  vm.runInNewContext(source,{window,document});
@@ -85,6 +86,27 @@ test('a cancelled native install stays downloadable and a current version hides 
  f.emit({phase:'current',currentVersion:'0.6.19'});
  assert.equal(f.find('.update-next-wrap').hidden,true);assert.equal(f.find('.update-release').hidden,true);
  assert.equal(f.find('progress').hidden,true);
+ assert.equal(f.find('.update-footnote').hidden,true);
+ f.emit(available);assert.equal(f.find('.update-release').hidden,false,'returning to an available release must restore the notes');
+});
+
+test('update and current states have translated headlines and show loading only during active work in all nine languages',async()=>{
+ const f=fixture({initial:available});await tick();
+ for(const {code} of i18n.locales){
+  f.emit(available);f.language(code);
+  assert.equal(f.find('.update-state-title').textContent,i18n.translate('新版本已就绪',code));
+  assert.equal(f.find('.update-status').hidden,true);
+  assert.equal(f.find('.update-loading').hidden,true);
+  assert.equal(f.find('.update-footnote').hidden,false);
+  f.emit({...available,phase:'downloading',progress:54});
+  assert.equal(f.find('.update-loading').hidden,false);assert.equal(f.find('.update-percent').textContent,'54%');
+  f.emit({...available,phase:'current'});
+  assert.equal(f.find('.update-state-title').textContent,i18n.translate('当前已是最新版本。',code));
+  assert.equal(f.find('.update-loading').hidden,true);
+  assert.equal(f.find('.update-next-wrap').hidden,true);
+  assert.equal(f.find('.update-release').hidden,true);
+  assert.equal(f.find('.update-footnote').hidden,true);
+ }
 });
 
 test('cross-version history filters numerically, sorts, collapses older releases and keeps notices visible',async()=>{
@@ -101,7 +123,7 @@ test('cross-version history filters numerically, sorts, collapses older releases
  assert(f.find('.update-details-link').href.endsWith('/tag/v0.6.13'));
 });
 test('authored summaries and important notices follow all nine languages without changing the update phase',async()=>{
- const releases=require('../docs/update-summaries.json');
+ const releases=require('../scripts/release-summaries.cjs').readSource(require('node:path').resolve(__dirname,'..')).catalog;
  const f=fixture({initial:{...available,currentVersion:'0.6.20',version:'0.6.23',releases,phase:'downloaded'}});await tick();
  for(const {code} of i18n.locales){
   f.language(code);
@@ -120,4 +142,68 @@ test('legacy metadata stays readable on demand without claiming complete multili
  assert(nodes.some(n=>n.textContent==='<img src=x onerror=alert(1)>'));
  assert(!nodes.some(n=>n.textContent==='Old changes'));
  assert(!nodes.some(n=>n.className==='update-release-count'));
+});
+
+const paged={...available,currentVersion:'0.6.20',version:'0.6.23',releases:undefined,releaseNotes:{schemaVersion:1,current:summary('0.6.23',['Current summary']),history:{file:'update-history-v1.json',sha256:'test'}}};
+const historyResponse=(version='0.6.23',locale='en')=>({schemaVersion:1,version,locale,complete:true,releases:[summary(version,['Loaded '+version+' '+locale]),summary('0.6.22',['Older '+locale]),summary('0.6.21',['Oldest '+locale])]});
+test('history loads on demand, survives progress updates and follows language selection without touching download state',async()=>{
+ let finish;const pending=new Promise(resolve=>finish=resolve);
+ const f=fixture({initial:paged,history:(version,locale)=>locale==='en'?pending:historyResponse(version,locale)});await tick();
+ assert.deepEqual(f.calls,[]);f.open();await tick();assert.deepEqual(f.calls,['history:0.6.23:en']);
+ f.find('.update-dismiss').click();f.open();await tick();assert.equal(f.calls.length,1,'reopening must reuse the pending request');
+ assert(!walk(f.find('.update-notes')).some(n=>n.className==='update-release-count'));
+ f.emit({...paged,phase:'downloading',progress:30});await tick();assert.equal(f.calls.length,1);
+ finish(historyResponse());await tick();
+ assert.equal(f.panel.dataset.phase,'downloading');assert.equal(f.find('progress').value,30);
+ assert(walk(f.find('.update-notes')).some(n=>n.textContent==='This upgrade includes updates from 3 versions'));
+ f.language('ja');await tick();assert(f.calls.includes('history:0.6.23:ja'));
+ assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.23 ja'));
+ f.language('en');await tick();assert.equal(f.calls.length,2,'a cached language must not be fetched twice');
+});
+test('reopening retries failed history and reuses successful history without an extra retry button',async()=>{
+ let attempts=0;
+ const f=fixture({initial:paged,history:()=>++attempts===1?Promise.reject(new Error('offline')):historyResponse()});await tick();f.open();await tick();
+ assert.equal(f.find('.update-action').disabled,false);
+ const nodes=walk(f.find('.update-notes'));assert(nodes.some(n=>n.textContent==='Current summary'));
+ assert(!nodes.some(n=>n.className==='update-release-count'));
+ assert(!nodes.some(n=>n.tagName==='button'));
+ f.emit({...paged,phase:'downloading',progress:30});f.open();await tick();assert.equal(attempts,1,'renders and opening an already open dialog must not retry failures');
+ f.find('.update-dismiss').click();f.open();await tick();
+ assert.equal(attempts,2);assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Older en'));
+ f.find('.update-close').click();f.open();await tick();assert.equal(attempts,2,'reopening must preserve successful cached history');
+});
+test('late history for another locale or target cannot overwrite the currently visible update',async()=>{
+ let english;const first=new Promise(resolve=>english=resolve);
+ const f=fixture({initial:paged,history:(version,locale)=>locale==='en'?first:historyResponse(version,locale)});await tick();f.open();await tick();
+ f.language('ja');await tick();english(historyResponse());await tick();
+ assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.23 ja'));
+ assert(!walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.23 en'));
+ const next={...paged,version:'0.6.24',releaseNotes:{...paged.releaseNotes,current:summary('0.6.24',['Next summary'])}};
+ f.emit(next);await tick();assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.24 ja'));
+ assert(!walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.23 ja'));
+});
+test('unknown note protocols fall back to original notes and never request history or block downloads',async()=>{
+ const f=fixture({initial:{...paged,releaseNotes:{...paged.releaseNotes,schemaVersion:2}},history:()=>{throw new Error('must not fetch');}});await tick();f.open();await tick();
+ assert.deepEqual(f.calls,[]);assert.equal(f.find('.update-action').disabled,false);
+ assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Show original release notes'));
+ assert(!walk(f.find('.update-notes')).some(n=>n.className==='update-release-count'));
+});
+
+test('an old target finishing late cannot replace the new target summary',async()=>{
+ let finish;const pending=new Promise(resolve=>finish=resolve);
+ const f=fixture({initial:paged,history:(version,locale)=>version==='0.6.23'?pending:historyResponse(version,locale)});await tick();f.open();await tick();
+ f.emit({...paged,version:'0.6.24',releaseNotes:{...paged.releaseNotes,current:summary('0.6.24',['Next'])}});await tick();
+ finish(historyResponse());await tick();
+ assert(walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.24 en'));
+ assert(!walk(f.find('.update-notes')).some(n=>n.textContent==='Loaded 0.6.23 en'));
+});
+test('incomplete and mismatched responses retain the current summary and never claim all history is loaded',async()=>{
+ for(const result of [{...historyResponse(),complete:false},{...historyResponse(),version:'0.6.22'},{...historyResponse(),schemaVersion:2}]){
+  const f=fixture({initial:paged,history:()=>result});await tick();f.open();await tick();
+  const nodes=walk(f.find('.update-notes'));
+  assert(nodes.some(n=>n.textContent==='Current summary'));
+  assert(!nodes.some(n=>n.tagName==='button'));
+  assert(!nodes.some(n=>n.className==='update-release-count'));
+  assert.equal(f.find('.update-action').disabled,false);
+ }
 });

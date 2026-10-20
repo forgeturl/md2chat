@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: pt-BR; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
+<!-- language: pt-BR; source-sha256: 62acd6d3ecd00f7506d3cd1d28b689f2011e22c6b61c1eeeff69038b83fab54d -->
 
 Transforme Markdown de ferramentas de IA ou dos seus documentos em texto e imagens para chats. O texto comum permanece editável; tabelas, código, fórmulas e diagramas Mermaid viram imagens na ordem original. Tarefas usam ✅ / ⬜. Nomes de ferramentas de IA indicam fontes possíveis, não integrações oficiais nem compatibilidade comprovada.
 
@@ -39,6 +39,8 @@ Use a barra de menus do Mac ou a bandeja do Windows para converter a área de tr
 Interface, exemplos, site, README e resumos de atualização suportam nove idiomas. O menu com globo mostra os nomes nativos. Exemplos não editados acompanham o idioma; editar, colar, arrastar ou limpar preserva o conteúdo do usuário, mesmo após desfazer.
 
 Os resumos incluem as versões publicadas entre a instalada e a desejada. As três mais recentes aparecem primeiro; as anteriores podem ser expandidas e os avisos importantes permanecem visíveis. Notas técnicas conservam o idioma original. A busca ocorre após iniciar e a cada seis horas; baixar e reiniciar dependem do usuário. Salve o texto antes de instalar. Clientes antigos recebem a interface nova após instalar uma versão que a contenha; a instalação entre versões exige testes com pacotes assinados.
+
+Os resumos históricos são carregados e armazenados em cache conforme o idioma e o intervalo da atualização. Em caso de falha, o resumo atual permanece visível, sem impedir o download. Feche e reabra a janela para tentar novamente; o histórico carregado com sucesso é reutilizado do cache. Clientes antigos continuam lendo o campo compatível `notes`.
 
 ## Privacidade e diagnóstico
 

@@ -1,0 +1,79 @@
+{
+  "summary": {
+    "zh-CN": [
+      "更新窗口更清爽，可按当前语言查看跨版本的主要变化。",
+      "切换语言会同步未编辑的示例，已编辑内容保持不变。",
+      "Windows 企业微信支持一次粘贴整段文字与图片。"
+    ],
+    "en": [
+      "A cleaner update window shows key changes across versions in your language.",
+      "Language changes update untouched examples while preserving your edits.",
+      "Windows WeCom supports pasting a full message with text and images at once."
+    ],
+    "es": [
+      "La ventana de actualización muestra los cambios principales entre versiones en tu idioma.",
+      "Al cambiar de idioma, los ejemplos sin editar se traducen y tus cambios se conservan.",
+      "WeCom para Windows permite pegar un mensaje completo con texto e imágenes de una vez."
+    ],
+    "pt-BR": [
+      "A janela de atualização mostra as principais mudanças entre versões no seu idioma.",
+      "Ao trocar o idioma, exemplos não editados são traduzidos e suas edições são preservadas.",
+      "O WeCom para Windows permite colar uma mensagem completa com texto e imagens de uma vez."
+    ],
+    "ja": [
+      "更新ウィンドウを整理し、各バージョンの主な変更を選択中の言語で確認できます。",
+      "言語を切り替えると未編集のサンプルも切り替わり、編集した内容は保持されます。",
+      "Windows 版 WeCom で文章と画像をまとめて貼り付けられます。"
+    ],
+    "ko": [
+      "업데이트 창에서 버전별 주요 변경 사항을 선택한 언어로 볼 수 있습니다.",
+      "언어를 바꾸면 수정하지 않은 예제도 바뀌며, 편집한 내용은 유지됩니다.",
+      "Windows WeCom에서 텍스트와 이미지가 담긴 전체 메시지를 한 번에 붙여넣을 수 있습니다."
+    ],
+    "de": [
+      "Das übersichtlichere Update-Fenster zeigt wichtige Änderungen mehrerer Versionen in Ihrer Sprache.",
+      "Beim Sprachwechsel werden unveränderte Beispiele übersetzt; Ihre Änderungen bleiben erhalten.",
+      "Windows-WeCom unterstützt das Einfügen ganzer Nachrichten mit Text und Bildern auf einmal."
+    ],
+    "fr": [
+      "La fenêtre de mise à jour présente les changements essentiels de chaque version dans votre langue.",
+      "Le changement de langue traduit les exemples non modifiés et conserve vos modifications.",
+      "WeCom Windows permet de coller un message entier avec texte et images en une fois."
+    ],
+    "hi": [
+      "सरल अपडेट विंडो आपकी भाषा में अलग-अलग संस्करणों के मुख्य बदलाव दिखाती है।",
+      "भाषा बदलने पर बिना संपादित उदाहरण बदलते हैं; आपके संपादन सुरक्षित रहते हैं।",
+      "Windows WeCom में पूरी टेक्स्ट और चित्र वाली सामग्री एक साथ पेस्ट कर सकते हैं।"
+    ]
+  },
+  "important": {
+    "zh-CN": [
+      "Windows 企微普通聊天框不保留粗体、字号或颜色；需要固定样式时请使用“图片”。"
+    ],
+    "en": [
+      "Windows WeCom chat removes bold, font sizes and colors. Use Image to keep a fixed appearance."
+    ],
+    "es": [
+      "El chat de WeCom Windows elimina negrita, tamaños y colores. Usa Imagen para conservar la apariencia."
+    ],
+    "pt-BR": [
+      "O chat do WeCom Windows remove negrito, tamanhos e cores. Use Imagem para manter a aparência."
+    ],
+    "ja": [
+      "Windows 版 WeCom の通常チャットでは太字・文字サイズ・色が保持されません。見た目を固定するには「画像」を使ってください。"
+    ],
+    "ko": [
+      "Windows WeCom 일반 채팅은 굵게, 글자 크기와 색상을 유지하지 않습니다. 모양을 그대로 유지하려면 이미지를 사용하세요."
+    ],
+    "de": [
+      "Windows-WeCom-Chats entfernen Fettdruck, Schriftgrößen und Farben. Nutzen Sie Bild für ein festes Erscheinungsbild."
+    ],
+    "fr": [
+      "Le chat WeCom Windows supprime gras, tailles et couleurs. Utilisez Image pour conserver la présentation."
+    ],
+    "hi": [
+      "Windows WeCom चैट बोल्ड, फ़ॉन्ट आकार और रंग नहीं रखता। रूप वैसा ही रखने के लिए चित्र विकल्प चुनें।"
+    ]
+  },
+  "version": "0.6.24"
+}

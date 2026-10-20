@@ -6,7 +6,9 @@ const installerAssets = ['md2chat-mac-universal.dmg', 'md2chat-windows-x64-setup
 const updaterAssets = ['md2chat-mac-universal.app.tar.gz', 'md2chat-windows-x64-setup.exe'];
 const expectedAssets = [installerAssets[0], updaterAssets[0], updaterAssets[0] + '.sig', installerAssets[1], installerAssets[1] + '.sig', 'latest.json'];
 function writeChecksums(directory) {
- const lines = expectedAssets.map(name => {
+ const manifest = JSON.parse(fs.readFileSync(path.join(directory,'latest.json'),'utf8'));
+ const history = manifest.releaseNotes ? require('./update-history.cjs').validateHistory(directory,manifest.releaseNotes,manifest.version) : [];
+ const lines = [...expectedAssets, ...history].map(name => {
   const data = fs.readFileSync(path.join(directory, name));
   if (!data.length) throw new Error('Empty release asset: ' + name);
   return crypto.createHash('sha256').update(data).digest('hex') + '  ' + name;

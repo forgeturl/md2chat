@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: en; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
+<!-- language: en; source-sha256: 62acd6d3ecd00f7506d3cd1d28b689f2011e22c6b61c1eeeff69038b83fab54d -->
 
 Turn Markdown copied from AI tools or your own documents into chat-ready text and images. Ordinary text stays editable; tables, code, equations and Mermaid diagrams become images in the original order. Task lists use ✅ / ⬜. AI tool names describe possible content sources, not official integrations or proof of compatibility.
 
@@ -39,6 +39,8 @@ Use the Mac menu bar or Windows tray to convert clipboard content without replac
 The interface, built-in examples, website, README and update summaries support nine languages. The globe menu shows language names in their own language. Untouched examples follow language changes; editing, pasting, dropping or clearing gives control to the user, so their content is preserved, even after undo.
 
 Update summaries list the published versions between the installed and target versions. The latest three are shown first, older versions can be expanded, and important notices always remain visible. Full technical notes retain their original language. Checks run after startup and every six hours; downloading and restarting require user action. Save input before installing. Older clients gain the new interface after installing a release that includes it; cross-version installation still requires signed-package testing.
+
+Historical summaries are loaded and cached on demand for the selected language and upgrade range. If loading fails, the current summary remains visible and the installer can still be downloaded. Close and reopen the dialog to retry; successfully loaded history is reused from cache. Older clients continue to read the compatible `notes` field.
 
 ## Privacy and diagnostics
 

@@ -1,0 +1,32 @@
+{
+  "version": "0.6.2",
+  "summary": {
+    "zh-CN": [
+      "官网与安装包保持同一版本。"
+    ],
+    "en": [
+      "The website and installers now ship from the same version."
+    ],
+    "es": [
+      "El sitio y los instaladores se publican con la misma versión."
+    ],
+    "pt-BR": [
+      "O site e os instaladores são publicados na mesma versão."
+    ],
+    "ja": [
+      "公式サイトとインストーラーを同じバージョンで公開します。"
+    ],
+    "ko": [
+      "웹사이트와 설치 파일을 같은 버전으로 배포합니다."
+    ],
+    "de": [
+      "Website und Installationsdateien werden mit derselben Version veröffentlicht."
+    ],
+    "fr": [
+      "Le site et les installateurs sont publiés dans la même version."
+    ],
+    "hi": [
+      "वेबसाइट और इंस्टॉलर अब एक ही संस्करण से जारी होते हैं।"
+    ]
+  }
+}

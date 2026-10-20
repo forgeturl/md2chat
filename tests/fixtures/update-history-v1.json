@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "current": {
+      "version": "0.7.0",
+      "summary": {
+        "zh-CN": [
+          "zh-CN update 0.7.0"
+        ],
+        "en": [
+          "en update 0.7.0"
+        ],
+        "es": [
+          "es update 0.7.0"
+        ],
+        "pt-BR": [
+          "pt-BR update 0.7.0"
+        ],
+        "ja": [
+          "ja update 0.7.0"
+        ],
+        "ko": [
+          "ko update 0.7.0"
+        ],
+        "de": [
+          "de update 0.7.0"
+        ],
+        "fr": [
+          "fr update 0.7.0"
+        ],
+        "hi": [
+          "hi update 0.7.0"
+        ]
+      }
+    },
+    "history": {
+      "file": "update-history-v1.json",
+      "bytes": 3864,
+      "sha256": "ea564fd5730d4fcb957fa654040c37eb64bb77ce0078ebb556f0cee64a8a993a"
+    }
+  },
+  "payloads": {
+    "update-history-v1-zh-CN-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"zh-CN\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"zh-CN update 0.7.0\"]}]}\n",
+    "update-history-v1-en-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"en\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"en update 0.7.0\"]}]}\n",
+    "update-history-v1-es-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"es\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"es update 0.7.0\"]}]}\n",
+    "update-history-v1-pt-BR-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"pt-BR\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"pt-BR update 0.7.0\"]}]}\n",
+    "update-history-v1-ja-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ja\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"ja update 0.7.0\"]}]}\n",
+    "update-history-v1-ko-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ko\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"ko update 0.7.0\"]}]}\n",
+    "update-history-v1-de-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"de\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"de update 0.7.0\"]}]}\n",
+    "update-history-v1-fr-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"fr\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"fr update 0.7.0\"]}]}\n",
+    "update-history-v1-hi-0.7-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"hi\",\"releases\":[{\"version\":\"0.7.0\",\"summary\":[\"hi update 0.7.0\"]}]}\n",
+    "update-history-v1-zh-CN-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"zh-CN\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"zh-CN update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-en-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"en\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"en update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-es-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"es\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"es update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-pt-BR-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"pt-BR\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"pt-BR update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-ja-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ja\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"ja update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-ko-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ko\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"ko update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-de-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"de\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"de update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-fr-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"fr\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"fr update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-hi-0.6-1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"hi\",\"releases\":[{\"version\":\"0.6.50\",\"summary\":[\"hi update 0.6.50\"],\"important\":[\"Save your settings.\"]}]}\n",
+    "update-history-v1-zh-CN-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"zh-CN\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"zh-CN update 0.6.49\"]}]}\n",
+    "update-history-v1-en-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"en\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"en update 0.6.49\"]}]}\n",
+    "update-history-v1-es-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"es\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"es update 0.6.49\"]}]}\n",
+    "update-history-v1-pt-BR-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"pt-BR\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"pt-BR update 0.6.49\"]}]}\n",
+    "update-history-v1-ja-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ja\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"ja update 0.6.49\"]}]}\n",
+    "update-history-v1-ko-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"ko\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"ko update 0.6.49\"]}]}\n",
+    "update-history-v1-de-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"de\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"de update 0.6.49\"]}]}\n",
+    "update-history-v1-fr-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"fr\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"fr update 0.6.49\"]}]}\n",
+    "update-history-v1-hi-0.6-0.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"locale\":\"hi\",\"releases\":[{\"version\":\"0.6.49\",\"summary\":[\"hi update 0.6.49\"]}]}\n",
+    "update-history-v1.json": "{\"schemaVersion\":1,\"targetVersion\":\"0.7.0\",\"chunks\":[{\"versions\":[\"0.7.0\"],\"files\":{\"zh-CN\":{\"file\":\"update-history-v1-zh-CN-0.7-0.json\",\"bytes\":127,\"sha256\":\"55b00b14449a43e6894dd0d2c9816666b06484a0ee26cb3c9bc8f101c4d05c2d\"},\"en\":{\"file\":\"update-history-v1-en-0.7-0.json\",\"bytes\":121,\"sha256\":\"2109b886d067255025a873889df417ed328231e0d556ce7254dd99c92177762d\"},\"es\":{\"file\":\"update-history-v1-es-0.7-0.json\",\"bytes\":121,\"sha256\":\"579db68e759e1b8d2e4382ede4803f71e3efa47ad590cef3637f6a5f4eef23bc\"},\"pt-BR\":{\"file\":\"update-history-v1-pt-BR-0.7-0.json\",\"bytes\":127,\"sha256\":\"162c52c4a3bb6120e8be0d114d6035da4ab97518eaf63505eaeb80899f732b11\"},\"ja\":{\"file\":\"update-history-v1-ja-0.7-0.json\",\"bytes\":121,\"sha256\":\"e3a53f0f38fd9b69bdc8802a031519ebd92266d7610f2ddce6515724c62cf24d\"},\"ko\":{\"file\":\"update-history-v1-ko-0.7-0.json\",\"bytes\":121,\"sha256\":\"23425ae6527102b6da5be28737847d950e4bcf975f74f6c01103802a73892bb8\"},\"de\":{\"file\":\"update-history-v1-de-0.7-0.json\",\"bytes\":121,\"sha256\":\"729c42b9670634a78a2baf5769a3af320ea23e33c41d907c69e5e0c9f89daec4\"},\"fr\":{\"file\":\"update-history-v1-fr-0.7-0.json\",\"bytes\":121,\"sha256\":\"bc8f66da7f77e6a6ad3cde1465037d52ab9e334385e91b9520ace6866ea3c188\"},\"hi\":{\"file\":\"update-history-v1-hi-0.7-0.json\",\"bytes\":121,\"sha256\":\"8d1226eebab4de3b2ebe9ac749ec3b8d9a1bb76bd69c369c15ec18c1cba532f9\"}}},{\"versions\":[\"0.6.50\"],\"files\":{\"zh-CN\":{\"file\":\"update-history-v1-zh-CN-0.6-1.json\",\"bytes\":165,\"sha256\":\"804d9359d3494ca1a1333c96b1a4f76dcb7092546d2aa8ca94ed8f0bccf0017b\"},\"en\":{\"file\":\"update-history-v1-en-0.6-1.json\",\"bytes\":159,\"sha256\":\"326a84f68f5d81e19f53c2546349366b762a2bdcf5e6d969eb1b63bfa36c0912\"},\"es\":{\"file\":\"update-history-v1-es-0.6-1.json\",\"bytes\":159,\"sha256\":\"296f205a4472a25fd96823cdc74fe299f0ebe2f22b3d335796b2a87638172f91\"},\"pt-BR\":{\"file\":\"update-history-v1-pt-BR-0.6-1.json\",\"bytes\":165,\"sha256\":\"4cb42d944fbd255b8e91c9782ba641f31ac7beb752be82073217eb83c8c3577e\"},\"ja\":{\"file\":\"update-history-v1-ja-0.6-1.json\",\"bytes\":159,\"sha256\":\"7c1e3306e705084ea97c0fb290ca4fc47eeb5068891d900aa13b773eaf3a9a88\"},\"ko\":{\"file\":\"update-history-v1-ko-0.6-1.json\",\"bytes\":159,\"sha256\":\"96e2a9f190f9ad8a4ccfa1a38271a315a9447534651bd5cd4ceb2a77cefee2bc\"},\"de\":{\"file\":\"update-history-v1-de-0.6-1.json\",\"bytes\":159,\"sha256\":\"df47a3d0b1c3299183ddc33e20b913323425199d8a4ea33ddc0131ea25d5d85d\"},\"fr\":{\"file\":\"update-history-v1-fr-0.6-1.json\",\"bytes\":159,\"sha256\":\"e5a1016e8a9e4215c5167f0b71e8623b89ad447a6694bce43bf96253ef7f3628\"},\"hi\":{\"file\":\"update-history-v1-hi-0.6-1.json\",\"bytes\":159,\"sha256\":\"fbd3c65cf4d7887c0e4b57d583047998258ba042958f925564185ab61f774753\"}}},{\"versions\":[\"0.6.49\"],\"files\":{\"zh-CN\":{\"file\":\"update-history-v1-zh-CN-0.6-0.json\",\"bytes\":129,\"sha256\":\"6061f95223444d1216ea20bb7cb18a353e6e54b144d33b3b99ff0a5d154e4a24\"},\"en\":{\"file\":\"update-history-v1-en-0.6-0.json\",\"bytes\":123,\"sha256\":\"b7676f2772d775f509fd1b1e5f78f807fdf649fdb1722d5c8239e7eabb1877b0\"},\"es\":{\"file\":\"update-history-v1-es-0.6-0.json\",\"bytes\":123,\"sha256\":\"db58fe828cb69d7d455ee7c5207eda1b1f51b8179a679afcbdbd62a63b4e0155\"},\"pt-BR\":{\"file\":\"update-history-v1-pt-BR-0.6-0.json\",\"bytes\":129,\"sha256\":\"02d0f53e09f64b0d70b842eeb0701ff82f139e17a897e1dfef18c558eed96b61\"},\"ja\":{\"file\":\"update-history-v1-ja-0.6-0.json\",\"bytes\":123,\"sha256\":\"0e5a3296bb5adedf9420d16f43c747fb5f3061dc3a3897ec2d4f8f5739897a52\"},\"ko\":{\"file\":\"update-history-v1-ko-0.6-0.json\",\"bytes\":123,\"sha256\":\"249106cb559d3b5ec35dca77aa1e2a22d56564bddc52852332bc5a4e91b275b8\"},\"de\":{\"file\":\"update-history-v1-de-0.6-0.json\",\"bytes\":123,\"sha256\":\"0b3db7c258559f0484173e521fccf40453d6df3e61886b372ba9f4807317bb25\"},\"fr\":{\"file\":\"update-history-v1-fr-0.6-0.json\",\"bytes\":123,\"sha256\":\"3e3acf50924fc960814837a18e97b5c45021d2df8723843b0f64e03832317123\"},\"hi\":{\"file\":\"update-history-v1-hi-0.6-0.json\",\"bytes\":123,\"sha256\":\"8d0fc61e1b610e70369746319238d480abd6166fa28f0983cf0e633028add44d\"}}}]}\n"
+  }
+}

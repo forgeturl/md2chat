@@ -1,0 +1,32 @@
+{
+  "version": "0.6.9",
+  "summary": {
+    "zh-CN": [
+      "网页版暂不开放飞书复制，请使用桌面版。"
+    ],
+    "en": [
+      "Feishu copying is unavailable on the web; use the desktop app."
+    ],
+    "es": [
+      "La copia para Feishu no está disponible en la web; usa la app de escritorio."
+    ],
+    "pt-BR": [
+      "A cópia para Feishu não está disponível na web; use o app de desktop."
+    ],
+    "ja": [
+      "Web 版では Feishu コピーを利用できません。デスクトップ版をご利用ください。"
+    ],
+    "ko": [
+      "웹에서는 Feishu 복사를 사용할 수 없습니다. 데스크톱 앱을 사용하세요."
+    ],
+    "de": [
+      "Feishu-Kopieren ist im Web nicht verfügbar; bitte die Desktop-App verwenden."
+    ],
+    "fr": [
+      "La copie pour Feishu n’est pas disponible sur le Web ; utilisez l’app de bureau."
+    ],
+    "hi": [
+      "वेब पर Feishu कॉपी उपलब्ध नहीं है; डेस्कटॉप ऐप का उपयोग करें।"
+    ]
+  }
+}

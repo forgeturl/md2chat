@@ -1,0 +1,32 @@
+{
+  "version": "0.6.20",
+  "summary": {
+    "zh-CN": [
+      "改善文字可读性，重新整理更新窗口和使用说明。"
+    ],
+    "en": [
+      "Improved text readability and reorganized the update window and help."
+    ],
+    "es": [
+      "Mejora la legibilidad y reorganiza la ventana de actualización y la ayuda."
+    ],
+    "pt-BR": [
+      "Melhora a leitura e reorganiza a janela de atualização e a ajuda."
+    ],
+    "ja": [
+      "文字を読みやすくし、更新画面と使い方を整理しました。"
+    ],
+    "ko": [
+      "글자 가독성을 높이고 업데이트 창과 도움말을 정리했습니다."
+    ],
+    "de": [
+      "Bessere Lesbarkeit sowie übersichtlichere Update-Fenster und Hilfe."
+    ],
+    "fr": [
+      "Texte plus lisible, fenêtre de mise à jour et aide réorganisées."
+    ],
+    "hi": [
+      "पाठ अधिक पठनीय है; अपडेट विंडो और सहायता को व्यवस्थित किया गया है।"
+    ]
+  }
+}

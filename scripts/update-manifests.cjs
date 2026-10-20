@@ -27,6 +27,7 @@ function validateManifests(directory, version, publicKey = process.env.TAURI_UPD
   || Object.keys(info.platforms).sort().join(',') !== Object.keys(platformAssets).sort().join(',')) throw new Error('Invalid Tauri update manifest');
  if (typeof info.pub_date !== 'string' || !Number.isFinite(Date.parse(info.pub_date))) throw new Error('Invalid update publication date');
  if (info.releases !== undefined) require('./release-summaries.cjs').validateCatalog(info.releases, version);
+ if (info.releaseNotes !== undefined) require('./update-history.cjs').validateHistory(directory, info.releaseNotes, version);
  for (const [platform, name] of Object.entries(platformAssets)) {
   const entry = info.platforms[platform];
   if (entry.url !== repository + 'v' + version + '/' + name) throw new Error('Unexpected update asset URL');
@@ -41,16 +42,24 @@ function validateManifests(directory, version, publicKey = process.env.TAURI_UPD
 }
 function writeManifest(directory, version, notes, publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY, now = new Date(), releases) {
  const info = {version, notes, pub_date: now.toISOString(), platforms: {}};
- if (releases) info.releases = require('./release-summaries.cjs').validateCatalog(releases, version);
+ const history = releases && require('./update-history.cjs').buildHistory(releases,version);
+ if (history) info.releaseNotes = history.metadata;
  for (const [platform, name] of Object.entries(platformAssets)) info.platforms[platform] = {
   signature: fs.readFileSync(path.join(directory, name + '.sig'), 'utf8').trim(),
   url: repository + 'v' + version + '/' + name
  };
- const destination = path.join(directory, 'latest.json');
- const previous = fs.existsSync(destination) ? fs.readFileSync(destination) : null;
- fs.writeFileSync(destination, JSON.stringify(info, null, 2) + '\n');
- try { return validateManifests(directory, version, publicKey); }
- catch (error) { if (previous) fs.writeFileSync(destination, previous); else fs.rmSync(destination, {force: true}); throw error; }
+ const writes = new Map(history?.files || []);writes.set('latest.json',Buffer.from(JSON.stringify(info,null,2)+'\n'));
+ const originals = new Map([...writes.keys()].map(name => [name,fs.existsSync(path.join(directory,name)) ? fs.readFileSync(path.join(directory,name)) : null]));
+ try {
+  for (const [name,data] of writes) fs.writeFileSync(path.join(directory,name),data);
+  return validateManifests(directory, version, publicKey);
+ } catch (error) {
+  for (const [name,data] of originals) {
+   if (data === null) fs.rmSync(path.join(directory,name),{force:true});
+   else fs.writeFileSync(path.join(directory,name),data);
+  }
+  throw error;
+ }
 }
 if (require.main === module) {
  const directory = process.argv[2] || 'release';

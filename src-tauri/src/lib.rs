@@ -5,6 +5,7 @@ mod locale;
 mod preferences;
 mod shell;
 mod shortcuts;
+mod update_history;
 mod updates;
 
 use serde_json::{json, Value};
@@ -533,7 +534,8 @@ pub fn run() {
             updates::update_status,
             updates::update_check,
             updates::update_download,
-            updates::update_install
+            updates::update_install,
+            updates::update_history
         ])
         .setup(|app| {
             let config = app.config().app.windows[0].clone();

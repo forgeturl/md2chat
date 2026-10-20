@@ -16,7 +16,7 @@ description: 准备 md2chat 新版本、编写版本更新说明或正式发布�
    npm run release:prepare -- patch --notes-file PATH --summary-file SUMMARY_JSON_PATH
    ```
 
-   将 `patch` 按发布范围替换为 `minor`、`major` 或明确的 `X.Y.Z`。命令校验 GitHub Latest、摘要九语言和历史完整性后，同步版本、详细说明与 `docs/update-summaries.json`，保留历史。校验失败时解决具体原因后重试；网络、鉴权或限流错误不视为首次发布。
+   将 `patch` 按发布范围替换为 `minor`、`major` 或明确的 `X.Y.Z`。命令校验 GitHub Latest、摘要九语言和历史完整性后，同步版本、详细说明，并在 `docs/releases/<主.次>/<版本>.json` 新增摘要文件，保留历史。正式发布时自动生成并验证历史索引、九语分片与校验值。校验失败时解决具体原因后重试；网络、鉴权或限流错误不视为首次发布。
 3. 审阅版本与说明差异，运行 `npm run check`，再运行 `npm run release:verify -- --tag vX.Y.Z`。以命令全部通过和发布文件变更可审阅为准备完成条件。准备请求完成在此，保留变更供用户审阅。
 
 ## 正式发布

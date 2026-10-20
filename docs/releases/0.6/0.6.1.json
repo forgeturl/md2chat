@@ -1,0 +1,32 @@
+{
+  "version": "0.6.1",
+  "summary": {
+    "zh-CN": [
+      "新增应用内检查更新，Mac 安装包同时支持 M 系列和 Intel 芯片。"
+    ],
+    "en": [
+      "Adds in-app update checks and one Mac installer for both Apple Silicon and Intel."
+    ],
+    "es": [
+      "Añade búsqueda de actualizaciones y un instalador Mac para Apple Silicon e Intel."
+    ],
+    "pt-BR": [
+      "Inclui verificação de atualizações no app e um instalador Mac para Apple Silicon e Intel."
+    ],
+    "ja": [
+      "アプリ内の更新確認と、Apple Silicon・Intel 共通の Mac インストーラーを追加しました。"
+    ],
+    "ko": [
+      "앱 내 업데이트 확인과 Apple Silicon 및 Intel 공용 Mac 설치 파일을 추가했습니다."
+    ],
+    "de": [
+      "Neu: Update-Prüfung in der App und ein Mac-Installer für Apple Silicon und Intel."
+    ],
+    "fr": [
+      "Ajout de la recherche de mises à jour et d’un installateur Mac commun à Apple Silicon et Intel."
+    ],
+    "hi": [
+      "ऐप में अपडेट जाँच और Apple Silicon व Intel के लिए एक Mac इंस्टॉलर जोड़ा गया है।"
+    ]
+  }
+}

@@ -17,7 +17,8 @@ async function fixture(action){
  fs.writeFileSync(path.join(root,'src-tauri/Cargo.lock'),'version = 4\n\n[[package]]\nname = "another"\nversion = "9.9.9"\n\n[[package]]\nname = "md2chat"\nversion = "0.6.6"\n');
  fs.writeFileSync(path.join(root,'src-tauri/tauri.conf.json'),JSON.stringify({version:'../package.json'}));
  fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify(summary));
- fs.writeFileSync(path.join(root,'docs/update-summaries.json'),JSON.stringify([{...summary,version:'0.6.6'}]));
+ fs.mkdirSync(path.join(root,'docs/releases/0.6'),{recursive:true});
+ fs.writeFileSync(path.join(root,'docs/releases/0.6/0.6.6.json'),JSON.stringify({...summary,version:'0.6.6'}));
  const options={root,env:{},log(){},fetchImpl:async()=>new Response(JSON.stringify({tag_name:'v0.6.5',draft:false,prerelease:false}))};
  try{await action(root,options);}finally{fs.rmSync(root,{recursive:true,force:true});}
 }

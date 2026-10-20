@@ -1,0 +1,32 @@
+{
+  "version": "0.6.8",
+  "summary": {
+    "zh-CN": [
+      "桌面版支持读取 Markdown 中的本机图片；Windows 钉钉粘贴仍需客户端验证。"
+    ],
+    "en": [
+      "Desktop supports local images in Markdown; Windows DingTalk pasting still needs in-app verification."
+    ],
+    "es": [
+      "El escritorio admite imágenes locales en Markdown; pegar en DingTalk para Windows aún requiere verificación."
+    ],
+    "pt-BR": [
+      "O desktop aceita imagens locais no Markdown; a colagem no DingTalk para Windows ainda precisa de verificação."
+    ],
+    "ja": [
+      "デスクトップ版で Markdown 内のローカル画像に対応しました。Windows 版 DingTalk への貼り付けは確認が必要です。"
+    ],
+    "ko": [
+      "데스크톱에서 Markdown의 로컬 이미지를 지원합니다. Windows DingTalk 붙여넣기는 앱에서 확인이 필요합니다."
+    ],
+    "de": [
+      "Desktop unterstützt lokale Bilder in Markdown; Einfügen in DingTalk unter Windows muss noch geprüft werden."
+    ],
+    "fr": [
+      "Le bureau prend en charge les images locales dans Markdown ; le collage dans DingTalk sur Windows reste à vérifier."
+    ],
+    "hi": [
+      "डेस्कटॉप पर Markdown में स्थानीय चित्र समर्थित हैं; Windows DingTalk में पेस्ट की जाँच अभी बाकी है।"
+    ]
+  }
+}

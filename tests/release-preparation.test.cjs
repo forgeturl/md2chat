@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
 const {run}=require('../scripts/release.cjs');
-const {locales}=require('../scripts/release-summaries.cjs');
+const {locales,entryFile,readSource}=require('../scripts/release-summaries.cjs');
+function writeCatalog(root,catalog){fs.rmSync(path.join(root,'docs/releases'),{recursive:true,force:true});for(const entry of catalog){const file=path.join(root,entryFile(entry.version));fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,json(entry));}}
 const summary=()=>({summary:Object.fromEntries(locales.map(code=>[code,['A concise update.']]))});
 
 const latestUrl='https://api.github.com/repos/forgeturl/md2chat/releases/latest';
@@ -26,15 +27,15 @@ async function fixture(fn,{version='0.6.2',notes}={}){
  const notesFile=path.join(root,'input-notes.md');
  fs.writeFileSync(notesFile,newNotes);
  fs.writeFileSync(notesFile+'.json',json(summary()));
- fs.writeFileSync(path.join(root,'docs/update-summaries.json'),json([{...summary(),version},...([...historicalNotes.matchAll(/^#{1,6}\s+v(\d+\.\d+\.\d+)\s*$/gm)].map(m=>m[1]).filter(v=>v!==version).map(v=>({...summary(),version:v})))]));
+ writeCatalog(root,[{...summary(),version},...([...historicalNotes.matchAll(/^#{1,6}\s+v(\d+\.\d+\.\d+)\s*$/gm)].map(m=>m[1]).filter(v=>v!==version).map(v=>({...summary(),version:v})))]);
  const logs=[];
  const options={root,fetchImpl:async()=>latest(),env:{},log:(...args)=>logs.push(args.map(String).join(' '))};
  try{return await fn({root,notesFile,historicalNotes,pkg,lock,logs,options});}
  finally{fs.rmSync(root,{recursive:true,force:true});}
 }
 
-function readJson(root,name){return JSON.parse(fs.readFileSync(path.join(root,name),'utf8'));}
-function editJson(root,name,change){const value=readJson(root,name);change(value);fs.writeFileSync(path.join(root,name),json(value));}
+function readJson(root,name){return name==='summary-catalog' ? readSource(root).catalog : JSON.parse(fs.readFileSync(path.join(root,name),'utf8'));}
+function editJson(root,name,change){const value=readJson(root,name);change(value);if(name==='summary-catalog')writeCatalog(root,value);else fs.writeFileSync(path.join(root,name),json(value));}
 function snapshot(root){
  const files={};
  function visit(directory){
@@ -255,11 +256,11 @@ test('GitHub authentication is optional and tokens are sent as headers without b
 });
 
 test('preparation requires complete translated summaries and updates their history atomically',async()=>fixture(async({root,notesFile,options})=>{
- const previous=readJson(root,'docs/update-summaries.json');
+ const previous=readJson(root,'summary-catalog');
  const input=summary();input.important=summary().summary;
  fs.writeFileSync(notesFile+'.json',json(input));
  await run(prepareArgs(notesFile),options);
- const catalog=readJson(root,'docs/update-summaries.json');
+ const catalog=readJson(root,'summary-catalog');
  assert.deepEqual(catalog,[{...input,version:'0.6.3'},...previous]);
 }));
 test('incomplete summaries and concurrent summary edits stop preparation without partial writes',async()=>{
@@ -268,16 +269,30 @@ test('incomplete summaries and concurrent summary edits stop preparation without
   await rejectsWithoutWriting(root,()=>run(prepareArgs(notesFile),options));
  });
  await fixture(async({root,notesFile,options})=>{
-  options.fetchImpl=async()=>{editJson(root,'docs/update-summaries.json',catalog=>{catalog[0].summary.en=['Concurrent edit.'];});return latest();};
+  options.fetchImpl=async()=>{editJson(root,'summary-catalog',catalog=>{catalog[0].summary.en=['Concurrent edit.'];});return latest();};
   await assert.rejects(()=>run(prepareArgs(notesFile),options),/changed during validation/);
   assert.equal(readJson(root,'package.json').version,'0.6.2');
-  assert.equal(readJson(root,'docs/update-summaries.json')[0].summary.en[0],'Concurrent edit.');
+  assert.equal(readJson(root,'summary-catalog')[0].summary.en[0],'Concurrent edit.');
  });
 });
 test('a confirmed unpublished predecessor can be skipped when preparing a successor but cannot be published',async()=>fixture(async({root,notesFile,options})=>{
- editJson(root,'docs/update-summaries.json',catalog=>{catalog[0]={version:'0.6.2',unpublished:true};});
+ editJson(root,'summary-catalog',catalog=>{catalog[0]={version:'0.6.2',unpublished:true};});
  options.fetchImpl=async()=>latest('0.6.1');
  await rejectsWithoutWriting(root,()=>run(['verify','--tag','v0.6.2'],options));
  await run(prepareArgs(notesFile),options);
- assert.equal(readJson(root,'docs/update-summaries.json')[1].unpublished,true);
+ assert.equal(readJson(root,'summary-catalog')[1].unpublished,true);
+}));
+
+test('preparation adds only one summary file and preserves historical files byte for byte',async()=>fixture(async({root,notesFile,options})=>{
+ const originals=readSource(root).originals;
+ await run(prepareArgs(notesFile),options);
+ for(const [file,content] of originals)assert.equal(fs.readFileSync(file,'utf8'),content);
+ assert(fs.existsSync(path.join(root,entryFile('0.6.3'))));
+ assert(!fs.existsSync(path.join(root,'docs/update-summaries.json')));
+}));
+test('concurrent creation of the candidate summary cannot be overwritten',async()=>fixture(async({root,notesFile,options})=>{
+ const candidate=path.join(root,entryFile('0.6.3'));
+ options.fetchImpl=async()=>{fs.writeFileSync(candidate,json({...summary(),version:'0.6.3'}));return latest();};
+ await assert.rejects(()=>run(prepareArgs(notesFile),options),/changed during validation/);
+ assert.equal(readJson(root,'package.json').version,'0.6.2');assert(fs.existsSync(candidate));
 }));

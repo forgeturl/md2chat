@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: fr; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
+<!-- language: fr; source-sha256: 62acd6d3ecd00f7506d3cd1d28b689f2011e22c6b61c1eeeff69038b83fab54d -->
 
 Transformez le Markdown des outils d’IA ou de vos documents en texte et images pour vos conversations. Le texte ordinaire reste modifiable ; tableaux, code, formules et diagrammes Mermaid deviennent des images dans l’ordre d’origine. Les tâches utilisent ✅ / ⬜. Les noms d’outils d’IA désignent des sources possibles, pas des intégrations officielles ni une compatibilité vérifiée.
 
@@ -39,6 +39,8 @@ La barre de menus Mac ou la zone système Windows permet de convertir le presse-
 Interface, exemples intégrés, site, README et résumés de version prennent en charge neuf langues. Le menu du globe affiche leurs noms natifs. Seuls les exemples non modifiés suivent la langue ; après modification, collage, dépôt ou effacement, le contenu utilisateur reste préservé, même après annulation.
 
 Les résumés couvrent les versions publiées entre la version installée et celle visée. Les trois plus récentes sont affichées, les anciennes se déploient et les avis importants restent visibles. Les détails techniques gardent leur langue d’origine. Une vérification a lieu après démarrage et toutes les six heures ; téléchargement et redémarrage demandent votre action. Enregistrez avant d’installer. Les anciens clients obtiennent la nouvelle interface après installation d’une version qui l’inclut ; les migrations réelles exigent des tests de paquets signés.
+
+Les résumés historiques sont chargés et mis en cache selon la langue et les versions concernées. En cas d’échec, le résumé actuel reste visible, sans bloquer le téléchargement. Fermez puis rouvrez la fenêtre pour réessayer ; l’historique déjà chargé est réutilisé depuis le cache. Les anciens clients lisent toujours le champ compatible `notes`.
 
 ## Confidentialité et diagnostic
 

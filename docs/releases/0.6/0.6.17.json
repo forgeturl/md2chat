@@ -1,0 +1,32 @@
+{
+  "version": "0.6.17",
+  "summary": {
+    "zh-CN": [
+      "官网及使用指南补齐九种语言。"
+    ],
+    "en": [
+      "The website and guides are now available in all nine languages."
+    ],
+    "es": [
+      "El sitio y las guías ya están disponibles en los nueve idiomas."
+    ],
+    "pt-BR": [
+      "O site e os guias estão disponíveis nos nove idiomas."
+    ],
+    "ja": [
+      "公式サイトとガイドが9言語に対応しました。"
+    ],
+    "ko": [
+      "웹사이트와 사용 가이드가 9개 언어를 지원합니다."
+    ],
+    "de": [
+      "Website und Anleitungen sind jetzt in allen neun Sprachen verfügbar."
+    ],
+    "fr": [
+      "Le site et les guides sont désormais disponibles dans les neuf langues."
+    ],
+    "hi": [
+      "वेबसाइट और उपयोग गाइड अब सभी नौ भाषाओं में उपलब्ध हैं।"
+    ]
+  }
+}

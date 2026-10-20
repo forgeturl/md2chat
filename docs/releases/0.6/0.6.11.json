@@ -1,0 +1,32 @@
+{
+  "version": "0.6.11",
+  "summary": {
+    "zh-CN": [
+      "Mac 安装窗口新增拖入“应用程序”的引导。"
+    ],
+    "en": [
+      "The Mac installer now guides you to drag the app into Applications."
+    ],
+    "es": [
+      "El instalador de Mac indica cómo arrastrar la app a Aplicaciones."
+    ],
+    "pt-BR": [
+      "O instalador do Mac orienta a arrastar o app para Aplicativos."
+    ],
+    "ja": [
+      "Mac のインストール画面に「アプリケーション」へドラッグする案内を追加しました。"
+    ],
+    "ko": [
+      "Mac 설치 창에 앱을 응용 프로그램 폴더로 드래그하는 안내를 추가했습니다."
+    ],
+    "de": [
+      "Das Mac-Installationsfenster erklärt das Ziehen der App in den Programme-Ordner."
+    ],
+    "fr": [
+      "L’installateur Mac vous guide pour glisser l’app dans Applications."
+    ],
+    "hi": [
+      "Mac इंस्टॉलर में ऐप को Applications में खींचने का निर्देश जोड़ा गया है।"
+    ]
+  }
+}

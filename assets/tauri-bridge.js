@@ -85,6 +85,7 @@
    return () => { if (segmentsCallback === callback) segmentsCallback = undefined; };
   },
   updates: Object.freeze({
+   history: (version, locale) => invoke('update_history', {version, locale}),
    status: () => invoke('update_status'), check: () => invoke('update_check'),
    download: () => invoke('update_download'), install: () => invoke('update_install'),
    subscribe: callback => subscribe('md2chat:update-state', callback),
