@@ -7,7 +7,7 @@
 <meta name="referrer" content="no-referrer">
 <link rel="icon" type="image/png" href="./assets/favicon.png">
 <title>Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat</title>
-<link rel="stylesheet" href="./assets/style.css?v=0.6.20&amp;h=0f6be95b82bd">
+<link rel="stylesheet" href="./assets/style.css?v=0.6.21&amp;h=d93c0eeb4dd5">
 <!-- seo:start -->
 <link rel="canonical" href="https://forgeturl.github.io/md2chat/editor.html">
 
@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Markdown 图文转换器 — 微信、钉钉、飞书、企微、邮件 | md2chat"><meta name="twitter:description" content="在线输入 Markdown 或图文，按目标复制；企微图文按顺序分段复制、粘贴，钉钉、飞书请下载桌面版。表格和代码转图片，邮件保留可编辑表格；不上传正文，实际粘贴以客户端为准。"><meta name="twitter:image" content="https://forgeturl.github.io/md2chat/assets/desktop-preview.png">
 
 <!-- seo:end -->
-<link rel="stylesheet" href="./assets/language-picker.css?v=0.6.20&amp;h=0046e89fe7fd">
+<link rel="stylesheet" href="./assets/language-picker.css?v=0.6.21&amp;h=0046e89fe7fd">
 </head>
 <body><main class="app-shell">
 <div class="workspace">
@@ -97,7 +97,7 @@ console.log(greeting);
 <div><dt><img src="./assets/platforms/wechat.svg" width="22" height="22" alt="">微信</dt><dd>复制后直接粘贴；若聊天窗口丢图，可改用「图片」。</dd></div>
 <div><dt><img src="./assets/platforms/dingtalk.svg" width="22" height="22" alt="">钉钉</dt><dd>Mac 支持一次粘贴图文；Windows 请核对图片和文字顺序。</dd></div>
 <div><dt><img src="./assets/platforms/feishu.svg" width="22" height="22" alt="">飞书</dt><dd>请先展开飞书富文本输入框，再一次粘贴图文。</dd></div>
-<div><dt><img src="./assets/platforms/wecom.svg" width="22" height="22" alt="">企微</dt><dd>含图片时按弹窗顺序逐段复制、粘贴。</dd></div>
+<div><dt><img src="./assets/platforms/wecom.svg" width="22" height="22" alt="">企微</dt><dd>Mac 桌面版可一次粘贴整段图文；网页和 Windows 含图片时按弹窗顺序逐段粘贴。</dd></div>
 <div><dt><img src="./assets/platforms/email.svg" width="22" height="22" alt="">邮件</dt><dd>保留可编辑表格；发送前请确认粘贴结果。</dd></div>
 </dl>
 <p class="help-caution">Windows 飞书、邮件为实验性适配，请核对粘贴结果。</p>
@@ -118,23 +118,19 @@ console.log(greeting);
 <dialog id="diagnostic-dialog" class="utility-dialog" aria-labelledby="diagnostic-title">
 <div class="dialog-heading"><h2 id="diagnostic-title">剪贴板排查</h2><button type="button" class="dialog-close" data-close-dialog aria-label="关闭剪贴板排查">关闭</button></div>
 <div class="dialog-content"><section class="diagnostics" id="diagnostics">
-<p id="diagnostic-help">仅在点击或粘贴时读取浏览器开放的格式，报告包含图片引用类型和脱敏结构。请分别读取转换器与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、链接或文件路径，不上传内容。</p>
-<div class="diagnostic-actions"><button id="read-clipboard">读取当前剪贴板</button><button id="copy-report" disabled>复制排查报告</button></div>
-<section id="dingtalk-html-tests" hidden aria-label="Windows 钉钉粘贴测试">
-<p class="help">Windows 钉钉粘贴测试（会替换剪贴板）：先测试无图片 HTML。再从钉钉复制一条图文，确认能直接粘回草稿后，点击“重写当前 HTML”并再次粘贴。只记录两次是否出现内容，无需发送。测试不上传或保存 HTML。</p>
-<div class="diagnostic-actions"><button type="button" data-dingtalk-html-test="text">复制 HTML 文字测试</button><button type="button" data-dingtalk-html-test="rewrite">重写当前 HTML</button></div>
-</section>
-<div id="clipboard-paste" class="paste-zone" contenteditable="true" role="textbox" aria-label="粘贴剪贴板样本" data-placeholder="在这里按 ⌘V / Ctrl+V 粘贴样本"></div>
-<p id="diagnostic-status" role="status" aria-live="polite">不会自动读取、上传或保存内容。</p>
-<pre id="diagnostic-report" class="diagnostic-report">尚无样本。</pre><div id="clipboard-images"></div>
+<p id="diagnostic-help">读取并查看识别结果，导出 ZIP 发给开发者。包内含原始内容，关闭窗口即清空。</p>
+<div class="diagnostic-actions"><button id="read-clipboard">读取当前剪贴板</button><button id="export-diagnostics" disabled>导出诊断 ZIP</button></div>
+<p id="diagnostic-status" role="status" aria-live="polite" data-no-i18n>点击读取，查看剪贴板中的内容。</p>
+<p id="diagnostic-feedback" class="diagnostic-feedback" hidden><a href="https://github.com/forgeturl/md2chat/issues/new?template=compatibility.md" target="_blank" rel="noopener noreferrer">前往 GitHub 创建 Issue ↗</a><span>请先检查 ZIP，避免公开敏感内容，再手动附到 Issue。</span></p>
+<div id="diagnostic-report" class="diagnostic-results" data-no-i18n><p class="diagnostic-empty">尚未读取剪贴板。</p></div>
 </section></div>
 </dialog>
 <p class="locale-status" data-locale-status role="status"></p>
 <div id="copy-notice" class="copy-notice" role="status" aria-live="polite" aria-atomic="true"></div>
-<script src="./assets/tauri-bridge.js?v=0.6.20&amp;h=18a1e262e5b2"></script>
-<script src="./assets/i18n-data.js?v=0.6.20&amp;h=73649985875a"></script><script src="./assets/i18n.js?v=0.6.20&amp;h=b8e724f2d576"></script><script src="./assets/demo.js?v=0.6.20&amp;h=ef799fd128aa"></script><script src="./assets/guide-examples.js?v=0.6.20&amp;h=ea52a9f97993"></script><script src="./assets/editor-example.js?v=0.6.20&amp;h=7a559a9f2176"></script>
-<script src="./assets/vendor/marked.js?v=0.6.20&amp;h=d7931d1cd7bf"></script><script src="./assets/chat-markdown.js?v=0.6.20&amp;h=c250475bc54f"></script><script src="./assets/code-images.js?v=0.6.20&amp;h=e3b2f13afaa5"></script><script src="./assets/renderers.js?v=0.6.20&amp;h=60f99c39409d"></script><script src="./assets/chat-clipboard.js?v=0.6.20&amp;h=1f316826c567"></script><script src="./assets/chat-targets.js?v=0.6.20&amp;h=8500bb50860b"></script><script src="./assets/clipboard-source.js?v=0.6.20&amp;h=1fffffab73b6"></script><script src="./assets/clipboard-image.js?v=0.6.20&amp;h=900229824776"></script><script src="./assets/wecom-segments.js?v=0.6.20&amp;h=ba45fcca08f7"></script><script src="./assets/clipboard-diagnostics.js?v=0.6.20&amp;h=8a2a2ddb83b2"></script><script src="./assets/table-images.js?v=0.6.20&amp;h=2851e926c973"></script><script src="./assets/chat-payload.js?v=0.6.20&amp;h=144eb1f5efb5"></script><script src="./assets/app.js?v=0.6.20&amp;h=2c5c633fb8ed"></script>
-<script src="./assets/workbench.js?v=0.6.20&amp;h=1bbd8e2e29b7"></script>
-<script src="./assets/updates.js?v=0.6.20&amp;h=06a4d0870824"></script>
-<script src="./assets/language-picker.js?v=0.6.20&amp;h=ead031c12cbe"></script>
+<script src="./assets/tauri-bridge.js?v=0.6.21&amp;h=5c3738ebfef3"></script>
+<script src="./assets/i18n-data.js?v=0.6.21&amp;h=56c58e0b05ef"></script><script src="./assets/i18n.js?v=0.6.21&amp;h=2b7a942876d2"></script><script src="./assets/demo.js?v=0.6.21&amp;h=ef799fd128aa"></script><script src="./assets/guide-examples.js?v=0.6.21&amp;h=ea52a9f97993"></script><script src="./assets/editor-example.js?v=0.6.21&amp;h=7a559a9f2176"></script>
+<script src="./assets/vendor/marked.js?v=0.6.21&amp;h=d7931d1cd7bf"></script><script src="./assets/chat-markdown.js?v=0.6.21&amp;h=c250475bc54f"></script><script src="./assets/code-images.js?v=0.6.21&amp;h=e3b2f13afaa5"></script><script src="./assets/renderers.js?v=0.6.21&amp;h=60f99c39409d"></script><script src="./assets/chat-clipboard.js?v=0.6.21&amp;h=1f316826c567"></script><script src="./assets/chat-targets.js?v=0.6.21&amp;h=8500bb50860b"></script><script src="./assets/clipboard-source.js?v=0.6.21&amp;h=1fffffab73b6"></script><script src="./assets/clipboard-image.js?v=0.6.21&amp;h=900229824776"></script><script src="./assets/wecom-segments.js?v=0.6.21&amp;h=ba45fcca08f7"></script><script src="./assets/clipboard-diagnostics.js?v=0.6.21&amp;h=91235e4fd7f1"></script><script src="./assets/table-images.js?v=0.6.21&amp;h=2851e926c973"></script><script src="./assets/chat-payload.js?v=0.6.21&amp;h=144eb1f5efb5"></script><script src="./assets/app.js?v=0.6.21&amp;h=2da64371dec8"></script>
+<script src="./assets/workbench.js?v=0.6.21&amp;h=1bbd8e2e29b7"></script>
+<script src="./assets/updates.js?v=0.6.21&amp;h=06a4d0870824"></script>
+<script src="./assets/language-picker.js?v=0.6.21&amp;h=ead031c12cbe"></script>
 </body></html>

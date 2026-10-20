@@ -90,11 +90,13 @@ async function fixture(initial = {}) {
   subscribe: callback => { subscription = callback; },
   onTest: callback => { onTest = callback; }
  };
- const window = {md2chatShortcuts: bridge, ShortcutKeys: keys, addEventListener: (name, callback) => events.set(name, callback)};
+ let locale='zh-CN';const i18n=require('../assets/i18n.js');
+ const window = {md2chatShortcuts: bridge, ShortcutKeys: keys, md2chatI18n:{t:source=>i18n.translate(source,locale)}, addEventListener: (name, callback) => events.set(name, callback)};
  vm.runInNewContext(fs.readFileSync(require.resolve('../assets/shortcut-settings.js'), 'utf8'), {window, document, setTimeout, clearTimeout});
  await tick();
  return {
   elements, rows, calls, documentEvents,
+  async language(code){locale=code;events.get('md2chat:language')?.();await tick();},
   async click(id) { const control = elements.get(id); if (!control.disabled) control.events.get('click')?.({target: control}); await tick(); },
   async action(target, action) { const control = rows.get(target).controls[action]; elements.get('shortcut-settings').events.get('click')({target: control}); await tick(); },
   async enable(value) { const control = elements.get('shortcuts-enabled'); control.checked = value; control.events.get('change')(); await tick(); },
@@ -205,4 +207,12 @@ test('shortcut UI and runtime messages have translations in every supported lang
  const html = fs.readFileSync(require.resolve('../desktop/preferences.html'), 'utf8').split('<section id="shortcut-settings"')[1].split('</section>')[0];
  for (const match of html.matchAll(/>([^<>]*[\u3400-\u9fff][^<>]*)</g)) messages.add(match[1]);
  for (const message of messages) for (const {code} of data.locales) assert.equal(typeof data.messages[message]?.[code], 'string', `${code}: ${message}`);
+});
+
+test('shortcut status follows live language switching without reloading settings or registering keys',async()=>{
+ const f=await fixture(),i18n=require('../assets/i18n.js');
+ for(const code of ['en','fr','de','ja','zh-CN']){
+  await f.language(code);assert.equal(f.elements.get('shortcuts-status').textContent,i18n.translate('全局快捷键已关闭，不占用任何按键。',code));
+ }
+ assert.deepEqual(f.calls,[['get']]);assert.equal(f.documentEvents.has('keydown'),false);
 });

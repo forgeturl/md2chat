@@ -46,6 +46,8 @@ unsafe extern "system" {
     fn GlobalUnlock(memory: Handle) -> i32;
     fn GlobalSize(memory: Handle) -> usize;
     fn GlobalFree(memory: Handle) -> Handle;
+    fn SetLastError(code: u32);
+    fn GetLastError() -> u32;
 }
 // HWND wraps a raw pointer and is not Send/Sync. Store only its pointer-sized
 // value; the Tauri window manager keeps the registered main window alive.
@@ -395,6 +397,67 @@ pub fn read() -> Result<Snapshot, String> {
         sequence: sequence as u64,
     })
 }
+pub fn diagnostic_read() -> Result<(u64, Vec<super::DiagnosticFormat>), String> {
+    let _clipboard = Clipboard::open(false)?;
+    let sequence = unsafe { GetClipboardSequenceNumber() };
+    let mut out = Vec::new();
+    let mut total = 0usize;
+    let mut id = 0;
+    loop {
+        id = unsafe { EnumClipboardFormats(id) };
+        if id == 0 { break; }
+        if out.len() >= super::DIAGNOSTIC_FORMATS { return Err("剪贴板格式超过 1000，请缩小样本。".into()); }
+        let native_name = match id {
+            1 => "CF_TEXT".into(), 2 => "CF_BITMAP".into(), 3 => "CF_METAFILEPICT".into(),
+            7 => "CF_OEMTEXT".into(), 8 => "CF_DIB".into(), 9 => "CF_PALETTE".into(),
+            13 => "CF_UNICODETEXT".into(), 14 => "CF_ENHMETAFILE".into(), 15 => "CF_HDROP".into(),
+            16 => "CF_LOCALE".into(), 17 => "CF_DIBV5".into(),
+            _ => unsafe {
+                let mut chars = [0u16; 4096];
+                let count = GetClipboardFormatNameW(id, chars.as_mut_ptr(), chars.len() as i32);
+                if count > 0 { String::from_utf16_lossy(&chars[..count as usize]) } else { format!("windows-format-{id}") }
+            }
+        };
+        let mut entry = super::DiagnosticFormat { item: 0, name: format_name(id), native_name: format!("{native_name} (ID {id})"), size: None, bytes: None, error: None };
+        // These are GDI/owner-display/private handles, not HGLOBAL byte buffers.
+        if matches!(id, 2 | 3 | 9 | 14 | 0x80 | 0x82 | 0x83 | 0x8e | 0x300..=0x3ff) {
+            entry.error = Some("此格式为系统对象句柄，无法按字节导出；请参考同时提供的 DIB/PNG 等格式".into());
+        } else {
+            unsafe {
+                let memory = GetClipboardData(id);
+                if memory.is_null() {
+                    entry.error = Some("系统未提供此格式的数据".into());
+                } else {
+                    SetLastError(0);
+                    let size = GlobalSize(memory);
+                    if size == 0 && GetLastError() != 0 {
+                        entry.error = Some("此格式无法作为全局内存数据读取".into());
+                    } else {
+                        entry.size = Some(size);
+                        if size > super::DIAGNOSTIC_MAX.saturating_sub(total) {
+                            entry.error = Some("超过单次采集 60 MiB 限额，未采集此格式".into());
+                        } else if size == 0 {
+                            entry.bytes = Some(Vec::new());
+                        } else {
+                            let pointer = GlobalLock(memory);
+                            if pointer.is_null() {
+                                entry.error = Some("此格式的数据不可读".into());
+                            } else {
+                                entry.bytes = Some(std::slice::from_raw_parts(pointer as *const u8, size).to_vec());
+                                GlobalUnlock(memory);
+                                total += size;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        out.push(entry);
+    }
+    if unsafe { GetClipboardSequenceNumber() } != sequence { return Err("读取期间剪贴板已更新，请重试。".into()); }
+    Ok((sequence as u64, out))
+}
+
 #[cfg(test)]
 pub fn write(formats: Vec<(String, Vec<u8>)>) -> Result<(), String> {
     write_checked(formats, None)

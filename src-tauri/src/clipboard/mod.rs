@@ -38,6 +38,8 @@ fn copy_inner(
     directory: &Path,
     expected: Option<&str>,
 ) -> Result<Value, String> {
+    #[cfg(target_os = "macos")]
+    let wecom_formats = if target == "wecom" { native::wecom_formats(&parts)? } else { Vec::new() };
     let payload = payload::build(
         parts,
         target,
@@ -49,6 +51,8 @@ fn copy_inner(
         ("text/plain".into(), payload.plain.into_bytes()),
         ("text/html".into(), payload.html.into_bytes()),
     ];
+    #[cfg(target_os = "macos")]
+    formats.extend(wecom_formats);
     let native = cfg!(target_os = "macos") && target == "dingtalk";
     let feishu_native = cfg!(any(target_os = "macos", windows)) && target == "feishu";
     if native {
@@ -73,7 +77,7 @@ fn copy_inner(
         let _ = cache::prune(directory);
     }
     Ok(
-        json!({"images":payload.images,"native":native,"target":target,"windowsHtml":cfg!(windows)&&target=="dingtalk"&&payload.images>0,"feishuNative":feishu_native}),
+        json!({"images":payload.images,"native":native,"target":target,"windowsHtml":cfg!(windows)&&target=="dingtalk"&&payload.images>0,"feishuNative":feishu_native,"wecomNative":cfg!(target_os="macos")&&target=="wecom"}),
     )
 }
 pub fn copy_segment(segment: Value) -> Result<Value, String> {
@@ -263,85 +267,34 @@ pub fn prune(directory: &Path) -> Result<(), String> {
 }
 pub fn inspect(version: &str) -> Result<Value, String> {
     let _lock = lock()?;
-    let snapshot = native::read()?;
-    let mac = cfg!(target_os = "macos");
-    let mut report = json!({"platform":if mac{"darwin"}else if cfg!(windows){"win32"}else{std::env::consts::OS},"version":version,"formats":[],"html":[],"htmlImages":0,"htmlTables":0,"imageFormats":0,"macDingtalk":{"applicable":mac,"present":false,"images":if mac{json!(0)}else{Value::Null}},"truncated":false});
-    let mut decoded = 0usize;
-    for format in snapshot.items.iter().flatten() {
-        if report["formats"].as_array().unwrap().len() >= 100 {
-            report["truncated"] = json!(true);
-            break;
-        }
-        let known = [
-            "text/plain",
-            "text/html",
-            "text/rtf",
-            "text/uri-list",
-            "image/png",
-            "image/jpeg",
-            "image/gif",
-            "image/webp",
-            "image/bmp",
-            "image/tiff",
-            payload::DINGTALK,
-            payload::FEISHU,
-        ]
-        .contains(&format.name.as_str());
-        let mut info = json!({"type":if known{format.name.as_str()}else{"其他系统格式"},"bytes":if format.bytes.is_some(){json!(format.size)}else{Value::Null}});
-        if format.name.starts_with("image/") {
-            let n = report["imageFormats"].as_u64().unwrap() + 1;
-            report["imageFormats"] = json!(n);
-        }
-        if format.name == payload::DINGTALK {
-            report["macDingtalk"]["present"] = json!(true);
-        }
-        if format.name == "text/html" || mac && format.name == payload::DINGTALK {
-            if decoded + format.size > payload::MAX_TEXT {
-                info["skipped"] = json!(true);
-                report["truncated"] = json!(true);
-                if format.name == payload::DINGTALK {
-                    report["macDingtalk"]["images"] = Value::Null;
-                }
-            } else if let Some(bytes) = &format.bytes {
-                decoded += bytes.len();
-                if format.name == "text/html" {
-                    let summary = summary::html(&String::from_utf8_lossy(bytes));
-                    let images = report["htmlImages"].as_u64().unwrap()
-                        + summary["imageCount"].as_u64().unwrap();
-                    let tables = report["htmlTables"].as_u64().unwrap()
-                        + summary["tableCount"].as_u64().unwrap();
-                    report["htmlImages"] = json!(images);
-                    report["htmlTables"] = json!(tables);
-                    if summary["truncated"] == true {
-                        report["truncated"] = json!(true);
-                    }
-                    report["html"].as_array_mut().unwrap().push(summary);
-                } else if let Ok(value) = serde_json::from_slice::<Value>(bytes) {
-                    let count = value["contents"].as_array().map(|contents| {
-                        contents
-                            .iter()
-                            .filter_map(|c| c["text"]["items"].as_array())
-                            .flatten()
-                            .filter(|p| p["type"] == "image")
-                            .count()
-                    });
-                    if let Some(n) = count {
-                        report["macDingtalk"]["images"] = json!(n);
-                    } else {
-                        info["unreadable"] = json!(true);
-                        report["macDingtalk"]["images"] = Value::Null;
-                    }
-                } else {
-                    info["unreadable"] = json!(true);
-                    report["macDingtalk"]["images"] = Value::Null;
-                }
+    let (sequence, formats) = native::diagnostic_read()?;
+    Ok(diagnostic_report(version, sequence, formats))
+}
+fn diagnostic_report(version: &str, sequence: u64, formats: Vec<native::DiagnosticFormat>) -> Value {
+    let entries = formats.into_iter().map(|format| {
+        let mut entry = json!({"item":format.item,"type":format.name,"nativeType":format.native_name,"size":format.size});
+        if let Some(error) = format.error { entry["error"] = json!(error); }
+        if let Some(bytes) = format.bytes {
+            entry["base64"] = json!(STANDARD.encode(&bytes));
+            // Raw bytes always survive, even when decoding fails (e.g. malformed CF_HTML).
+            let text = if entry["nativeType"].as_str().unwrap_or("").starts_with("CF_UNICODETEXT ") {
+                let units = bytes.chunks_exact(2).map(|s| u16::from_le_bytes([s[0],s[1]])).take_while(|u| *u != 0).collect::<Vec<_>>();
+                if bytes.len() % 2 != 0 { None } else { String::from_utf16(&units).ok() }
             } else {
-                info["unreadable"] = json!(true);
+                String::from_utf8(bytes.clone()).ok().filter(|text| !text.contains('\0') || entry["type"] == "text/html").map(|text| text.trim_end_matches('\0').to_owned())
+            };
+            if let Some(text) = text { entry["text"] = json!(text); }
+            #[cfg(windows)]
+            if entry["type"] == "text/html" {
+                match native::parse_cf_html(&bytes).and_then(|bytes| String::from_utf8(bytes).map_err(|_| "HTML 文字编码无效".into())) {
+                    Ok(html) => { entry["html"] = json!(html); }
+                    Err(error) => { entry["parseError"] = json!(error); }
+                }
             }
         }
-        report["formats"].as_array_mut().unwrap().push(info);
-    }
-    Ok(report)
+        entry
+    }).collect::<Vec<_>>();
+    json!({"version":version,"platform":if cfg!(target_os="macos"){"darwin"}else if cfg!(windows){"win32"}else{std::env::consts::OS},"sequence":sequence,"entries":entries})
 }
 pub fn test_dingtalk_html(mode: &str) -> Result<Value, String> {
     let _lock = lock()?;
@@ -417,6 +370,25 @@ fn roundtrip_formats() -> Vec<(String, Vec<u8>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn diagnostics_preserve_unknown_formats_raw_cf_html_and_failed_entries() {
+        let report = diagnostic_report("test", 42, vec![
+            native::DiagnosticFormat { item: 2, name: "text/html".into(), native_name: "HTML Format (ID 49000)".into(), size: Some(5), bytes: Some(b"<p>x\0".to_vec()), error: None },
+            native::DiagnosticFormat { item: 2, name: "private/custom".into(), native_name: "com.private/custom".into(), size: Some(3), bytes: Some(vec![0, 255, 128]), error: None },
+            native::DiagnosticFormat { item: 2, name: "CF_BITMAP".into(), native_name: "CF_BITMAP (ID 2)".into(), size: None, bytes: None, error: Some("object handle".into()) },
+            native::DiagnosticFormat { item: 3, name: "text/plain".into(), native_name: "CF_UNICODETEXT (ID 13)".into(), size: Some(4), bytes: Some(vec![0x2d, 0x4e, 0, 0]), error: None },
+        ]);
+        assert_eq!(report["sequence"], 42);
+        assert_eq!(report["entries"][0]["item"], 2);
+        let bytes = STANDARD.decode(report["entries"][0]["base64"].as_str().unwrap()).unwrap();
+        assert_eq!(bytes, b"<p>x\0");
+        assert_eq!(report["entries"][1]["type"], "private/custom");
+        assert_eq!(report["entries"][1]["nativeType"], "com.private/custom");
+        assert_eq!(STANDARD.decode(report["entries"][1]["base64"].as_str().unwrap()).unwrap(), vec![0, 255, 128]);
+        assert_eq!(report["entries"][2]["error"], "object handle");
+        assert!(report["entries"][2].get("base64").is_none());
+        assert_eq!(report["entries"][3]["text"], "中");
+    }
     #[test]
     fn fingerprint_changes_with_sequence() {
         let make = |sequence| native::Snapshot {

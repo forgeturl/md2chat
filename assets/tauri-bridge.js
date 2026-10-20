@@ -72,6 +72,7 @@
   },
   testDingtalkHtml: mode => invoke('desktop_test_dingtalk_html', {mode}),
   inspect: () => invoke('desktop_inspect'),
+  saveDiagnostics: (name, data) => invoke('desktop_save_diagnostics', {name, data}),
   readLocalImage: source => invoke('desktop_read_local_image', {source}),
   resolveClipboardHtml: html => invoke('desktop_resolve_clipboard_html', {html}),
   ready,

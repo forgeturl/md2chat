@@ -8,7 +8,8 @@
   const icons = new Set(['image', 'wechat', 'dingtalk', 'feishu', 'wecom', 'email', 'window', 'preferences', 'help', 'update', 'quit']);
   const platforms = new Set(['wechat', 'dingtalk', 'feishu', 'wecom', 'email']);
   let acting = false;
-  let sequence = 0;
+  let sequence = 0, lastError;
+  const t = source => window.md2chatI18n?.t(source) || source;
 
   function enabledRows() { return Array.from(menu.querySelectorAll('button')).filter(row => !row.disabled); }
   function focusRow(row) {
@@ -17,7 +18,9 @@
   }
   function focusFirst() { focusRow(enabledRows()[0]); }
   function report(reason) {
-    error.textContent = reason instanceof Error ? reason.message : String(reason);
+    lastError = reason instanceof Error ? reason.message : String(reason);
+    lastError = Object.entries(window.md2chatLocales?.messages || {}).find(([,entry])=>Object.values(entry).includes(lastError))?.[0] || lastError;
+    error.textContent = t(lastError);
     error.hidden = false;
   }
   async function invoke(command, args) {
@@ -101,6 +104,7 @@
     focusRow(buttons[index]);
   });
   document.addEventListener('contextmenu', event => event.preventDefault());
+  window.addEventListener('md2chat:language', () => {if (!error.hidden && lastError) error.textContent = t(lastError);});
   window.addEventListener('focus', () => { error.hidden = true; void load(true); });
   // Native Focused(false) hides the window even when the WebView is busy.
   // Subscribe before reading state so changes during startup cannot be missed.

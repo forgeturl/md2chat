@@ -113,3 +113,11 @@ test('external links invoke the restricted native opener instead of navigating t
  await tick(); assert(prevented); assert.equal(state.calls.at(-1).command, 'desktop_open_external');
  assert.equal(state.calls.at(-1).args.url, 'https://github.com/forgeturl/md2chat');
 });
+
+test('diagnostic ZIP saving uses a dedicated command without accepting a destination path',async()=>{
+ const state=fixture({invoke:async command=>command==='desktop_save_diagnostics'});
+ const saved=await state.bridge.saveDiagnostics('md2chat-clipboard-test.zip','UEsDBA==');
+ assert.equal(saved,true);const call=state.calls.at(-1);
+ assert.equal(call.command,'desktop_save_diagnostics');assert.equal(call.args.name,'md2chat-clipboard-test.zip');assert.equal(call.args.data,'UEsDBA==');
+ assert.deepEqual(Object.keys(call.args).sort(),['data','name']);
+});

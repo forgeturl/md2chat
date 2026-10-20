@@ -14,11 +14,11 @@
   const cancel = document.getElementById('shortcuts-cancel');
   const rows = new Map(Array.from(root.querySelectorAll('[data-shortcut-target]'), row => [row.dataset.shortcutTarget, row]));
   let snapshot = null, busy = false, mode = null, sessionId = null, candidate = null, recordingTarget = null;
-  let timer, cancelPending = false, disposed = false;
+  let timer, cancelPending = false, disposed = false, statusSource;
   const t = value => window.md2chatI18n?.t(value) || value;
   const labels = {disabled: '启用时检查可用性', registered: '已注册', unavailable: '暂不可用，请更换或重试', paused: '录制期间暂停'};
 
-  function message(value, error = false) { status.textContent = t(value); status.dataset.state = error ? 'error' : 'saved'; }
+  function message(value, error = false) { statusSource = value; status.textContent = t(value); status.dataset.state = error ? 'error' : 'saved'; }
 
   function accept(value) {
     if (!value || !['darwin', 'win32'].includes(value.platform)) throw new Error('无法读取快捷键设置，请重试。');
@@ -191,7 +191,7 @@
   });
   window.addEventListener('blur', () => { void stop(); });
   window.addEventListener('pagehide', () => { disposed = true; void stop(); });
-  window.addEventListener('md2chat:language', render);
+  window.addEventListener('md2chat:language', () => {render();if (statusSource) status.textContent = t(statusSource);});
   bridge?.subscribe(value => { try { accept(value); if (value.warning) message(value.warning, true); } catch (_) {} });
   bridge?.onTest(value => {
     if (mode === 'test' && value.sessionId === sessionId && rows.has(value.target)) message('已收到快捷键，剪贴板未改变。');

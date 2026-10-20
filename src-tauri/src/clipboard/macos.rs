@@ -1,5 +1,8 @@
 //! One NSPasteboardItem carries all representations, including native chat types.
 //! AppKit pasteboard access is thread safe; every entry point owns an autorelease pool.
+#[path = "macos_rich.rs"]
+mod rich;
+pub use rich::wecom_formats;
 use super::{Format, Snapshot};
 use std::ffi::{c_char, c_void, CString};
 type Id = *mut c_void;
@@ -213,6 +216,49 @@ pub fn read() -> Result<Snapshot, String> {
         })
     }
 }
+pub fn diagnostic_read() -> Result<(u64, Vec<super::DiagnosticFormat>), String> {
+    let _pool = Pool::new();
+    unsafe {
+        let board: Id = send0(class("NSPasteboard"), "generalPasteboard");
+        if board.is_null() { return Err("系统剪贴板不可用。".into()); }
+        let sequence: isize = send0(board, "changeCount");
+        let objects: Id = send0(board, "pasteboardItems");
+        let count: usize = if objects.is_null() { 0 } else { send0(objects, "count") };
+        let mut out = Vec::new();
+        let mut total = 0usize;
+        // Fail explicitly rather than silently omitting items/formats.
+        if count > super::DIAGNOSTIC_FORMATS { return Err("剪贴板项目超过 1000，请缩小样本。".into()); }
+        for index in 0..count {
+            let item: Id = send1(objects, "objectAtIndex:", index);
+            let types: Id = send0(item, "types");
+            let type_count: usize = send0(types, "count");
+            if out.len() + type_count > super::DIAGNOSTIC_FORMATS { return Err("剪贴板格式超过 1000，请缩小样本。".into()); }
+            for type_index in 0..type_count {
+                let kind: Id = send1(types, "objectAtIndex:", type_index);
+                let native_name = string(kind)?;
+                let mut entry = super::DiagnosticFormat { item: index, name: canonical(&native_name).into(), native_name, size: None, bytes: None, error: None };
+                let data: Id = send1(item, "dataForType:", kind);
+                if data.is_null() {
+                    entry.error = Some("系统未提供此格式的数据".into());
+                } else {
+                    let size: usize = send0(data, "length");
+                    entry.size = Some(size);
+                    if size > super::DIAGNOSTIC_MAX.saturating_sub(total) {
+                        entry.error = Some("超过单次采集 60 MiB 限额，未采集此格式".into());
+                    } else {
+                        let pointer: *const u8 = send0(data, "bytes");
+                        if size > 0 && pointer.is_null() { entry.error = Some("数据不可读".into()); }
+                        else { entry.bytes = Some(if size == 0 { Vec::new() } else { std::slice::from_raw_parts(pointer, size).to_vec() }); total += size; }
+                    }
+                }
+                out.push(entry);
+            }
+        }
+        if send0::<isize>(board, "changeCount") != sequence { return Err("读取期间剪贴板已更新，请重试。".into()); }
+        Ok((sequence as u64, out))
+    }
+}
+
 pub fn write_checked(formats: Vec<(String, Vec<u8>)>, sequence: Option<u64>) -> Result<(), String> {
     write_items(vec![formats], sequence, false).map(|_| ())
 }

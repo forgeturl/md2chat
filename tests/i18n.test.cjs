@@ -143,3 +143,30 @@ test('all nine public languages navigate to complete pages without changing edit
  i18n.start(home.win);await i18n.set('auto');
  assert.deepEqual(home.navigations,['./en/']);
 });
+
+test('desktop preferences, tray, help, and diagnostic static copy has all nine translations',()=>{
+ const fs=require('node:fs'),files=['../desktop/preferences.html','../desktop/tray-panel.html','../editor.html'];
+ for(const file of files){
+  const source=fs.readFileSync(require.resolve(file),'utf8').replace(/<(script|style|textarea|pre|code)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<div[^>]*contenteditable[^>]*>[\s\S]*?<\/div>/gi,''),strings=new Set();
+  for(const match of source.matchAll(/>\s*([^<>]+?)\s*</g))if(/[\u3400-\u9fff]/.test(match[1]))strings.add(match[1]);
+  for(const match of source.matchAll(/(?:aria-label|title|placeholder)="([^"]+)"/g))if(/[\u3400-\u9fff]/.test(match[1]))strings.add(match[1]);
+  for(const source of strings)for(const {code} of data.locales)assert.equal(typeof data.messages[source]?.[code],'string',file+': '+code+': '+source);
+ }
+});
+
+test('diagnostic, tray and WeCom error paths translate in each locale and retain placeholder values',()=>{
+ const sources=['读取失败：当前浏览器不支持直接读取。可在此窗口按 ⌘V / Ctrl+V 粘贴。','导出失败：保存诊断包失败，请选择可写的位置。','第 3 段复制失败：剪贴板访问未完成。请重试。','第 3 段图片','✓ 已复制到剪贴板，请到微信聊天框粘贴','邮件预览：2 个可编辑表格，3 张图片。','请在 md2chat 桌面应用中打开。','超过 8 MiB 解析限额；原始数据已完整保留'];
+ for(const source of sources)for(const {code} of data.locales)if(code!=='zh-CN'){
+  const translated=i18n.translate(source,code);assert.notEqual(translated,source,code+': '+source);assert(!translated.includes('{'),translated);
+  if(!['ja','ko'].includes(code))assert(!/[\u3400-\u9fff]/.test(translated),code+': '+translated);
+ }
+});
+
+test('native menus and save-dialog captions use the same complete locale catalog',()=>{
+ const fs=require('node:fs');
+ for(const file of ['../src-tauri/src/shell.rs','../src-tauri/src/shell/tray_panel.rs','../src-tauri/src/lib.rs']){
+  const source=fs.readFileSync(require.resolve(file),'utf8');
+  for(const match of source.matchAll(/locale::tr\([^,]+,\s*"([^"]+)"/g))for(const {code} of data.locales)assert.equal(typeof data.messages[match[1]]?.[code],'string',file+': '+match[1]);
+ }
+ const tray=fs.readFileSync(require.resolve('../desktop/tray-panel.html'),'utf8');assert(tray.indexOf('i18n.js')<tray.indexOf('tray-panel.js'));
+});

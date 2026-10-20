@@ -6,7 +6,7 @@ const wecomSegments=WecomSegments.create({copySegment:segment=>{
 }});
 let copying=false,lastCopyTarget=null;
 const desktopRequired=b=>['image','dingtalk','feishu'].includes(b.dataset.copyTarget)&&!window.md2chatDesktop;
-function copyTargetNote(target){return target==='image'?'将完整内容合成一张 PNG，图片中的文字不可编辑。':target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
+function copyTargetNote(target){if(target==='wecom'&&window.md2chatDesktop?.platform==='darwin')return 'Mac 企业微信支持一次粘贴整段图文，普通文字可编辑。';return target==='image'?'将完整内容合成一张 PNG，图片中的文字不可编辑。':target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
@@ -225,7 +225,6 @@ if(window.md2chatDesktop){
  }
  document.querySelector('.privacy-note').textContent='桌面版 · 无需登录 · 内容在本机处理 · 钉钉、Mac 飞书复制所需图片临时保存在本机';
  document.getElementById('copy-help').textContent='桌面版可直接使用下方的平台按钮；不同平台的粘贴方式略有不同。';
- document.getElementById('diagnostic-help').textContent='点击后读取系统剪贴板格式、图片引用类型和脱敏结构。请分别读取 md2chat 与钉钉复制的内容，再复制报告；截图或复制其他内容会替换当前剪贴板。报告不含正文、图片内容、链接或文件路径。';
 }
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
 function updateCopyControls(){for(const b of copyButtons){const target=b.dataset.copyTarget;b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':target==='image'?copyTargetNote(target):'复制到'+ChatTargets.profile(target).label+'：'+copyTargetNote(target);if(desktopRequired(b)){b.disabled=true;if(target!=='image')b.setAttribute('aria-describedby',target+'-desktop-hint');}else b.removeAttribute('aria-describedby');}}
@@ -263,7 +262,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=target==='image'?null:ChatTargets.profile(target);
  if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“图片”。':'预览已更新，请点击平台图标复制。';return;}
- if(target==='wecom'&&cachedPayload.segments.some(part=>part.type==='image')){
+ if(target==='wecom'&&window.md2chatDesktop?.platform!=='darwin'&&cachedPayload.segments.some(part=>part.type==='image')){
   try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
   catch(error){showCopyNotice(error.message,true);}
   return;
@@ -314,96 +313,108 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
 
 updatePreview();
 
-// Explicit Windows-only experiments isolate HTML acceptance from image handling.
-const dingtalkHtmlTests=document.getElementById('dingtalk-html-tests');
-dingtalkHtmlTests.hidden=window.md2chatDesktop?.platform!=='win32';
-for(const testButton of document.querySelectorAll('[data-dingtalk-html-test]'))testButton.addEventListener('click',async()=>{
- if(copying||window.md2chatDesktop?.platform!=='win32')return;
- copying=true;button.disabled=true;
- const testButtons=[...document.querySelectorAll('[data-dingtalk-html-test]')];
- for(const b of testButtons)b.disabled=true;
- try{
-  const result=await window.md2chatDesktop.testDingtalkHtml(testButton.dataset.dingtalkHtmlTest);
-  lastCopyTarget='dingtalk';
-  document.getElementById('diagnostic-status').textContent=result.mode==='text'?'剪贴板已替换为无图片的 HTML 文字测试。请到钉钉草稿粘贴，记录是否出现“md2chat HTML 文字测试”，无需发送。':'已保持读取到的 HTML 文档内容不变并重新写入剪贴板。请粘贴到钉钉草稿，与直接从钉钉复制时的结果比较；无需发送。';
- }catch(error){document.getElementById('diagnostic-status').textContent='HTML 测试未完成：'+error.message;}
- finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();for(const b of testButtons)b.disabled=false;}
-});
-
-// Reports intentionally contain metadata only, never text, source HTML, or URLs.
+// Only the currently displayed snapshot is exported; closing invalidates pending work.
 const diagnosticStatus=document.getElementById('diagnostic-status');
-const sampleHistory=[];
-function rememberReport(lines){
- const text=lines.join('\n');sampleHistory.push(text);if(sampleHistory.length>2)sampleHistory.shift();
- document.getElementById('diagnostic-report').textContent=text;
- document.getElementById('copy-report').disabled=false;
- diagnosticStatus.textContent='排查完成。最近两份脱敏报告仅保留在页面内存中。';
+const diagnosticDialog=document.getElementById('diagnostic-dialog');
+let diagnosticSample=null,diagnosticEpoch=0,diagnosticReading=false,diagnosticExporting=false,disposeDiagnosticPreview=()=>{};
+const diagnosticDownloads=new Set();
+let diagnosticMessage={source:'点击读取，查看剪贴板中的内容。',values:{}};
+const diagnosticT=(source,values)=>{const text=window.md2chatI18n?.t(source)||source;return values?text.replace(/\{(\w+)\}/g,(_,key)=>String(values[key]??'')):text;};
+function renderDiagnosticStatus(){
+ const values=Object.fromEntries(Object.entries(diagnosticMessage.values).map(([key,value])=>[key,key==='reason'?diagnosticT(value):value]));
+ diagnosticStatus.textContent=diagnosticT(diagnosticMessage.source,values);
 }
+function setDiagnosticStatus(source,values={}){diagnosticMessage={source,values};renderDiagnosticStatus();}
+function renderDiagnosticPreview(){
+ disposeDiagnosticPreview();
+ const results=document.getElementById('diagnostic-report');results.replaceChildren();
+ if(diagnosticSample)disposeDiagnosticPreview=ClipboardDiagnostics.renderPreview(results,diagnosticSample,{document,t:diagnosticT});
+ else{const empty=document.createElement('p');empty.className='diagnostic-empty';empty.textContent=diagnosticT('尚未读取剪贴板。');results.append(empty);disposeDiagnosticPreview=()=>results.replaceChildren();}
+}
+window.addEventListener?.('md2chat:language',()=>{renderDiagnosticStatus();renderDiagnosticPreview();});
 function recentCopyLine(){return '最近复制目标：'+(lastCopyTarget==='image'?'图片':lastCopyTarget?ChatTargets.profile(lastCopyTarget).label:'无')+'（仅记录本页操作，不代表当前剪贴板来源）';}
-function desktopReportLines(report){
- const native=report.macDingtalk;
- const nativeCount=!native.applicable?'不适用（仅 macOS）':!native.present?'未发现该格式':native.images===null?'未能统计':native.images;
- const lines=['md2chat 桌面剪贴板报告','报告版本：2','应用版本：'+report.version,'系统：'+report.platform,recentCopyLine(),
-  ...report.formats.map(format=>format.type+'：'+(format.bytes===null?'大小未知':format.bytes+' 字节')+(format.unreadable?'；读取失败':'')+(format.skipped?'；超过排查限额，未解析':'')),
-  'Mac 钉钉专用格式图片：'+nativeCount,'独立图片格式：'+report.imageFormats+' 种（同一图片可能有多种格式）',
-  'HTML 图片标签：'+report.htmlImages+'；HTML 表格：'+report.htmlTables];
- report.html.forEach((summary,index)=>lines.push('HTML 样本 '+(index+1)+'：',...ClipboardDiagnostics.htmlLines(summary)));
- if(report.platform==='win32'&&report.html.length)lines.push('以上为解码后的 HTML；片段标记统计不代表 Windows 原生 CF_HTML 头是否存在或有效。');
- if(report.truncated)lines.push('内容超过排查限额，以上仅为部分统计。');
- if(report.formats.some(format=>format.unreadable))lines.push('部分格式读取失败，图片统计可能不完整。');
- lines.push('结构按静态标签扫描，不执行 HTML，也不请求图片。','格式或标签存在不代表钉钉已成功导入图片。','报告不含正文、HTML 源码、图片内容、链接、文件路径或属性值。');
- return lines;
+function activeDiagnostic(epoch){return diagnosticDialog.open&&epoch===diagnosticEpoch;}
+function resetDiagnostics(){
+ diagnosticEpoch++;diagnosticSample=null;diagnosticReading=false;diagnosticExporting=false;
+ disposeDiagnosticPreview();disposeDiagnosticPreview=()=>{};
+ for(const url of diagnosticDownloads)URL.revokeObjectURL(url);diagnosticDownloads.clear();
+ document.getElementById('diagnostic-report').replaceChildren();renderDiagnosticPreview();
+ document.getElementById('diagnostic-feedback').hidden=true;
+ setDiagnosticStatus('点击读取，查看剪贴板中的内容。');
+ document.getElementById('read-clipboard').disabled=false;document.getElementById('export-diagnostics').disabled=true;
 }
-async function showSample(origin,entries,declaredTypes=[]){
- const lines=['md2chat 浏览器剪贴板报告','报告版本：2',recentCopyLine(),'入口：'+origin,'可见格式：'+[...new Set([...declaredTypes,...entries.map(e=>e.type)].slice(0,100).map(ClipboardDiagnostics.formatName))].join(', ')];
- let images=0,files=0,decodedBytes=0,incomplete=false;
- for(const entry of entries.slice(0,100)){
-  const type=ClipboardDiagnostics.formatName(entry.type);
-  if(entry.error){lines.push(type+'：读取失败');incomplete=true;continue;}
-  lines.push(type+'：'+entry.blob.size+' 字节');
-  if(entry.type==='text/html'){
-   if(decodedBytes+entry.blob.size>8*1024*1024){lines.push('HTML 超过排查限额，未解析。');incomplete=true;continue;}
-   decodedBytes+=entry.blob.size;
-   const summary=ClipboardDiagnostics.summarizeHtml(await entry.blob.text());images+=summary.imageCount;
-   incomplete||=summary.truncated;
-   lines.push(...ClipboardDiagnostics.htmlLines(summary));
-  }else if(entry.type.startsWith('image/'))files++;
- }
- if(entries.length>100||declaredTypes.length>100){lines.push('格式超过排查限额，以上仅为部分统计。');incomplete=true;}
- lines.push('HTML 图片 '+images+' 个；独立图片格式 '+files+' 种（同一图片可能有多种格式）。');
- if(images&&!files)lines.push('图片只在 HTML 中引用；本报告不代表图片已能读取或粘贴。');
- if(incomplete)lines.push('图片统计不完整，请缩小样本后重试。');
- else if(!images&&!files)lines.push('浏览器可见格式中未发现图片；不代表原生应用的专有剪贴板中没有图片。');
- lines.push('安全上下文：'+window.isSecureContext+'；Clipboard.read：'+!!navigator.clipboard?.read);
- lines.push('结构按静态标签扫描，不执行 HTML，也不请求图片。','报告不含正文、HTML 源码、图片内容、链接、文件路径或属性值；未读取原生私有格式。');
- rememberReport(lines);
+diagnosticDialog.addEventListener('close',resetDiagnostics);
+diagnosticDialog.addEventListener('cancel',resetDiagnostics);
+async function showSample(origin,entries,metadata={},epoch=diagnosticEpoch){
+ const sample=await ClipboardDiagnostics.capture(entries,{...metadata,origin,recentCopy:recentCopyLine()});
+ if(!activeDiagnostic(epoch))return;
+ diagnosticSample=sample;renderDiagnosticPreview();
+ document.getElementById('export-diagnostics').disabled=false;
+ setDiagnosticStatus(!sample.formats.length?'剪贴板中没有可读取的内容。':sample.incomplete?'部分内容未能读取，原因见下方。':'读取完成，识别结果如下。');
 }
 document.getElementById('read-clipboard').addEventListener('click',async()=>{
- const readButton=document.getElementById('read-clipboard');readButton.disabled=true;
- diagnosticStatus.textContent='正在读取剪贴板格式与脱敏结构…';
+ if(diagnosticReading||diagnosticExporting||!diagnosticDialog.open)return;
+ const epoch=diagnosticEpoch;diagnosticReading=true;diagnosticSample=null;disposeDiagnosticPreview();disposeDiagnosticPreview=()=>{};document.getElementById('diagnostic-feedback').hidden=true;
+ const readButton=document.getElementById('read-clipboard');readButton.disabled=true;document.getElementById('export-diagnostics').disabled=true;
+ setDiagnosticStatus('正在读取剪贴板…');
  try{
   if(window.md2chatDesktop){
-   const report=await window.md2chatDesktop.inspect();
-   rememberReport(desktopReportLines(report));return;
+   const {entries,...metadata}=await window.md2chatDesktop.inspect();
+   if(activeDiagnostic(epoch))await showSample('系统剪贴板',entries,metadata,epoch);return;
   }
-  if(!navigator.clipboard?.read)throw new Error('Clipboard.read unavailable');
-  let timer;
-  const items=await Promise.race([navigator.clipboard.read(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('读取超时，请手动粘贴')),10000);})]).finally(()=>clearTimeout(timer)),entries=[],declaredTypes=[];
-  for(const item of items){for(const type of item.types){declaredTypes.push(type);if(declaredTypes.length>100)break;}if(declaredTypes.length>100)break;}
-  outer:for(const item of items)for(const type of item.types){if(entries.length>=100)break outer;try{entries.push({type,blob:await item.getType(type)});}catch{entries.push({type,error:true});}}
-  await showSample('读取按钮',entries,declaredTypes);
- }catch(error){diagnosticStatus.textContent='无法直接读取（'+error.name+'），请在排查框按 ⌘V / Ctrl+V 粘贴。';}
- finally{readButton.disabled=false;}
+  if(!navigator.clipboard?.read)throw new Error('当前浏览器不支持直接读取');
+  let timer,htmlMode='请求未经清理的 HTML；是否支持由浏览器决定';
+  const request=navigator.clipboard.read({unsanitized:['text/html']}).catch(error=>{
+   if(!activeDiagnostic(epoch))throw error;
+   if(error.name==='TypeError'||error.name==='NotSupportedError'){htmlMode='浏览器不支持未经清理的 HTML，使用默认读取结果';return navigator.clipboard.read();}throw error;
+  });
+  const items=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('读取超时')),10000);})]).finally(()=>clearTimeout(timer)),entries=[];
+  let total=0;
+  for(let itemIndex=0;itemIndex<items.length;itemIndex++)for(const type of items[itemIndex].types){
+   if(!activeDiagnostic(epoch))return;
+   if(entries.length>=ClipboardDiagnostics.FORMAT_LIMIT)throw new Error('剪贴板格式超过 1000，请缩小样本');
+   try{
+    const blob=await items[itemIndex].getType(type);
+    if(blob.size>ClipboardDiagnostics.CAPTURE_LIMIT-total)entries.push({item:itemIndex,type,size:blob.size,error:'超过单次采集 60 MiB 限额，未采集'});
+    else{total+=blob.size;entries.push({item:itemIndex,type,blob});}
+   }catch{entries.push({item:itemIndex,type,error:'浏览器未允许读取此格式'});}
+  }
+  if(activeDiagnostic(epoch))await showSample('读取按钮',entries,{platform:'browser',userAgent:navigator.userAgent,htmlMode},epoch);
+ }catch(error){if(activeDiagnostic(epoch))setDiagnosticStatus('读取失败：{reason}。可在此窗口按 ⌘V / Ctrl+V 粘贴。',{reason:error.message});}
+ finally{if(activeDiagnostic(epoch)){diagnosticReading=false;readButton.disabled=false;document.getElementById('export-diagnostics').disabled=!diagnosticSample;}}
 });
-document.getElementById('clipboard-paste').addEventListener('paste',async event=>{
- event.preventDefault();const data=event.clipboardData,types=[...data.types],entries=[];
- for(const type of types.slice(0,100)){if(type==='Files')continue;const value=data.getData(type);if(value)entries.push({type,blob:new Blob([value],{type})});}
- for(const file of data.files){if(entries.length>=100)break;entries.push({type:file.type||'application/octet-stream',blob:file});}
- event.currentTarget.textContent='已接收样本，仅显示格式统计。';await showSample('原生粘贴事件',entries,types);
+// Pasting remains a fallback without adding another control to the dialog.
+diagnosticDialog.addEventListener('paste',async event=>{
+ event.preventDefault();if(diagnosticReading||diagnosticExporting||!diagnosticDialog.open)return;
+ const epoch=diagnosticEpoch;diagnosticReading=true;diagnosticSample=null;disposeDiagnosticPreview();disposeDiagnosticPreview=()=>{};document.getElementById('diagnostic-feedback').hidden=true;
+ document.getElementById('read-clipboard').disabled=true;document.getElementById('export-diagnostics').disabled=true;
+ try{
+  const data=event.clipboardData,types=[...data.types],entries=[];
+  if(types.length+data.files.length>ClipboardDiagnostics.FORMAT_LIMIT)throw new Error('剪贴板格式超过 1000，请缩小样本');
+  for(const type of types){if(type==='Files')continue;try{entries.push({type,blob:new Blob([data.getData(type)],{type})});}catch{entries.push({type,error:'粘贴事件未提供数据'});}}
+  for(const file of data.files)entries.push({type:file.type||'application/octet-stream',blob:file});
+  await showSample('原生粘贴事件',entries,{platform:'browser',declaredTypes:types,userAgent:navigator.userAgent},epoch);
+ }catch(error){if(activeDiagnostic(epoch))setDiagnosticStatus('读取失败：{reason}',{reason:error.message});}
+ finally{if(activeDiagnostic(epoch)){diagnosticReading=false;document.getElementById('read-clipboard').disabled=false;document.getElementById('export-diagnostics').disabled=!diagnosticSample;}}
 });
-document.getElementById('copy-report').addEventListener('click',async()=>{
- try{const report=sampleHistory.join('\n\n────────\n\n');if(window.md2chatDesktop)await window.md2chatDesktop.copy([{type:'text',text:report}]);else await navigator.clipboard.writeText(report);diagnosticStatus.textContent='元数据报告已复制，当前剪贴板已被报告替换。';}
- catch(_){diagnosticStatus.textContent='自动复制失败，请手动选中上面的报告复制。';}
+document.getElementById('export-diagnostics').addEventListener('click',async()=>{
+ if(!diagnosticSample||diagnosticReading||diagnosticExporting||!diagnosticDialog.open)return;
+ const epoch=diagnosticEpoch,button=document.getElementById('export-diagnostics');diagnosticExporting=true;button.disabled=true;document.getElementById('read-clipboard').disabled=true;
+ try{
+  const blob=ClipboardDiagnostics.bundle([diagnosticSample]),name='md2chat-clipboard-'+new Date().toISOString().replace(/[:.]/g,'-')+'.zip';
+  if(window.md2chatDesktop){
+   const bytes=new Uint8Array(await blob.arrayBuffer());if(!activeDiagnostic(epoch))return;let binary='';
+   for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+   const saved=await window.md2chatDesktop.saveDiagnostics(name,btoa(binary));
+   if(activeDiagnostic(epoch)){setDiagnosticStatus(saved?'诊断 ZIP 已保存，可发送给开发者。':'已取消导出。');document.getElementById('diagnostic-feedback').hidden=!saved;}
+  }else{
+   const url=URL.createObjectURL(blob);diagnosticDownloads.add(url);
+   const link=document.createElement('a');link.href=url;link.download=name;link.click();
+   setTimeout(()=>{URL.revokeObjectURL(url);diagnosticDownloads.delete(url);},30000);
+   setDiagnosticStatus('诊断 ZIP 已生成，请查看下载。');document.getElementById('diagnostic-feedback').hidden=false;
+  }
+ }catch(error){if(activeDiagnostic(epoch))setDiagnosticStatus('导出失败：{reason}',{reason:error.message});}
+ finally{if(activeDiagnostic(epoch)){diagnosticExporting=false;button.disabled=!diagnosticSample;document.getElementById('read-clipboard').disabled=false;}}
 });
 
 // Tray conversions use their own image registry and never replace the editor's input or preview.

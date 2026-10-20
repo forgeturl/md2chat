@@ -181,13 +181,6 @@ test('only imported original images carry source URLs through generated segments
  assert.equal(result.emailSegments.find(part=>part.type==='image').sourceUrl,sourceUrl);
  assert(!result.preview.includes(sourceUrl));assert(!result.html.includes(sourceUrl));
 });
-test('diagnostic reports exclude clipboard text content',async()=>{
- const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id)};
- const ctx={lastCopyTarget:null,document:{getElementById:el},window:{isSecureContext:true},navigator:{clipboard:{}},Blob,ClipboardDiagnostics:require('../assets/clipboard-diagnostics.js')};vm.createContext(ctx);
- const start=code.indexOf('const diagnosticStatus=');const end=code.indexOf("document.getElementById('read-clipboard').addEventListener");vm.runInContext(code.slice(start,end),ctx);
- await ctx.showSample('测试',[{type:'text/plain',blob:new Blob(['PRIVATE-SAMPLE-123'])}]);
- assert(!el('diagnostic-report').textContent.includes('PRIVATE-SAMPLE'));assert(el('diagnostic-report').textContent.includes('text/plain'));
-});
 test('inline and display math parsing does not interpret code or currency as math',()=>{
  const inline=chat.parse('能量 $E=mc^2$，以及 \\(a+b\\)。')[0];
  assert.deepEqual(inline.runs.filter(r=>r.math).map(r=>r.math),['E=mc^2','a+b']);

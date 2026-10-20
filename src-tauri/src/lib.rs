@@ -141,6 +141,35 @@ async fn desktop_inspect(
 }
 
 #[tauri::command]
+async fn desktop_save_diagnostics(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    name: String,
+    data: String,
+) -> Result<bool, String> {
+    trusted(&window)?;
+    use tauri_plugin_dialog::DialogExt;
+    // The renderer supplies only a suggested filename, never a filesystem destination.
+    if !name.starts_with("md2chat-clipboard-") || !name.ends_with(".zip")
+        || name.len() > 120 || name.chars().any(|c| !c.is_ascii_alphanumeric() && !"-._".contains(c)) {
+        return Err("诊断文件名无效。".into());
+    }
+    if data.len() > 512 * 1024 * 1024 { return Err("诊断包过大，请清空样本后分次导出。".into()); }
+    blocking(move || {
+        use base64::Engine;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(data)
+            .map_err(|_| "诊断包编码无效。".to_owned())?;
+        if !bytes.starts_with(b"PK\x03\x04") { return Err("诊断包不是有效的 ZIP。".into()); }
+        let selected = app.dialog().file().set_title(locale::tr(&app, "保存剪贴板诊断 ZIP"))
+            .set_file_name(name).add_filter("ZIP", &["zip"]).blocking_save_file();
+        let Some(selected) = selected else { return Ok(false); };
+        let path = selected.into_path().map_err(|_| "无法保存到此位置。".to_owned())?;
+        std::fs::write(path, bytes).map_err(|_| "保存诊断包失败，请选择可写的位置。".to_owned())?;
+        Ok(true)
+    }).await
+}
+
+#[tauri::command]
 async fn desktop_read_local_image(
     window: tauri::WebviewWindow,
     source: String,
@@ -368,7 +397,7 @@ async fn convert(app: &tauri::AppHandle, target: &str) -> Result<Value, String> 
     if current["fingerprint"].as_str() != Some(fingerprint.as_str()) {
         return Err("转换期间剪贴板已更新，已保留新内容。请重新选择转换格式。".into());
     }
-    if target == "wecom" && parts.iter().any(|p| p["type"] == "image") {
+    if !cfg!(target_os = "macos") && target == "wecom" && parts.iter().any(|p| p["type"] == "image") {
         shell::show_window(app);
         request_render(
             app,
@@ -481,6 +510,7 @@ pub fn run() {
             desktop_copy_segment,
             desktop_copy_image,
             desktop_inspect,
+            desktop_save_diagnostics,
             desktop_read_local_image,
             desktop_resolve_clipboard_html,
             desktop_test_dingtalk_html,

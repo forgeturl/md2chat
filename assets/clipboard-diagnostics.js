@@ -201,5 +201,227 @@
   return lines;
  }
 
- return {summarizeHtml,htmlLines,formatName};
+ // Preserve actual attributes, including chat-client JSON trees, as inert diagnostic data.
+ function htmlDetails(input){
+  const html=input.slice(0,MAX_INPUT),tags=[];let index=0,truncated=input.length>MAX_INPUT;
+  const pattern=/([a-z_:][a-z0-9_:.-]*)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/gi;
+  while(index<html.length){
+   const start=html.indexOf('<',index);if(start<0)break;
+   if(html.startsWith('<!--',start)){const end=html.indexOf('-->',start+4);if(end<0)break;index=end+3;continue;}
+   const match=/^<(\/?)([a-z][a-z0-9:_-]*)(?=[\s/>])/i.exec(html.slice(start,start+256));
+   if(!match){index=start+1;continue;}
+   const end=tagEnd(html,start+match[0].length);if(end<0)break;
+   index=end+1;const name=match[2].toLowerCase(),closing=!!match[1],attributes=[];
+   if(!closing){
+    pattern.lastIndex=0;const source=html.slice(start+match[0].length,end);let attribute;
+    while((attribute=pattern.exec(source))){
+     if(attributes.length===MAX_ATTRIBUTES){truncated=true;break;}
+     const value=decodeEntities(attribute[2]??attribute[3]??attribute[4]??'');
+     const entry={name:attribute[1],value};
+     if(/^[\s]*[\[{]/.test(value))try{entry.json=JSON.parse(value);}catch{entry.jsonError='属性值不是有效的 JSON';}
+     attributes.push(entry);
+    }
+   }
+   tags.push({name,closing,attributes});
+   if(tags.length===10000){truncated=true;break;}
+   if(!closing&&RAW_TAGS.has(name)){
+    if(name==='plaintext')break;
+    const close=new RegExp('</'+name+'(?=[\\t\\n\\f\\r />])','gi');close.lastIndex=index;
+    const found=close.exec(html);if(!found)break;index=found.index;
+   }
+  }
+  return {tags,truncated,note:'静态标签与属性解析，不执行 HTML；完整源码见 HTML 文本文件。'};
+ }
+ const CAPTURE_LIMIT=60*1024*1024,FORMAT_LIMIT=1000,PARSE_LIMIT=8*1024*1024;
+ const encoder=()=>new TextEncoder();
+ function decodeBase64(value){
+  const text=atob(value),bytes=new Uint8Array(text.length);
+  for(let i=0;i<text.length;i++)bytes[i]=text.charCodeAt(i);
+  return bytes;
+ }
+ function extension(type){return ({'image/png':'png','image/jpeg':'jpg','image/gif':'gif','image/webp':'webp','image/bmp':'bmp','image/tiff':'tiff','image/svg+xml':'svg.txt'})[type]||'bin';}
+ async function capture(entries,metadata={}){
+  const sample={...metadata,capturedAt:new Date().toISOString(),formats:[],files:[],incomplete:false};let total=0;
+  for(let i=0;i<entries.length;i++){
+   const entry=entries[i],record={index:i+1,item:entry.item??0,type:entry.type,nativeType:entry.nativeType||entry.type,bytes:entry.size??entry.blob?.size??null};
+   sample.formats.push(record);
+   if(i>=FORMAT_LIMIT){record.error='超过 1000 种格式限额，未采集';sample.incomplete=true;continue;}
+   if(entry.error){record.error=typeof entry.error==='string'?entry.error:'读取失败';sample.incomplete=true;continue;}
+   if(record.bytes!==null&&record.bytes>CAPTURE_LIMIT-total){record.error='超过单次采集 60 MiB 限额，未采集';sample.incomplete=true;continue;}
+   try{
+    const bytes=entry.blob?new Uint8Array(await entry.blob.arrayBuffer()):decodeBase64(entry.base64);
+    if(bytes.length>CAPTURE_LIMIT-total){record.error='超过单次采集 60 MiB 限额，未采集';sample.incomplete=true;continue;}
+    total+=bytes.length;record.bytes=bytes.length;
+    const prefix='format-'+String(i+1).padStart(4,'0');record.rawFile=prefix+'.'+extension(entry.type);
+    sample.files.push({name:record.rawFile,data:bytes});
+    if(entry.blob?.name)record.fileName=entry.blob.name;
+    if(bytes.length>PARSE_LIMIT){record.parseNote='超过 8 MiB 解析限额；原始数据已完整保留';continue;}
+    let text=entry.text;
+    if(text===undefined){
+     try{
+      const utf16=bytes[0]===0xff&&bytes[1]===0xfe?'utf-16le':bytes[0]===0xfe&&bytes[1]===0xff?'utf-16be':null;
+      text=new TextDecoder(utf16||'utf-8',{fatal:true}).decode(bytes);
+      if(text.includes('\0'))text=undefined;
+     }catch{ /* Binary formats remain available as original bytes. */ }
+    }
+    if(typeof text==='string'){
+     record.textFile=prefix+(entry.type==='text/html'?'.html.txt':'.txt');sample.files.push({name:record.textFile,data:encoder().encode(text)});
+     record.preview=text.slice(0,2000);record.previewTruncated=text.length>2000;
+     try{
+      const json=JSON.parse(text);record.jsonFile=prefix+'.parsed.json';sample.files.push({name:record.jsonFile,data:encoder().encode(JSON.stringify(json,null,2))});
+     }catch{ /* Not every textual representation is JSON. */ }
+    }
+    if(entry.parseError)record.parseError=entry.parseError;
+    if(entry.type==='text/html'&&typeof (entry.html??text)==='string'){
+     const html=entry.html??text;record.html=summarizeHtml(html);
+     const readable=readableHtml(html);record.readablePreview=readable.slice(0,4000);record.readablePreviewTruncated=readable.length>4000;
+     record.htmlDetailsFile=prefix+'.html-details.json';
+     sample.files.push({name:record.htmlDetailsFile,data:encoder().encode(JSON.stringify(htmlDetails(html),null,2))});
+    }
+    if(!record.textFile)record.parseNote='二进制格式，原始数据已保留';
+   }catch{record.error='读取此格式数据失败';sample.incomplete=true;}
+  }
+  sample.bytes=total;return sample;
+ }
+ function report(sample){
+  const lines=['md2chat 剪贴板诊断报告','报告版本：3','采集时间：'+sample.capturedAt,'入口：'+sample.origin,'应用版本：'+(sample.version||'Web'),'系统：'+(sample.platform||'browser'),sample.recentCopy||'',
+   '包含原始内容：正文、HTML、图片、链接、文件路径及私有格式可能出现在诊断包中。',
+   '采集格式：'+sample.formats.length+'；原始数据：'+sample.bytes+' 字节；'+(sample.incomplete?'部分格式未采集，请查看下方原因':'所有列出的格式均已采集')];
+  if(sample.htmlMode)lines.push('HTML 读取方式：'+sample.htmlMode);
+  for(const format of sample.formats){
+   lines.push('', '['+format.index+'] 项目 '+(format.item+1)+' · '+format.nativeType+(format.type===format.nativeType?'':' → '+format.type),
+    '大小：'+(format.bytes??'未知')+' 字节'+(format.rawFile?'；原始文件：'+format.rawFile:''));
+   if(format.error)lines.push('未采集：'+format.error);
+   if(format.parseError)lines.push('解析失败：'+format.parseError+'；原始数据已保留');
+   if(format.parseNote)lines.push(format.parseNote);
+   if(format.jsonFile)lines.push('JSON 解析：'+format.jsonFile);
+   if(format.html)lines.push(...htmlLines(format.html),'HTML 标签、原始属性及属性内 JSON：'+format.htmlDetailsFile);
+   if(format.preview!==undefined)lines.push('文本预览'+(format.previewTruncated?'（前 2000 字符，完整内容见文件）':'')+'：',format.preview);
+  }
+  lines.push('',sample.platform==='browser'?'浏览器仅开放部分格式；系统私有格式请使用桌面版读取。':'系统对象句柄或不可读格式会列出原因；二进制私有格式保留原始字节。',
+   '只解析剪贴板已有数据，不执行 HTML、不请求链接或读取引用的本地文件。','样本仅保留在本页内存中；导出 ZIP 后可手动发送给开发者。');
+  return lines.join('\n');
+ }
+ function readableHtml(input){
+  const html=input.slice(0,MAX_INPUT),parts=[];let index=0;
+  while(index<html.length){
+   const start=html.indexOf('<',index);
+   if(start<0){parts.push(decodeEntities(html.slice(index)));break;}
+   parts.push(decodeEntities(html.slice(index,start)));
+   if(html.startsWith('<!--',start)){const end=html.indexOf('-->',start+4);if(end<0)break;index=end+3;continue;}
+   const end=tagEnd(html,start+1);if(end<0)break;
+   const match=/^<(\/?)([a-z][a-z0-9:_-]*)(?=[\s/>])/i.exec(html.slice(start,end+1));index=end+1;
+   if(!match)continue;
+   const name=match[2].toLowerCase();
+   if(['br','p','div','li','tr','h1','h2','h3','h4','h5','h6','blockquote','section'].includes(name))parts.push('\n');
+   if(name==='td'||name==='th')parts.push('\t');
+   if(!match[1]&&RAW_TAGS.has(name)){
+    if(name==='plaintext'){parts.push(decodeEntities(html.slice(index)));break;}
+    const close=new RegExp('</'+name+'(?=[\\t\\n\\f\\r />])','gi');close.lastIndex=index;
+    const found=close.exec(html);if(!found)break;const rawEnd=tagEnd(html,found.index+2);if(rawEnd<0)break;index=rawEnd+1;
+   }
+  }
+  return parts.join('').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+ }
+ const PREVIEW_IMAGES=new Set(['image/png','image/jpeg','image/gif','image/webp','image/bmp','image/avif']);
+ function preview(sample){
+  const files=new Map(sample.files.map(file=>[file.name,file.data]));
+  return sample.formats.map(format=>{
+   const type=format.type,kind=type==='text/html'?'html':type.startsWith('image/')||/^windows-dib-/.test(type)?'image':format.jsonFile?'json':type==='text/plain'?'text':type==='text/uri-list'?'links':'other';
+   const row={format,kind,text:kind==='html'?format.readablePreview:kind==='json'?new TextDecoder().decode(files.get(format.jsonFile)).slice(0,2000):format.preview,images:[],references:[]};
+   if(kind==='image'&&format.rawFile&&PREVIEW_IMAGES.has(type))row.images.push({type,data:files.get(format.rawFile)});
+   if(kind==='html'&&format.htmlDetailsFile){
+    const details=JSON.parse(new TextDecoder().decode(files.get(format.htmlDetailsFile))),seen=new Set();
+    const reference=value=>{
+     if(typeof value!=='string'||!value||seen.has(value)||seen.size>=MAX_IMAGES)return;seen.add(value);
+     const match=/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]*)$/i.exec(value);
+     if(match&&PREVIEW_IMAGES.has(match[1].toLowerCase())){
+      try{row.images.push({type:match[1].toLowerCase(),data:decodeBase64(match[2].replace(/\s/g,''))});}catch{row.references.push({notice:true,value:'图片数据无法预览'});}
+     }else row.references.push({notice:value.startsWith('data:'),value:value.startsWith('data:')?'图片数据已保留，当前格式不能预览。':value});
+    };
+    const inspectJson=value=>{
+     const pending=[value];let count=0;
+     while(pending.length&&count++<10000){
+      const item=pending.pop();if(!item||typeof item!=='object')continue;
+      for(const [key,value] of Object.entries(item)){
+       if(typeof value==='string'&&(/^data:image\//i.test(value)||['src','imageUrl','image_url'].includes(key)))reference(value);
+       else if(value&&typeof value==='object')pending.push(value);
+      }
+     }
+    };
+    for(const tag of details.tags)for(const attribute of tag.attributes){
+     if(tag.name==='img'&&attribute.name.toLowerCase()==='src')reference(attribute.value);
+     if(attribute.json)inspectJson(attribute.json);
+    }
+   }
+   return row;
+  });
+ }
+ function renderPreview(container,sample,{document=container.ownerDocument,t=value=>value,createObjectURL=blob=>URL.createObjectURL(blob),revokeObjectURL=url=>URL.revokeObjectURL(url)}={}){
+  const urls=[],rows=preview(sample);
+  const node=(tag,className,text)=>{const element=document.createElement(tag);element.className=className||'';if(text!==undefined)element.textContent=text;return element;};
+  container.replaceChildren();
+  if(!rows.length)container.append(node('p','diagnostic-empty',t('剪贴板中没有可读取的内容。')));
+  const titles={text:'文字',html:'图文内容',image:'图片',json:'结构化数据',links:'链接',other:'其他内容'};
+  for(const row of rows){
+   const format=row.format,card=node('section','diagnostic-card'),heading=node('div','diagnostic-card-heading');
+   heading.append(node('h3','',t(titles[row.kind])),node('span','diagnostic-badge'+(format.error?' is-error':''),t(format.error?'未能读取':row.kind==='other'||row.kind==='image'&&!row.images.length?'已读取':'已识别')));card.append(heading);
+   card.append(node('p','diagnostic-format',format.nativeType+' · '+(format.bytes===null?t('大小未知'):format.bytes+' B')));
+   if(format.error)card.append(node('p','diagnostic-note is-error',t(format.error)));
+   else{
+    if(row.text!==undefined&&row.text!==''){
+     card.append(node('pre','diagnostic-text',row.text));
+     if(format.previewTruncated||format.readablePreviewTruncated)card.append(node('p','diagnostic-note',t('仅展示部分内容，完整数据在 ZIP 中。')));
+    }else if(row.kind==='text')card.append(node('p','diagnostic-note',t('文字内容为空。')));
+    for(const [index,image] of row.images.entries()){
+     const figure=node('figure','diagnostic-picture'),img=node('img','clipboard-image'),caption=node('figcaption','diagnostic-note',t('图片预览'));
+     const url=createObjectURL(new Blob([image.data],{type:image.type}));urls.push(url);img.src=url;img.alt=t('图片预览')+' '+(index+1);
+     img.addEventListener('error',()=>{img.hidden=true;heading.children[1].textContent=t('已读取');caption.textContent=t('图片数据已读取，当前格式不能预览。');});
+     figure.append(img,caption);card.append(figure);
+    }
+    if(row.references.length){
+     card.append(node('p','diagnostic-note',t('识别到图片引用，以下地址未加载：')));
+     for(const reference of row.references)card.append(node('p','diagnostic-reference',reference.notice?t(reference.value):reference.value));
+    }
+    if(row.kind==='html'&&format.html?.tableCount)card.append(node('p','diagnostic-note',t('已识别表格')+'：'+format.html.tableCount));
+    if(row.kind==='image'&&!row.images.length)card.append(node('p','diagnostic-note',t('图片数据已读取，当前格式不能预览。')));
+    if(row.kind==='other'&&row.text===undefined)card.append(node('p','diagnostic-note',t('原始数据已读取，将包含在 ZIP 中。')));
+    if(format.parseError)card.append(node('p','diagnostic-note is-error',t('部分内容无法解析，原始数据已保留。')));
+    if(format.parseNote&&!row.text&&!row.images.length)card.append(node('p','diagnostic-note',t(format.parseNote)));
+   }
+   container.append(card);
+  }
+  return ()=>{for(const url of urls)revokeObjectURL(url);urls.length=0;container.replaceChildren();};
+ }
+ const crcTable=Array.from({length:256},(_,n)=>{for(let i=0;i<8;i++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0;});
+ function crc32(bytes){let crc=0xffffffff;for(const byte of bytes)crc=crcTable[(crc^byte)&255]^(crc>>>8);return (crc^0xffffffff)>>>0;}
+ // ZIP STORE avoids dependencies and retains byte-for-byte native representations.
+ function zip(files){
+  const chunks=[],central=[];let offset=0,centralSize=0;
+  for(const file of files){
+   const name=encoder().encode(file.name),data=file.data,crc=crc32(data);
+   const header=new Uint8Array(30+name.length),view=new DataView(header.buffer);
+   view.setUint32(0,0x04034b50,true);view.setUint16(4,20,true);view.setUint16(6,0x800,true);view.setUint16(12,33,true);
+   view.setUint32(14,crc,true);view.setUint32(18,data.length,true);view.setUint32(22,data.length,true);view.setUint16(26,name.length,true);header.set(name,30);
+   const directory=new Uint8Array(46+name.length),dv=new DataView(directory.buffer);
+   dv.setUint32(0,0x02014b50,true);dv.setUint16(4,20,true);dv.setUint16(6,20,true);dv.setUint16(8,0x800,true);dv.setUint16(14,33,true);
+   dv.setUint32(16,crc,true);dv.setUint32(20,data.length,true);dv.setUint32(24,data.length,true);dv.setUint16(28,name.length,true);dv.setUint32(42,offset,true);directory.set(name,46);
+   chunks.push(header,data);central.push(directory);offset+=header.length+data.length;centralSize+=directory.length;
+  }
+  const end=new Uint8Array(22),view=new DataView(end.buffer);view.setUint32(0,0x06054b50,true);view.setUint16(8,files.length,true);view.setUint16(10,files.length,true);view.setUint32(12,centralSize,true);view.setUint32(16,offset,true);
+  return new Blob([...chunks,...central,end],{type:'application/zip'});
+ }
+ function bundle(samples){
+  if(!samples.length)throw new Error('请先读取剪贴板');
+  const files=[{name:'README.txt',data:encoder().encode('md2chat 剪贴板诊断包\n包含用户原始剪贴板内容，请仅发送给可信任的开发者。\nmanifest.json 记录格式、解析结果及失败原因；report.txt 为摘要和文本预览。\nsample-N/ 中 .bin/图片文件是原始字节，.txt 是解码文本，.html.txt 是 HTML 源码，.parsed.json 是格式化 JSON，.html-details.json 包含 HTML 标签、原始属性及属性内的 JSON（如钉钉图文树）。\nHTML 不会被执行；链接、图片引用和文件路径不会自动下载。二进制私有格式可能需要专用工具解析。\n本 ZIP 使用 STORE 保存，不进行压缩。\n')}];
+  const manifests=samples.map((sample,index)=>{
+   const {files:raw,...manifest}=sample,folder='sample-'+(index+1)+'/';
+   for(const file of raw)files.push({name:folder+file.name,data:file.data});
+   return {...manifest,directory:folder};
+  });
+  files.push({name:'manifest.json',data:encoder().encode(JSON.stringify({schemaVersion:3,samples:manifests},null,2))},
+   {name:'report.txt',data:encoder().encode(samples.map(report).join('\n\n────────\n\n'))});
+  return zip(files);
+ }
+ return {summarizeHtml,htmlLines,formatName,capture,report,bundle,preview,renderPreview,CAPTURE_LIMIT,FORMAT_LIMIT};
 });

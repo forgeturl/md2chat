@@ -13,7 +13,8 @@ const snapshot = () => ({
 
 async function fixture() {
  const elements = new Map(), events = new Map(), windowEvents = new Map(), calls = [];
- let value = snapshot(), subscriber, hold, failure, holdRead;
+ let value = snapshot(), subscriber, hold, failure, holdRead, language = 'zh-CN';
+ const i18n = require('../assets/i18n.js'), catalog = require('../assets/locales.json');
  const document = {activeElement: null, hasFocus: () => true,
   getElementById: id => elements.get(id), createElement: tag => new Element(tag),
   addEventListener: (name, fn) => events.set(name, fn)};
@@ -39,10 +40,11 @@ async function fixture() {
   }
   if (command === 'tray_panel_action') { if (hold) await hold; if (failure) throw failure; }
  }}, event: {listen: async (_, fn) => { subscriber = fn; return () => {}; }}};
- vm.runInNewContext(source, {document, window: {__TAURI__: tauri, addEventListener: (name, fn) => windowEvents.set(name, fn)}});
+ vm.runInNewContext(source, {document, window: {__TAURI__: tauri, md2chatLocales: catalog, md2chatI18n: {t: source => i18n.translate(source,language)}, addEventListener: (name, fn) => windowEvents.set(name, fn)}});
  await tick();
  return {
   calls, elements, buttons,
+  language(code) {language=code;windowEvents.get('md2chat:language')?.();},
   focused: () => document.activeElement?.dataset.action,
   key(key, shiftKey = false) { const event = {key, shiftKey, preventDefault() { this.prevented = true; }}; events.get('keydown')(event); return event; },
   async click(id) { buttons().find(row => row.dataset.action === id).events.get('click')(); await tick(); },
@@ -97,4 +99,12 @@ test('a late state read cannot overwrite a newer busy event', async () => {
  const busy = snapshot(); busy.conversions.forEach(item => { item.enabled = false; });
  await ui.emit(busy); release(); await tick();
  assert(ui.buttons().slice(0, 6).every(row => row.disabled));
+});
+
+test('tray errors follow live language changes, including previously localized native errors',async()=>{
+ const ui=await fixture(),i18n=require('../assets/i18n.js');
+ ui.language('en');ui.fail('Converting…');await ui.click('show-main');
+ // Native text may already have been localized when it reached the panel.
+ ui.fail(i18n.translate('正在转换…','en'));await ui.click('show-main');
+ for(const code of ['fr','de','ja','zh-CN']){ui.language(code);assert.equal(ui.elements.get('panel-error').textContent,i18n.translate('正在转换…',code));}
 });

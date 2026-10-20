@@ -35,8 +35,10 @@ mod platform;
 pub use platform::native_roundtrip;
 #[cfg(windows)]
 pub use platform::register_app_owner;
+#[cfg(target_os = "macos")]
+pub use platform::wecom_formats;
 #[cfg(any(target_os = "macos", windows))]
-pub use platform::{change_count, has_private, read, write_checked};
+pub use platform::{change_count, diagnostic_read, has_private, read, write_checked};
 #[cfg(not(any(target_os = "macos", windows)))]
 pub fn change_count() -> Result<u64, String> {
     Err("当前平台尚未提供原生剪贴板适配。".into())
@@ -128,3 +130,20 @@ pub fn has_private() -> Result<bool, String> {
 }
 
 pub const CHANGED: &str = "转换期间剪贴板已更新，已保留新内容。请重新选择转换格式。";
+
+// Diagnostic capture is separate from conversion: preserve every native representation.
+pub const DIAGNOSTIC_MAX: usize = 60 * 1024 * 1024;
+pub const DIAGNOSTIC_FORMATS: usize = 1000;
+#[derive(Debug)]
+pub struct DiagnosticFormat {
+    pub item: usize,
+    pub name: String,
+    pub native_name: String,
+    pub size: Option<usize>,
+    pub bytes: Option<Vec<u8>>,
+    pub error: Option<String>,
+}
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn diagnostic_read() -> Result<(u64, Vec<DiagnosticFormat>), String> {
+    Err("当前平台尚未提供原生剪贴板排查。".into())
+}

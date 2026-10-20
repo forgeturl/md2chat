@@ -28,6 +28,18 @@
   const format = (key, values) => (data.messages[key]?.[locale] || data.messages[key]?.en || key)
    .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
   let match;
+  for(const [pattern,key] of [
+   [/^读取失败：([\s\S]*)。可在此窗口按 ⌘V \/ Ctrl\+V 粘贴。$/,'读取失败：{reason}。可在此窗口按 ⌘V / Ctrl+V 粘贴。'],
+   [/^读取失败：([\s\S]*)$/,'读取失败：{reason}'],
+   [/^导出失败：([\s\S]*)$/,'导出失败：{reason}']
+  ])if((match=pattern.exec(source)))return format(key,{reason:translate(match[1],locale)});
+  if((match=/^第 (\d+) 段复制失败：([\s\S]*)。请重试。$/.exec(source)))return format('第 {n} 段复制失败：{reason}。请重试。',{n:match[1],reason:translate(match[2],locale)});
+  if((match=/^第 (\d+) 段图片$/.exec(source)))return format('第 {n} 段图片',{n:match[1]});
+  if((match=/^粘贴未完成：([\s\S]*)$/.exec(source)))return format('粘贴未完成：{reason}',{reason:translate(match[1],locale)});
+  if((match=/^复制未完成：([\s\S]*)。请允许剪贴板访问后重试。$/.exec(source)))return format('复制未完成：{reason}。请允许剪贴板访问后重试。',{reason:translate(match[1],locale)});
+  if((match=/^图片服务返回 HTTP (\d+)$/.exec(source)))return format('图片服务返回 HTTP {code}',{code:match[1]});
+  if((match=/^✓ 已复制到剪贴板，请到(微信|钉钉|飞书|企微|邮件)(编辑器|聊天框)粘贴$/.exec(source)))return format('✓ 已复制，请粘贴到 {target}',{target:translate(match[1],locale)});
+  if((match=/^邮件预览：(\d+) 个可编辑表格，(\d+) 张图片。$/.exec(source)))return format('邮件预览：{tables} 个可编辑表格，{images} 张图片。',{tables:match[1],images:match[2]});
   const savePrefix = '未能保存，已恢复原设置。';
   if (source.startsWith(savePrefix)) return translate(savePrefix, locale) + ' ' + translate(source.slice(savePrefix.length), locale);
   if ((match = /^复制到(微信|钉钉|飞书|企微|邮件)：([\s\S]+)$/.exec(source))) return translate('复制到'+match[1], locale) + ' · ' + translate(match[2], locale);
@@ -81,7 +93,7 @@
    const content = element.closest('[contenteditable],#message,#diagnostic-report');
    if (content && content !== element) return;
    const saved = attributes.get(element) || {};
-   for (const name of ['aria-label','title','data-placeholder','placeholder']) {
+   for (const name of ['aria-label','title','alt','data-placeholder','placeholder']) {
     if (!element.hasAttribute(name)) continue;
     const current = element.getAttribute(name), previous = saved[name];
     const source = previous && previous.output === current ? previous.source : current;

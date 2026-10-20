@@ -118,3 +118,56 @@ test('clipboard format names are allowlisted instead of exposing custom names',(
  assert.equal(formatName('application/osclipboard;format="C:/PRIVATE_PATH"'),'其他系统格式');
  assert.equal(formatName(null),'其他格式');
 });
+
+test('ZIP opens in an independent reader and preserves native bytes, decoded text, custom names and two samples',async()=>{
+ const {capture,bundle}=require('../assets/clipboard-diagnostics.js'),os=require('node:os'),{spawnSync}=require('node:child_process');
+ const html='<p>正文😀</p><img src="https://private.example/a?token=secret">',binary=Buffer.from([0,255,3,128,0]);
+ const first=await capture([{item:2,type:'text/html',nativeType:'HTML Format (ID 49300)',base64:Buffer.from('CF_HTML_HEADER\r\n'+html+'\0').toString('base64'),html,text:'CF_HTML_HEADER\r\n'+html},
+  {type:'application/private',nativeType:'com.private/path',base64:binary.toString('base64')},
+  {type:'private/json',blob:new Blob(['{"content":"用户正文"}'])},
+  {type:'CF_BITMAP',error:'对象句柄无法导出'}],{origin:'system',version:'test',platform:'win32'});
+ const second=await capture([{type:'text/plain',blob:new Blob(['第二次样本'])}],{origin:'paste',platform:'browser'});
+ assert.equal(first.incomplete,true);assert.equal(first.formats[0].html.imageCount,1);
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'md2chat-zip-'));
+ try{
+  const file=path.join(directory,'bundle.zip');fs.writeFileSync(file,Buffer.from(await bundle([first,second]).arrayBuffer()));
+  const result=spawnSync('python3',['-c',`
+import sys,zipfile,json
+with zipfile.ZipFile(sys.argv[1]) as archive:
+ assert archive.testzip() is None
+ manifest=json.loads(archive.read('manifest.json'))
+ assert len(manifest['samples'])==2
+ sample=manifest['samples'][0]
+ assert sample['formats'][0]['nativeType']=='HTML Format (ID 49300)'
+ assert archive.read('sample-1/format-0001.bin').endswith(b'\\x00')
+ assert b'CF_HTML_HEADER' in archive.read('sample-1/format-0001.bin')
+ assert '正文😀' in archive.read('sample-1/format-0001.html.txt').decode()
+ assert archive.read('sample-1/format-0002.bin')==bytes([0,255,3,128,0])
+ assert json.loads(archive.read('sample-1/format-0003.parsed.json'))['content']=='用户正文'
+ assert archive.read('sample-2/format-0001.txt').decode()=='第二次样本'
+ assert '对象句柄' in sample['formats'][3]['error']
+ assert all('..' not in name and not name.startswith('/') for name in archive.namelist())
+ assert all(info.compress_type==zipfile.ZIP_STORED for info in archive.infolist())
+` ,file],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+ }finally{fs.rmSync(directory,{recursive:true,force:true});}
+});
+
+test('capture records limits and decode failures while preserving successfully captured bytes',async()=>{
+ const {capture,CAPTURE_LIMIT}=require('../assets/clipboard-diagnostics.js');let decoded=false;
+ const sample=await capture([{type:'huge',blob:{size:CAPTURE_LIMIT+1,arrayBuffer(){decoded=true;throw new Error();}}},
+  {type:'corrupt-base64',base64:'%%%'},{type:'utf16',blob:new Blob([Buffer.from([0xff,0xfe,0x2d,0x4e])])},
+  {type:'text/plain',blob:new Blob(['sample'])}]);
+ assert.equal(decoded,false);assert.equal(sample.incomplete,true);assert.match(sample.formats[0].error,/60 MiB/);
+ assert.match(sample.formats[1].error,/读取/);assert.equal(sample.formats[2].preview,'中');assert.equal(sample.formats[3].preview,'sample');
+});
+
+test('HTML diagnostic details decode chat JSON attributes and preserve URLs as data',async()=>{
+ const {capture}=require('../assets/clipboard-diagnostics.js');
+ const html='<p data-clipboard-cangjie="{&quot;children&quot;:[{&quot;src&quot;:&quot;file:///C:/image.png&quot;}]}">正文</p><img src="https://private/a?token=x&amp;b=y"><script>"<img src=bad>"</script>';
+ const sample=await capture([{type:'text/html',blob:new Blob([html])}]);
+ const file=sample.files.find(file=>file.name.endsWith('.html-details.json')),detail=JSON.parse(new TextDecoder().decode(file.data));
+ assert.equal(detail.tags[0].attributes[0].json.children[0].src,'file:///C:/image.png');
+ assert.equal(detail.tags.filter(tag=>tag.name==='img').length,1);
+ assert.equal(detail.tags.find(tag=>tag.name==='img').attributes[0].value,'https://private/a?token=x&b=y');
+});

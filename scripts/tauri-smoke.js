@@ -22,6 +22,25 @@
    }
    cases.push({name,status:'passed',images:imageParts.length});
   }
+  // WebKit collapses a zero-basis flex list inside an auto-height dialog.
+  const segmentParts=(await buildPayload(examples[3][1])).segments;
+  const segmentController=WecomSegments.create({copySegment:()=>{}});
+  for(const [name,parts] of [['short',segmentParts],['scrolling',Array.from({length:8},()=>segmentParts).flat()]]){
+   try{
+    segmentController.open(parts);
+    const panel=document.querySelector('.wecom-segments-dialog'),list=panel.querySelector('.wecom-segments-list');
+    await Promise.all([...list.querySelectorAll('img')].map(image=>image.decode()));
+    const bounds=panel.getBoundingClientRect(),listBounds=list.getBoundingClientRect();
+    if(list.clientHeight<Math.min(160,innerHeight*.3))throw new Error(name+' segment list collapsed to '+list.clientHeight+'px');
+    if(bounds.top<0||bounds.bottom>innerHeight+1||panel.scrollHeight>panel.clientHeight+1)throw new Error(name+' segment dialog exceeds its viewport');
+    const first=list.querySelector('.wecom-segment-heading').getBoundingClientRect();
+    if(first.top<listBounds.top||first.bottom>listBounds.bottom)throw new Error(name+' first segment copy button is clipped');
+    list.scrollTop=list.scrollHeight;
+    const last=list.lastElementChild.getBoundingClientRect();
+    if(last.bottom>listBounds.bottom+1)throw new Error(name+' final segment is unreachable');
+    cases.push({name:'segments-layout-'+name,status:'passed',listHeight:list.clientHeight,scrollHeight:list.scrollHeight});
+   }finally{segmentController.close();}
+  }
   // Background conversion has a separate registry and must preserve editor input.
   const input=document.getElementById('markdown-input');
   input.textContent='主编辑器保持不变 😀';
