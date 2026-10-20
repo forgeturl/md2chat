@@ -12,10 +12,28 @@ function fixture(platform){
  vm.runInContext(source.slice(source.indexOf('for(const copyButton of copyButtons)copyButton.addEventListener'),source.indexOf('\nupdatePreview();')),context);
  return {click:()=>b.click(),calls,panels,parts,context};
 }
-test('Mac WeCom sends the full text-image-text sequence to the native copy command once',async()=>{
- const f=fixture('darwin');await f.click();assert.equal(f.panels.length,0);assert.equal(f.calls.length,1);
+test('Mac and Windows WeCom send the full text-image-text sequence to the native copy command once',async()=>{
+ for(const platform of ['darwin','win32']){
+ const f=fixture(platform);await f.click();assert.equal(f.panels.length,0);assert.equal(f.calls.length,1);
  assert.equal(f.calls[0].parts,f.parts);assert.equal(f.calls[0].target,'wecom');assert.equal(f.context.lastCopyTarget,'wecom');
+ }
 });
-test('Windows and website keep the existing WeCom segment workflow',async()=>{
- for(const platform of ['win32',undefined]){const f=fixture(platform);await f.click();assert.equal(f.calls.length,0);assert.equal(f.panels[0],f.parts);}
+test('website keeps the existing WeCom segment workflow',async()=>{
+ const f=fixture();await f.click();assert.equal(f.calls.length,0);assert.equal(f.panels[0],f.parts);
+});
+
+test('Markdown numbered lists and emphasis survive the Windows copy boundary with ordered image segments',async()=>{
+ const markdown=require('../assets/chat-markdown.js'),payload=require('../assets/chat-payload.js');
+ const src='data:image/png;base64,AAAA';
+ const source='## 中文😀\n\n3. **编号三**\n4. 编号四\n\n- 项目甲\n\n![图]('+src+')\n\n尾文';
+ const result=await payload.build(source,{markdown,renderers:{},renderTable:()=>[],ensureImage:async asset=>({...asset,width:30,height:20})});
+ const f=fixture('win32');f.context.cachedPayload=result;await f.click();
+ assert.equal(f.panels.length,0);assert.equal(f.calls.length,1);
+ const copied=f.calls[0].parts;
+ assert.deepEqual(copied.map(part=>part.type),['text','image','text']);
+ assert(copied[0].text.includes('3. 编号三\n4. 编号四'));
+ assert(copied[0].text.includes('• 项目甲'));
+ assert(copied[0].runs.some(run=>run.text==='编号三'&&run.bold));
+ assert(copied[0].text.includes('中文😀'));assert.equal(copied[1].src,src);
+ assert(copied[2].text.includes('尾文'));
 });

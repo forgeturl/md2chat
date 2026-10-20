@@ -397,7 +397,7 @@ async fn convert(app: &tauri::AppHandle, target: &str) -> Result<Value, String> 
     if current["fingerprint"].as_str() != Some(fingerprint.as_str()) {
         return Err("转换期间剪贴板已更新，已保留新内容。请重新选择转换格式。".into());
     }
-    if !cfg!(target_os = "macos") && target == "wecom" && parts.iter().any(|p| p["type"] == "image") {
+    if !cfg!(any(target_os = "macos", windows)) && target == "wecom" && parts.iter().any(|p| p["type"] == "image") {
         shell::show_window(app);
         request_render(
             app,

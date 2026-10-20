@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: pt-BR; source-sha256: a4607b50438048b9ba1495a6554c9b2c6e20ab1bb623b0e0f13212abd7e63f41 -->
+<!-- language: pt-BR; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
 
 Transforme Markdown de ferramentas de IA ou dos seus documentos em texto e imagens para chats. O texto comum permanece editável; tabelas, código, fórmulas e diagramas Mermaid viram imagens na ordem original. Tarefas usam ✅ / ⬜. Nomes de ferramentas de IA indicam fontes possíveis, não integrações oficiais nem compatibilidade comprovada.
 
@@ -25,7 +25,7 @@ Cole Markdown, texto ou imagens à esquerda, confira a prévia, escolha o destin
 - **WeChat:** texto e imagens padrão; confira se todas as imagens foram mantidas.
 - **DingTalk:** formato nativo no Mac; HTML e texto alternativo no Windows. Testes históricos do Mac não comprovam todos os clientes atuais; o Windows precisa de validação no cliente.
 - **Feishu/Lark:** expanda o editor de texto formatado no Mac antes de colar. Texto com imagens e envio foram testados no Mac; Windows continua experimental.
-- **WeCom:** no Mac, cole tudo de uma vez com texto editável. Na web e no Windows, conteúdos com imagens usam partes em sequência. O teste do Mac foi em rascunho, sem envio.
+- **WeCom:** Mac e Windows colam texto e imagens juntos; a web usa partes ordenadas. As sondagens de formato no Windows 5.0.12.6018 preservaram duas imagens, chinês e numeração, mas removeram negrito, tamanhos e cores. As sondagens também passaram no envio ao Assistente de transferência de arquivos; a nova compilação Windows ainda precisa de validação.
 - **E-mail:** tabelas HTML editáveis; conteúdo complexo vira imagem. Experimental: confira as imagens após colar e enviar.
 
 O desktop também converte todo o documento em um PNG branco. O texto da imagem não é editável. Conteúdos longos podem ser reduzidos ou ultrapassar os limites. Se a área de transferência mudar durante a conversão, o conteúdo novo é preservado e uma nova tentativa é solicitada. Caminhos absolutos e URLs locais `file:///` são aceitos após validação: PNG, JPEG, GIF, WebP ou BMP, até 10 MB e 20 milhões de pixels por imagem. Na web, cole a imagem diretamente. Nenhuma mensagem é enviada automaticamente.

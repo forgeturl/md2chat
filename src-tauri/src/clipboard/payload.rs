@@ -144,6 +144,7 @@ pub fn build(
     let mut png_total = 0;
     let win_ding = windows && target == "dingtalk";
     let feishu_native = (mac || windows) && target == "feishu";
+    let win_wecom = windows && target == "wecom";
     for (index, part) in parts.iter().enumerate() {
         if index > 0 {
             items.push(json!({"type":"newLine","data":{}}));
@@ -255,7 +256,7 @@ pub fn build(
                 }
                 let filename = format!("{:x}.png", Sha256::digest(&png));
                 let file = directory.join(&filename);
-                if target == "dingtalk" && !win_ding || feishu_native {
+                if target == "dingtalk" && !win_ding || feishu_native || win_wecom {
                     super::cache::write(directory, &filename, &png)?;
                 }
                 let requested = part["displayWidth"]
@@ -264,7 +265,15 @@ pub fn build(
                     .unwrap_or(f64::from(width));
                 let display_width = f64::from(width).min(1100.0).min(requested.max(1.0));
                 let display_height = (f64::from(height) * display_width / f64::from(width)).round();
-                let data = format!("data:image/png;base64,{}", STANDARD.encode(png));
+                // Windows WeCom imports local PNGs from CF_HTML but drops data URIs.
+                // Only reference normalized images written to our own cache.
+                let data = if win_wecom {
+                    url::Url::from_file_path(&file)
+                        .map_err(|_| "缓存目录无效")?
+                        .to_string()
+                } else {
+                    format!("data:image/png;base64,{}", STANDARD.encode(png))
+                };
                 if feishu_native {
                     feishu.push(json!({"type":"image","path":file,"width":display_width,"height":display_height}));
                 }
@@ -286,6 +295,7 @@ pub fn build(
                         image
                     });
                 } else {
+                    let data = escape(&data);
                     html.push(format!("<div style=\"margin:0;line-height:0\"><img src=\"{data}\" width=\"{display_width}\" alt=\"图片\" style=\"display:block;max-width:100%;height:auto;border:0\"></div>"));
                 }
                 image_count += 1;
@@ -309,8 +319,25 @@ pub fn build(
         body
     };
     let plain = plain.join("\n");
-    let html = format!("<meta charset=\"utf-8\">{body}");
-    if win_ding && html.len() + plain.len() > MAX_TOTAL {
+    let mut html = format!("<meta charset=\"utf-8\">{body}");
+    if win_wecom {
+        // WeCom's HTML importer can decode UTF-8 as the local code page even
+        // with a charset declaration. Numeric entities preserve Unicode/emoji.
+        use std::fmt::Write as _;
+        let mut encoded = String::with_capacity(html.len());
+        for c in html.chars() {
+            if c.is_ascii() {
+                encoded.push(c);
+            } else {
+                write!(&mut encoded, "&#{};", c as u32).unwrap();
+            }
+            if encoded.len() + plain.len() > MAX_TOTAL {
+                return Err("图文过大，请减少图片后重试".into());
+            }
+        }
+        html = encoded;
+    }
+    if (win_ding || win_wecom) && html.len() + plain.len() > MAX_TOTAL {
         return Err("图文过大，请减少图片后重试".into());
     }
     Ok(Payload {
@@ -442,7 +469,10 @@ mod tests {
             .unwrap();
             assert_eq!(p.plain, text, "{target}/{platform}");
             // Standard HTML wraps a full multiline run; DingTalk wraps each line.
-            let heading_html = p.html.replace("<br>", "");
+            let decoded_html = regex::Regex::new(r"&#(\d+);").unwrap().replace_all(&p.html, |captures: &regex::Captures| {
+                char::from_u32(captures[1].parse().unwrap()).unwrap().to_string()
+            }).into_owned();
+            let heading_html = decoded_html.replace("<br>", "");
             for level in 1..=6 {
                 assert_eq!(
                     heading_html.contains(&format!("<strong>标题{level}</strong>")),
@@ -450,8 +480,8 @@ mod tests {
                     "{target}/{platform}/{level}"
                 );
             }
-            assert!(p.html.contains("【手写标题】"));
-            assert!(p.html.contains("<strong>正文加粗</strong>"));
+            assert!(decoded_html.contains("【手写标题】"));
+            assert!(decoded_html.contains("<strong>正文加粗</strong>"));
             if target == "feishu" {
                 let ops = p.fragment["deltas"]["0"]["ops"].as_array().unwrap();
                 assert_eq!(ops[0]["attributes"]["bold"], "true");
@@ -660,6 +690,40 @@ mod tests {
             serde_json::from_str(ops[2]["attributes"]["image"].as_str().unwrap()).unwrap();
         assert_eq!(image["src"], json!(path));
         assert_eq!(image["width"], 123);
+    }
+    #[test]
+    fn windows_wecom_caches_ordered_images_and_preserves_text_runs() {
+        let directory = std::env::temp_dir().join(format!("md2chat-wecom-中文-{}", uuid::Uuid::new_v4()));
+        let image = image::DynamicImage::new_rgba8(8, 4);
+        let png = crate::images::encode_png(&image).unwrap();
+        let src = format!("data:image/png;base64,{}", STANDARD.encode(&png));
+        let parts = vec![
+            json!({"type":"text","text":"中文😀\n1. 编号\n加粗","runs":[{"text":"中文😀\n1. 编号\n"},{"text":"加粗","bold":true}]}),
+            json!({"type":"image","src":src,"displayWidth":4}),
+            json!({"type":"text","text":"中间"}),
+            json!({"type":"image","src":src}),
+            json!({"type":"text","text":"尾文"}),
+        ];
+        let payload = build(parts.clone(), "wecom", &directory, true, false).unwrap();
+        assert_eq!(payload.images, 2);
+        assert_eq!(payload.plain, "中文😀\n1. 编号\n加粗\n[图片]\n中间\n[图片]\n尾文");
+        assert!(payload.html.contains("<strong>&#21152;&#31895;</strong>"));
+        assert!(payload.html.is_ascii());
+        assert!(payload.html.contains("&#128512;"));
+        assert!(!payload.html.contains("data:image/"));
+        let uri = url::Url::from_file_path(directory.join(format!("{:x}.png", Sha256::digest(&png)))).unwrap();
+        assert_eq!(payload.html.matches(uri.as_str()).count(), 2);
+        assert!(uri.as_str().contains('%'));
+        assert!(payload.html.find("<strong>").unwrap() < payload.html.find("<img").unwrap());
+        assert!(payload.html.rfind("<img").unwrap() < payload.html.find("&#23614;&#25991;").unwrap());
+        assert!(payload.html.contains("width=\"4\""));
+        let embedded = super::super::cache::resolve_with(&payload.html, &directory, |bytes, _| {
+            assert_eq!(bytes, png.as_slice());
+            Ok(())
+        }).unwrap();
+        assert_eq!(embedded.matches("data:image/png;base64,").count(), 2);
+        assert!(build(parts, "wecom", &directory, false, true).unwrap().html.contains("data:image/png;base64,"));
+        std::fs::remove_dir_all(directory).unwrap();
     }
     #[test]
     fn windows_feishu_builds_fragment_with_cached_image() {

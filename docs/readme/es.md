@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: es; source-sha256: a4607b50438048b9ba1495a6554c9b2c6e20ab1bb623b0e0f13212abd7e63f41 -->
+<!-- language: es; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
 
 Convierte Markdown de herramientas de IA o de tus propios documentos en texto e imágenes para el chat. El texto normal sigue siendo editable; tablas, código, fórmulas y diagramas Mermaid se convierten en imágenes conservando el orden. Las tareas usan ✅ / ⬜. Los nombres de herramientas de IA indican posibles fuentes de contenido, no integraciones oficiales ni compatibilidad verificada.
 
@@ -25,7 +25,7 @@ Pega Markdown, texto o imágenes a la izquierda, revisa la vista previa, elige e
 - **WeChat:** texto e imágenes estándar; comprueba que no falten imágenes.
 - **DingTalk:** formato nativo en Mac, HTML y texto alternativo en Windows. Las pruebas históricas de Mac no validan todos los clientes actuales; Windows necesita pruebas en el cliente.
 - **Feishu/Lark:** despliega primero el editor enriquecido de Mac. La mezcla de texto e imágenes y el envío se probaron en Mac; Windows sigue siendo experimental.
-- **WeCom:** Mac permite pegar todo de una vez con texto editable. Web y Windows usan partes ordenadas cuando hay imágenes. La prueba de Mac fue en un borrador, sin enviar.
+- **WeCom:** Mac y Windows pegan texto e imágenes juntos; la web usa partes ordenadas. Las pruebas de formato en Windows 5.0.12.6018 conservaron dos imágenes, chino y numeración, pero eliminaron negrita, tamaños y colores. Las pruebas también pasaron el envío al Asistente de transferencia de archivos; falta validar la nueva compilación Windows.
 - **Correo:** tablas HTML editables y contenido complejo como imágenes. Experimental: verifica las imágenes después de pegar y enviar.
 
 El escritorio también convierte el documento completo en un PNG blanco; el texto de la imagen no es editable. Los contenidos largos pueden reducirse o superar los límites. Si el portapapeles cambia durante la conversión, se conserva el contenido nuevo y se pide reintentar. Admite rutas absolutas e imágenes `file:///` locales tras validarlas: PNG, JPEG, GIF, WebP o BMP, hasta 10 MB y 20 millones de píxeles por imagen. En la web, pega las imágenes directamente. Nunca envía mensajes automáticamente.

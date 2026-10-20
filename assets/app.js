@@ -6,7 +6,7 @@ const wecomSegments=WecomSegments.create({copySegment:segment=>{
 }});
 let copying=false,lastCopyTarget=null;
 const desktopRequired=b=>['image','dingtalk','feishu'].includes(b.dataset.copyTarget)&&!window.md2chatDesktop;
-function copyTargetNote(target){if(target==='wecom'&&window.md2chatDesktop?.platform==='darwin')return 'Mac 企业微信支持一次粘贴整段图文，普通文字可编辑。';return target==='image'?'将完整内容合成一张 PNG，图片中的文字不可编辑。':target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
+function copyTargetNote(target){if(target==='wecom'&&window.md2chatDesktop?.platform==='win32')return 'Windows 企业微信支持整段图文；文字可编辑，编号保留，粗体、字号和颜色不保留。';if(target==='wecom'&&window.md2chatDesktop?.platform==='darwin')return 'Mac 企业微信支持一次粘贴整段图文，普通文字可编辑。';return target==='image'?'将完整内容合成一张 PNG，图片中的文字不可编辑。':target==='feishu'&&['darwin','win32'].includes(window.md2chatDesktop?.platform)?'请先展开飞书富文本输入框，再一次粘贴图文；普通输入框可能丢图。':ChatTargets.profile(target).note;}
 const button={set disabled(value){for(const b of copyButtons)b.disabled=value||copying||desktopRequired(b);}};
 const status=document.getElementById('status');
 const copyNotice=document.getElementById('copy-notice');
@@ -262,7 +262,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=target==='image'?null:ChatTargets.profile(target);
  if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“图片”。':'预览已更新，请点击平台图标复制。';return;}
- if(target==='wecom'&&window.md2chatDesktop?.platform!=='darwin'&&cachedPayload.segments.some(part=>part.type==='image')){
+ if(target==='wecom'&&!['darwin','win32'].includes(window.md2chatDesktop?.platform)&&cachedPayload.segments.some(part=>part.type==='image')){
   try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
   catch(error){showCopyNotice(error.message,true);}
   return;

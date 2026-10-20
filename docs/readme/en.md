@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: en; source-sha256: a4607b50438048b9ba1495a6554c9b2c6e20ab1bb623b0e0f13212abd7e63f41 -->
+<!-- language: en; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
 
 Turn Markdown copied from AI tools or your own documents into chat-ready text and images. Ordinary text stays editable; tables, code, equations and Mermaid diagrams become images in the original order. Task lists use ✅ / ⬜. AI tool names describe possible content sources, not official integrations or proof of compatibility.
 
@@ -25,7 +25,7 @@ Paste Markdown, text or images on the left, check the preview, choose a destinat
 - **WeChat:** standard text and images. Check that the destination retains every image.
 - **DingTalk:** Mac uses native text and images; Windows uses HTML and plain-text fallback. Historical Mac tests do not establish acceptance of every current build or client version; Windows pasting still needs client verification.
 - **Feishu/Lark:** expand the Mac rich-text input before pasting. Mac mixed text and images were tested, including sending; Windows remains experimental and needs verification.
-- **WeCom:** Mac desktop can paste the entire text and images at once; ordinary text is editable. Web and Windows use ordered parts when images are present. The Mac test was in a draft and did not send a message.
+- **WeCom:** Mac and Windows desktop paste text and images together; web uses ordered parts. Windows 5.0.12.6018 format probes kept two images, Chinese and numbering, but removed bold, font sizes and colors. The probes also passed a send test in File Transfer Assistant; the new Windows build still needs validation.
 - **Email:** editable HTML tables; complex content becomes images. Experimental: check images after both pasting and sending.
 
 Desktop can also turn the entire document into one white PNG. Text inside that image is not editable. Long content may be scaled down or rejected if it exceeds image limits. If the clipboard changes during conversion, new content is preserved and you are asked to retry. Local absolute image paths and `file:///` URLs are supported on desktop after validation (PNG, JPEG, GIF, WebP or BMP, up to 10 MB and 20 million pixels per image); paste images directly on the web. Conversion never sends chat messages automatically.

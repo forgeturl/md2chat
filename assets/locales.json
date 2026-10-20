@@ -6252,6 +6252,17 @@
       "de": "Eingaben vor der Installation speichern.",
       "fr": "Enregistrez votre contenu avant l’installation.",
       "hi": "इंस्टॉल करने से पहले अपना पाठ सहेज लें।"
+    },
+    "Windows 企业微信支持整段图文；文字可编辑，编号保留，粗体、字号和颜色不保留。": {
+      "zh-CN": "Windows 企业微信支持整段图文；文字可编辑，编号保留，粗体、字号和颜色不保留。",
+      "en": "Windows WeCom supports text and images in one paste. Text stays editable and numbering is kept; bold, font sizes and colors are not retained.",
+      "es": "WeCom para Windows permite pegar texto e imágenes de una vez. El texto sigue editable y conserva la numeración; no se conservan negrita, tamaños ni colores.",
+      "pt-BR": "O WeCom para Windows permite colar texto e imagens de uma vez. O texto é editável e mantém a numeração; negrito, tamanhos e cores não são preservados.",
+      "ja": "Windows 版 WeCom は図文を一括貼り付けできます。文章は編集可能で番号は保持されますが、太字・文字サイズ・色は保持されません。",
+      "ko": "Windows WeCom은 텍스트와 이미지를 한 번에 붙여넣습니다. 텍스트 편집과 번호는 유지되지만 굵게, 글자 크기와 색상은 유지되지 않습니다.",
+      "de": "Windows-WeCom fügt Text und Bilder auf einmal ein. Text bleibt bearbeitbar, Nummern bleiben erhalten; Fettdruck, Schriftgrößen und Farben entfallen.",
+      "fr": "WeCom Windows permet de coller texte et images en une fois. Le texte reste modifiable et la numérotation est conservée ; le gras, les tailles et les couleurs sont supprimés.",
+      "hi": "Windows WeCom में टेक्स्ट और चित्र एक साथ पेस्ट होते हैं। टेक्स्ट संपादन योग्य रहता है और क्रमांक बने रहते हैं; बोल्ड, फ़ॉन्ट आकार और रंग नहीं रहते।"
     }
   }
 }

@@ -73,7 +73,7 @@ fn copy_inner(
     native::write_checked(formats, sequence)?;
     // Prune only after replacing the previous clipboard, whose private fragments
     // may still refer to the cache. Current files have a fresh modification time.
-    if feishu_native {
+    if feishu_native || (cfg!(windows) && target == "wecom") {
         let _ = cache::prune(directory);
     }
     Ok(

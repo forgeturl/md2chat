@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: de; source-sha256: a4607b50438048b9ba1495a6554c9b2c6e20ab1bb623b0e0f13212abd7e63f41 -->
+<!-- language: de; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
 
 Wandelt Markdown aus KI-Werkzeugen oder eigenen Dokumenten in Text und Bilder für Chats um. Normaler Text bleibt bearbeitbar; Tabellen, Code, Formeln und Mermaid-Diagramme werden zu Bildern in der ursprünglichen Reihenfolge. Aufgabenlisten verwenden ✅ / ⬜. Namen von KI-Werkzeugen bezeichnen mögliche Inhaltsquellen, keine offiziellen Integrationen oder nachgewiesene Kompatibilität.
 
@@ -25,7 +25,7 @@ Links Markdown, Text oder Bilder einfügen, die Vorschau prüfen, ein Ziel wähl
 - **WeChat:** Standardtext und Bilder; prüfen, ob alle Bilder erhalten bleiben.
 - **DingTalk:** natives Format auf dem Mac, HTML und Klartext-Ersatz unter Windows. Historische Mac-Tests bestätigen nicht sämtliche aktuellen Versionen; Windows muss im Zielprogramm geprüft werden.
 - **Feishu/Lark:** auf dem Mac zuerst die Rich-Text-Eingabe erweitern. Gemischter Text mit Bildern und Versand wurden auf dem Mac geprüft; Windows bleibt experimentell.
-- **WeCom:** auf dem Mac alles auf einmal einfügen, normaler Text bleibt bearbeitbar. Web und Windows verwenden bei Bildern geordnete Abschnitte. Der Mac-Test erfolgte im Entwurf ohne Versand.
+- **WeCom:** Mac und Windows fügen Text und Bilder zusammen ein; im Web werden Abschnitte nacheinander eingefügt. Formatproben mit Windows 5.0.12.6018 behielten zwei Bilder, Chinesisch und Nummern, entfernten aber Fettdruck, Schriftgrößen und Farben. Die Proben bestanden auch den Sendetest im Dateiübertragungsassistenten; der neue Windows-Build ist noch zu prüfen.
 - **E-Mail:** bearbeitbare HTML-Tabellen, komplexe Inhalte als Bilder. Experimentell: Bilder nach Einfügen und Versand prüfen.
 
 Desktop kann das gesamte Dokument in ein weißes PNG umwandeln. Text darin ist nicht bearbeitbar. Lange Inhalte werden gegebenenfalls verkleinert oder bei überschrittenen Grenzen abgelehnt. Ändert sich die Zwischenablage währenddessen, bleiben neue Inhalte erhalten und eine Wiederholung wird angeboten. Lokale absolute Bildpfade und `file:///` werden nach Prüfung unterstützt: PNG, JPEG, GIF, WebP oder BMP, höchstens 10 MB und 20 Millionen Pixel je Bild. Im Web Bilder direkt einfügen. Nachrichten werden niemals automatisch versendet.

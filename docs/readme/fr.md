@@ -2,7 +2,7 @@
 
 [简体中文](../../README.md) · [English](en.md) · [Español](es.md) · [Português](pt-BR.md) · [日本語](ja.md) · [한국어](ko.md) · [Deutsch](de.md) · [Français](fr.md) · [हिन्दी](hi.md)
 
-<!-- language: fr; source-sha256: a4607b50438048b9ba1495a6554c9b2c6e20ab1bb623b0e0f13212abd7e63f41 -->
+<!-- language: fr; source-sha256: f9bf7ac13d2bff3b856579f2a096a2455518b890f1b2c70cfee24041b9349d15 -->
 
 Transformez le Markdown des outils d’IA ou de vos documents en texte et images pour vos conversations. Le texte ordinaire reste modifiable ; tableaux, code, formules et diagrammes Mermaid deviennent des images dans l’ordre d’origine. Les tâches utilisent ✅ / ⬜. Les noms d’outils d’IA désignent des sources possibles, pas des intégrations officielles ni une compatibilité vérifiée.
 
@@ -25,7 +25,7 @@ Collez du Markdown, du texte ou des images à gauche, vérifiez l’aperçu, cho
 - **WeChat :** texte et images standards ; vérifiez la présence de chaque image.
 - **DingTalk :** format natif sur Mac, HTML et texte de secours sur Windows. Les essais historiques Mac ne valident pas toutes les versions actuelles ; Windows nécessite une vérification dans le client.
 - **Feishu/Lark :** déployez d’abord l’éditeur enrichi sur Mac. Le mélange texte-images et l’envoi ont été testés sur Mac ; Windows reste expérimental.
-- **WeCom :** sur Mac, collez tout en une fois avec du texte modifiable. Web et Windows utilisent des segments ordonnés avec les images. Le test Mac a eu lieu dans un brouillon sans envoi.
+- **WeCom :** Mac et Windows collent texte et images ensemble ; le Web utilise des segments ordonnés. Les sondes de format Windows 5.0.12.6018 ont conservé deux images, le chinois et la numérotation, mais supprimé le gras, les tailles et les couleurs. Les sondes ont aussi passé le test d’envoi dans l’Assistant de transfert de fichiers ; le nouveau build Windows reste à valider.
 - **E-mail :** tableaux HTML modifiables ; contenu complexe en images. Expérimental : vérifiez les images après collage et envoi.
 
 Le bureau peut aussi convertir tout le document en un PNG blanc. Le texte de cette image n’est pas modifiable. Les longs contenus peuvent être réduits ou refusés selon les limites. Si le presse-papiers change pendant la conversion, le nouveau contenu est conservé et une nouvelle tentative est proposée. Les chemins absolus et images locales `file:///` sont pris en charge après validation : PNG, JPEG, GIF, WebP ou BMP, 10 Mo et 20 millions de pixels maximum par image. Sur le Web, collez directement l’image. Aucun message n’est envoyé automatiquement.
