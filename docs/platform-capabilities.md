@@ -186,3 +186,14 @@ const example = "仅测试";
 - `npm run check`：293 项通过，包含 Windows/Mac 企微整段出口、网页分段和编号/图文顺序；九语界面、跨版本摘要、旧协议兼容和发布工具检查通过。
 - `npm run desktop:test`：本机 65 项通过、1 项默认忽略，补齐此前 Windows 开发环境无法运行的原生格式生成回归，并增加历史请求在缓存锁竞争时遵守超时的回归。Mac 上以 Windows 参数构造 payload 的测试属于格式生成检查，不能记为 Windows 系统剪贴板回读或企微客户端实测。
 - `npm run build`、九语 README 同步与资源检查通过。未执行会覆盖剪贴板的显式往返测试；Windows 新构建主窗口/托盘/快捷键端到端、实际表格图片、真实客户端粘贴/发送和签名包跨版本安装仍待验证。已有 Windows 探针发送证据仅保留原有范围。
+
+### v0.6.24 正式发布流水线结果
+
+2026-10-21，正式标签 `v0.6.24` 指向 `f8e2eb6`。[Desktop release 39474359163](https://github.com/forgeturl/md2chat/actions/runs/39474359163) 全部成功：
+
+- Apple Silicon Mac 原生测试、Mac arm64 / x86_64 二进制、通用包架构检查，以及 App/DMG 签名与公证通过。
+- Windows x64 安装包、Windows 原生模块测试，以及 `Verify native Windows clipboard and CF_HTML cases` 通过，系统回读证据由流水线产物保留；这仍不等于 Windows 企微客户端新构建粘贴/发送验收。
+- 更新签名、完整发布资产与 SHA256 校验通过，[v0.6.24](https://github.com/forgeturl/md2chat/releases/tag/v0.6.24) 已设为 Latest，共 17 项安装/更新/校验资产，含 1 个历史索引及 9 个语言分片；同版本官网部署成功。
+- 发布后重新下载公开的 `latest.json` 及 10 个历史 JSON 文件，验证九语完整、每个文件字节数/哈希、版本区间和元数据均与所审阅源码一致，兼容 `notes` 字段存在。
+
+没有执行签名包的真实跨版本安装、Windows 新构建主窗口/托盘/快捷键到企微的端到端验收。此处仅补充自动验证与发布证据，不扩大原有聊天客户端实测范围。
