@@ -1,4 +1,5 @@
 mod clipboard;
+mod conversion_deadline;
 mod image_copy;
 mod images;
 mod locale;
@@ -13,14 +14,24 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Mutex,
 };
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 use tokio::sync::oneshot;
+
+const CONVERSION_CANCELLED: &str = "MD2CHAT_CONVERSION_CANCELLED";
+
+struct Rendered {
+    parts: Vec<Value>,
+    skipped_images: usize,
+    directory_fingerprint: Option<String>,
+}
 
 struct Pending {
     id: u64,
     request: Value,
-    response: oneshot::Sender<Result<Vec<Value>, String>>,
+    response: oneshot::Sender<Result<Rendered, String>>,
+    deadline: conversion_deadline::Deadline,
+    directory_fingerprint: Option<String>,
 }
 
 #[derive(Default)]
@@ -180,6 +191,65 @@ async fn desktop_read_local_image(
 }
 
 #[tauri::command]
+async fn desktop_resolve_image_path(
+    window: tauri::WebviewWindow,
+    source: String,
+    directory: String,
+) -> Result<String, String> {
+    trusted(&window)?;
+    blocking(move || images::resolve_image_path(&source, &directory).map(|path| path.to_string_lossy().into_owned())).await
+}
+
+#[tauri::command]
+async fn conversion_directory_prompt(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    id: u64,
+    waiting: bool,
+    directory: Option<String>,
+) -> Result<(), String> {
+    trusted(&window)?;
+    {
+        let state = app.state::<RuntimeState>();
+        let mut slot = state.pending.lock().map_err(|_| "转换状态不可用")?;
+        let pending = slot.as_mut().filter(|pending| pending.id == id && pending.request["kind"] == "render").ok_or("转换请求已失效")?;
+        pending.deadline.set_waiting(waiting, Instant::now());
+    }
+    if waiting { shell::show_window(&app); }
+    // Pasting a folder copied during this prompt is an intentional clipboard
+    // change. Accept only that exact path; unrelated new clipboard data remains
+    // protected by the final fingerprint check and guarded write.
+    if !waiting {
+        if let Some(directory) = directory.filter(|directory| !directory.trim().is_empty()) {
+            let cache = image_directory(&app)?;
+            if let Ok(Some(fingerprint)) = blocking(move || {
+                let source = clipboard::read_source(&cache)?;
+                Ok(directory_clipboard_fingerprint(&source, &directory))
+            }).await {
+                let state = app.state::<RuntimeState>();
+                let mut slot = state.pending.lock().map_err(|_| "转换状态不可用")?;
+                if let Some(pending) = slot.as_mut().filter(|pending| pending.id == id) {
+                    pending.directory_fingerprint = Some(fingerprint);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn directory_clipboard_fingerprint(source: &Value, directory: &str) -> Option<String> {
+    let content = source["content"].as_array()?;
+    if directory.trim().is_empty() || content.len() != 1
+        || content[0]["plain"].as_str()?.trim() != directory.trim()
+        || !content[0]["html"].as_str()?.trim().is_empty()
+        || !content[0]["images"].as_array()?.is_empty()
+    {
+        return None;
+    }
+    Some(source["fingerprint"].as_str()?.to_owned())
+}
+
+#[tauri::command]
 async fn desktop_resolve_clipboard_html(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
@@ -329,13 +399,16 @@ fn conversion_result(
         return Ok(());
     }
     if let Some(pending) = slot.take() {
-        let result = if let Some(error) = result.get("error").and_then(Value::as_str) {
+        let result = if result["cancelled"] == true {
+            Err(CONVERSION_CANCELLED.into())
+        } else if let Some(error) = result.get("error").and_then(Value::as_str) {
             Err(error.chars().take(500).collect())
         } else {
             result
                 .get("parts")
                 .and_then(Value::as_array)
                 .cloned()
+                .map(|parts| Rendered { parts, skipped_images: result["skippedImages"].as_u64().unwrap_or(0).min(100_000) as usize, directory_fingerprint: pending.directory_fingerprint })
                 .ok_or_else(|| "转换结果格式错误".into())
         };
         let _ = pending.response.send(result);
@@ -344,9 +417,13 @@ fn conversion_result(
 }
 
 async fn request_render(app: &tauri::AppHandle, request: Value) -> Result<Vec<Value>, String> {
+    request_render_output(app, request).await.map(|rendered| rendered.parts)
+}
+
+async fn request_render_output(app: &tauri::AppHandle, request: Value) -> Result<Rendered, String> {
     let state = app.state::<RuntimeState>();
     let id = state.next_id.fetch_add(1, Ordering::SeqCst) + 1;
-    let (sender, receiver) = oneshot::channel();
+    let (sender, mut receiver) = oneshot::channel();
     {
         let mut pending = state.pending.lock().map_err(|_| "转换状态不可用")?;
         if pending.is_some() {
@@ -356,13 +433,22 @@ async fn request_render(app: &tauri::AppHandle, request: Value) -> Result<Vec<Va
             id,
             request,
             response: sender,
+            deadline: conversion_deadline::Deadline::new(Instant::now()),
+            directory_fingerprint: None,
         });
     }
     let result = match dispatch(app) {
-        Ok(()) => match tokio::time::timeout(Duration::from_secs(60), receiver).await {
-            Ok(Ok(result)) => result,
-            Ok(Err(_)) => Err("转换窗口已重新加载，请重试。".into()),
-            Err(_) => Err("转换超时，请减少内容后重试。".into()),
+        Ok(()) => loop {
+            let wait = state.pending.lock().map_err(|_| "转换状态不可用")?.as_ref()
+                .filter(|pending| pending.id == id)
+                .and_then(|pending| pending.deadline.remaining(Instant::now()))
+                .unwrap_or(Duration::from_secs(1));
+            if wait.is_zero() { break Err("转换超时，请减少内容后重试。".into()); }
+            match tokio::time::timeout(wait.min(Duration::from_secs(1)), &mut receiver).await {
+                Ok(Ok(result)) => break result,
+                Ok(Err(_)) => break Err("转换窗口已重新加载，请重试。".into()),
+                Err(_) => {}
+            }
         },
         Err(error) => Err(error),
     };
@@ -385,11 +471,13 @@ async fn convert(app: &tauri::AppHandle, target: &str) -> Result<Value, String> 
         .as_str()
         .ok_or("无法确认剪贴板状态")?
         .to_owned();
-    let parts = request_render(
+    let rendered = request_render_output(
         app,
         json!({"kind":"render","target":target,"content":source["content"]}),
     )
     .await?;
+    let parts = rendered.parts;
+    let fingerprint = rendered.directory_fingerprint.unwrap_or(fingerprint);
     let current = blocking({
         let directory = directory.clone();
         move || clipboard::read_source(&directory)
@@ -411,13 +499,17 @@ async fn convert(app: &tauri::AppHandle, target: &str) -> Result<Value, String> 
         if parts.len() != 1 || parts[0]["type"] != "image" {
             return Err("转图片未生成完整 PNG，请重试。".into());
         }
-        return blocking(move || {
+        let mut result = blocking(move || {
             clipboard::copy_segment_guarded(parts[0].clone(), &directory, &fingerprint)
         })
-        .await;
+        .await?;
+        result["skippedImages"] = json!(rendered.skipped_images);
+        return Ok(result);
     }
     let target = target.to_owned();
-    blocking(move || clipboard::copy_guarded(parts, &target, &directory, &fingerprint)).await
+    let mut result = blocking(move || clipboard::copy_guarded(parts, &target, &directory, &fingerprint)).await?;
+    result["skippedImages"] = json!(rendered.skipped_images);
+    Ok(result)
 }
 
 pub fn start_conversion(app: tauri::AppHandle, target: String) {
@@ -425,7 +517,7 @@ pub fn start_conversion(app: tauri::AppHandle, target: String) {
         use tauri_plugin_notification::NotificationExt;
         match convert(&app, &target).await {
             Ok(result) if result["segmented"] == true => {}
-            Ok(_) => {
+            Ok(result) => {
                 let body = match target.as_str() {
                     "image" => "已转为图片并写入剪贴板，可以直接粘贴。",
                     "feishu" if cfg!(target_os = "macos") => {
@@ -433,13 +525,17 @@ pub fn start_conversion(app: tauri::AppHandle, target: String) {
                     }
                     _ => "已写入剪贴板，请到对应聊天输入框粘贴。",
                 };
+                let body = if result["skippedImages"].as_u64().unwrap_or(0) > 0 {
+                    locale::tr(&app, "转换完成，已跳过 {n} 张图片。").replace("{n}", &result["skippedImages"].to_string())
+                } else { locale::tr(&app, body) };
                 let _ = app
                     .notification()
                     .builder()
                     .title(locale::tr(&app, "剪贴板转换完成"))
-                    .body(locale::tr(&app, body))
+                    .body(body)
                     .show();
             }
+            Err(error) if error == CONVERSION_CANCELLED => {}
             Err(error) => {
                 use tauri_plugin_dialog::DialogExt;
                 app.dialog()
@@ -478,6 +574,9 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(RuntimeState::default())
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                let _ = window.emit("md2chat:directory-cancel", ());
+            }
             if window.label() == "preferences"
                 && matches!(
                     event,
@@ -513,6 +612,8 @@ pub fn run() {
             desktop_inspect,
             desktop_save_diagnostics,
             desktop_read_local_image,
+            desktop_resolve_image_path,
+            conversion_directory_prompt,
             desktop_resolve_clipboard_html,
             desktop_test_dingtalk_html,
             desktop_open_external,
@@ -586,6 +687,22 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn clipboard_rebaseline_accepts_only_the_entered_directory_text() {
+        let directory = "/tmp/Markdown docs";
+        let source = json!({"content":[{"plain":directory,"html":"","images":[]}],"fingerprint":"path-copy"});
+        assert_eq!(directory_clipboard_fingerprint(&source, directory).as_deref(), Some("path-copy"));
+        assert_eq!(directory_clipboard_fingerprint(&source, "/different"), None);
+        assert_eq!(directory_clipboard_fingerprint(&source, ""), None);
+        let unrelated = json!({"content":[{"plain":"new private text","images":[]}],"fingerprint":"new"});
+        assert_eq!(directory_clipboard_fingerprint(&unrelated, directory), None);
+        let image = json!({"content":[{"plain":directory,"images":["PNG"]}],"fingerprint":"image"});
+        assert_eq!(directory_clipboard_fingerprint(&image, directory), None);
+        let multiple = json!({"content":[{"plain":directory,"images":[]},{"plain":"other","images":[]}],"fingerprint":"multiple"});
+        assert_eq!(directory_clipboard_fingerprint(&multiple, directory), None);
+        let html = json!({"content":[{"plain":directory,"html":"<img src='private.png'>","images":[]}],"fingerprint":"html"});
+        assert_eq!(directory_clipboard_fingerprint(&html, directory), None);
+    }
     #[test]
     fn local_command_origin_rejects_other_pages_and_remote_hosts() {
         assert!(local_url(

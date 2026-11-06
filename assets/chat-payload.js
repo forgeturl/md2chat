@@ -3,9 +3,9 @@
  const escapeHtml=value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
  // deps: {markdown, renderers:{math,mermaid,code}, renderTable, imageAssets, ensureImage, describeImageError}
  async function build(source,deps){
-  const {markdown,renderers,renderTable,imageAssets=new Map(),ensureImage,describeImageError=(src,error)=>src+'：'+error.message}=deps;
+  const {markdown,renderers,renderTable,imageAssets=new Map(),imageOverrides=new Map(),ensureImage,describeImageError=(src,error)=>src+'：'+error.message}=deps;
   if(source.length>2*1024*1024)throw new Error('文字过长，请分段转换（最多 2 MB 字符）。');
-  const blocks=markdown.compactImages(markdown.parse(source)),parts=[],plain=[],preview=[],segments=[],emailTables=new Map(),emailSkip=new Set();let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0,codeImages=0,codeCount=0;
+  const blocks=markdown.compactImages(markdown.parse(source)),parts=[],plain=[],preview=[],segments=[],skippedImages=[],emailTables=new Map(),emailSkip=new Set();let tableCount=0,imageCount=0,tableImages=0,originalImages=0,mathImages=0,mermaidImages=0,codeImages=0,codeCount=0;
   const appendText=(text,run={})=>{if(segments.at(-1)?.type==='text'){segments.at(-1).text+=text;segments.at(-1).runs.push({...run,text});}else segments.push({type:'text',text,runs:[{...run,text}]});};
   const lineBreak='<br>';
   const appendImage=(image,sourceUrl)=>{
@@ -49,7 +49,8 @@
     for(let i=start+1;i<segments.length;i++)emailSkip.add(i);
     plain.push([block.header,...block.rows].map(row=>row.join(' | ')).join('\n'));
    }else{
-    const asset=block.id?imageAssets.get(block.id):{src:block.src};
+    const asset=block.id?imageAssets.get(block.id):imageOverrides.has(block.src)?imageOverrides.get(block.src):{src:block.src};
+    if(asset===null){skippedImages.push(block.src);continue;}
     if(!asset)throw new Error('原文图片引用已失效，请重新粘贴完整图文。');
     try{const image=await ensureImage(asset,{allowLocal:!block.id});originalImages++;appendImage(image,image.sourceUrl);plain.push('[图片]');}
     catch(error){
@@ -60,7 +61,7 @@
   }
   const cleanSegment=s=>{if(s.type!=='text')return s;const runs=s.runs.map(r=>({...r}));while(runs.length&&!runs[0].text.replace(/^\n+/,''))runs.shift();while(runs.length&&!runs.at(-1).text.replace(/\n+$/,''))runs.pop();if(runs.length){runs[0].text=runs[0].text.replace(/^\n+/,'');runs.at(-1).text=runs.at(-1).text.replace(/\n+$/,'');}return {...s,text:runs.map(r=>r.text).join(''),runs};};
   const clean=list=>list.map(cleanSegment).filter(s=>s.type!=='text'||s.text.trim());
-  return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),emailSegments:clean(segments.flatMap((s,i)=>emailSkip.has(i)?[]:[emailTables.get(i)||s])),segments:clean(segments),tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages,codeImages};
+  return {html:"<meta charset='utf-8'>\n<article class=\"4ever-article\">\n"+parts.join(lineBreak)+'</article>',plain:plain.join('\n'),preview:preview.join(''),emailSegments:clean(segments.flatMap((s,i)=>emailSkip.has(i)?[]:[emailTables.get(i)||s])),segments:clean(segments),skippedImages,tableCount,imageCount,tableImages,originalImages,mathImages,mermaidImages,codeImages};
  }
  return {build};
 });

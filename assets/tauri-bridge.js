@@ -32,12 +32,12 @@
    }
    let parts;
    if (kind === 'segments' && segmentsCallback) { await segmentsCallback(input.parts); parts = []; }
-   else if (kind === 'render' && renderCallback) parts = await renderCallback(input.content, input.target);
+   else if (kind === 'render' && renderCallback) parts = await renderCallback(input.content, input.target, {requestId:request.id});
    else if (kind === 'editor-image' && imageCallback) parts = [await imageCallback()];
    else throw new Error('转换窗口尚未准备好，请重试。');
-   await invoke('conversion_result', {id: request.id, result: {parts}});
+   await invoke('conversion_result', {id: request.id, result: {parts,skippedImages:parts.skippedImages?.length||0}});
   } catch (error) {
-   await invoke('conversion_result', {id: request.id, result: {error: error?.message || '转换失败，请重试。'}}).catch(() => {});
+   await invoke('conversion_result', {id: request.id, result: error?.cancelled?{cancelled:true}:{error: error?.message || '转换失败，请重试。'}}).catch(() => {});
   } finally { if (ownsRenderer) rendering=false; pending.delete(request.id); }
  }
  function ready() {
@@ -74,6 +74,9 @@
   inspect: () => invoke('desktop_inspect'),
   saveDiagnostics: (name, data) => invoke('desktop_save_diagnostics', {name, data}),
   readLocalImage: source => invoke('desktop_read_local_image', {source}),
+  resolveImagePath: (source,directory) => invoke('desktop_resolve_image_path', {source,directory}),
+  directoryPrompt: (id,waiting,directory) => invoke('conversion_directory_prompt', {id,waiting,directory}),
+  onDirectoryCancel: callback => subscribe('md2chat:directory-cancel', callback),
   resolveClipboardHtml: html => invoke('desktop_resolve_clipboard_html', {html}),
   ready,
   onConvertClipboard(callback) {

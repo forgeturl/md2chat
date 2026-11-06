@@ -165,6 +165,27 @@ button:focus-visible,a:focus-visible,summary:focus-visible,#message:focus-visibl
 .update-dialog[data-phase="current"] .update-action:hover,.update-dialog[data-phase="idle"] .update-action:hover{background:#e8ebee}
 .update-close{background:#fff;border-color:#d5dae1;color:var(--ink)}
 .update-close:hover:not(:disabled){background:#f0f2f5}
+.image-directory-dialog{width:min(580px,calc(100vw - 32px));max-height:90dvh}
+.image-directory-form{padding:20px 24px 24px;overflow-y:auto}
+.image-directory-form>.help{margin:0 0 20px}
+.image-directory-form>label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}
+.image-directory-form>input{box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+.image-directory-form>input:focus{outline:2px solid var(--accent);outline-offset:2px}
+.image-directory-status{font-size:13px;line-height:1.6;margin:12px 0;min-height:0;color:var(--muted)}
+.image-directory-status:empty{display:none}.image-directory-status.has-error{color:#b42318}
+.image-directory-references{font-size:13px;margin-top:16px;color:var(--muted)}
+.image-directory-references summary{cursor:pointer}
+.image-directory-references ul,#skipped-images ul{max-height:170px;overflow:auto;padding-left:20px;margin:10px 0;overflow-wrap:anywhere}
+.image-directory-reference,.image-directory-resolved,.image-directory-reason{display:block;overflow-wrap:anywhere}
+.image-directory-reference{color:var(--ink)}.image-directory-reason{color:#b42318}.image-directory-references li+li{margin-top:10px}
+.image-directory-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:24px}
+.image-directory-actions button{font-size:14px;min-height:40px;white-space:normal}
+.image-directory-confirm-actions{display:flex;gap:8px;margin-left:auto;max-width:100%}
+.image-directory-actions .image-directory-ignore{background:transparent;border-color:transparent;color:var(--muted);padding-left:0}
+.image-directory-actions .image-directory-ignore:hover:not(:disabled){color:var(--ink);background:#f3f4f6}
+.image-directory-spacer{flex:1}.image-directory-skip{font-size:12px;color:var(--muted)}
+#skipped-images{font-size:13px;color:#825413;margin-top:8px;overflow-wrap:anywhere}
+@media(max-width:480px){.image-directory-form{padding:16px}.image-directory-skip{flex-basis:100%;order:4}.image-directory-actions{gap:6px}}
 .help-dialog{width:min(780px,calc(100vw - 32px));height:min(650px,86dvh)}
 .help-identity{display:flex;align-items:center;gap:12px;min-width:0}
 .help-identity img{border-radius:10px;flex:none}

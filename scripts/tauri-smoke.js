@@ -22,6 +22,25 @@
    }
    cases.push({name,status:'passed',images:imageParts.length});
   }
+  // Local SVG uses the real WebView decoder and canvas, including UTF-8 text.
+  const svgData=xml=>'data:image/svg+xml;base64,'+btoa(String.fromCharCode(...new TextEncoder().encode(xml)));
+  const original=await ChatRenderers.svg(svgData('\ufeff<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect x="10" y="10" width="30" height="20" fill="#123456"/><text x="10" y="65" font-size="16">中文 SVG</text></svg>'));
+  if(original.width!==240||original.height!==160||original.displayWidth!==120||original.displayHeight!==80)throw new Error('SVG dimensions or 2x resolution lost');
+  const svgImage=new Image();svgImage.src=original.src;await svgImage.decode();
+  const svgCanvas=document.createElement('canvas');svgCanvas.width=240;svgCanvas.height=160;
+  const svgContext=svgCanvas.getContext('2d');svgContext.drawImage(svgImage,0,0);
+  if(svgContext.getImageData(0,0,1,1).data[3]!==0||Array.from(svgContext.getImageData(30,30,1,1).data).join(',')!=='18,52,86,255')throw new Error('SVG transparency or color lost');
+  if(!svgContext.getImageData(0,90,240,60).data.some((value,index)=>index%4===3&&value>0))throw new Error('SVG text was not drawn');
+  svgCanvas.width=0;svgCanvas.height=0;
+  const viewBox=await ChatRenderers.svg(svgData('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60"><rect width="180" height="60" fill="red"/></svg>'));
+  if(viewBox.displayWidth!==180||viewBox.displayHeight!==60)throw new Error('SVG viewBox dimensions lost');
+  for(const [xml,reason] of [['<svg>broken','解码'],['<html/>','解码'],['<svg xmlns="http://www.w3.org/2000/svg" width="0" height="10"/>','解码'],['<svg xmlns="http://www.w3.org/2000/svg" width="5000" height="5000"/>','2000 万像素']]){
+   let rejected=false;
+   try{await ChatRenderers.svg(svgData(xml));}catch(error){if(!error.message.includes(reason))throw error;rejected=true;}
+   if(!rejected)throw new Error('Invalid or oversized SVG was accepted');
+  }
+  cases.push({name:'local-svg-rasterization',status:'passed',width:original.width,height:original.height});
+  images.push({name:'local-svg',src:original.src,width:original.width,height:original.height});
   // WebKit collapses a zero-basis flex list inside an auto-height dialog.
   const segmentParts=(await buildPayload(examples[3][1])).segments;
   const segmentController=WecomSegments.create({copySegment:()=>{}});

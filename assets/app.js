@@ -124,6 +124,7 @@ async function ensureImage(asset,{allowLocal=false}={}){
   try{
    if(local){
     asset.src=await window.md2chatDesktop.readLocalImage(asset.src);
+    if(/^data:image\/svg\+xml;base64,/i.test(asset.src))Object.assign(asset,await ChatRenderers.svg(asset.src));
     if(!/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(asset.src)||asset.src.length>15*1024*1024)throw new Error('图片数据无效。');
    }else if(!asset.src.startsWith('data:')){
     const response=await fetch(asset.src,{credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(12000)});
@@ -208,10 +209,34 @@ input.addEventListener('paste',async event=>{
 
 function renderTable(header,rows){return TableImages.render(header,rows);}
 
-function buildPayload(source,imageAssets=assets){
- return ChatPayload.build(source,{markdown:ChatMarkdown,renderers:ChatRenderers,renderTable,imageAssets,ensureImage,describeImageError:(src,error)=>imageResourceLabel(src)+'：'+shortImageError(error)});
+function buildPayload(source,imageAssets=assets,options={}){
+ if(source.length>2*1024*1024)return Promise.reject(new Error('文字过长，请分段转换（最多 2 MB 字符）。'));
+ const relative=ChatMarkdown.parse(source).filter(block=>block.type==='image'&&!block.id&&ImageDirectory.isRelative(block.src)).map(block=>block.src);
+ const build=imageOverrides=>ChatPayload.build(source,{markdown:ChatMarkdown,renderers:ChatRenderers,renderTable,imageAssets,imageOverrides,ensureImage,describeImageError:(src,error)=>imageResourceLabel(src)+'：'+shortImageError(error)});
+ if(!relative.length)return build(new Map());
+ if(!window.md2chatDesktop)return Promise.reject(new Error('请使用桌面版读取，网页版请粘贴图片。'));
+ return prepareRelativeImages(relative,options).then(build).then(payload=>{
+  if(!payload.segments.length)throw Object.assign(new Error('没有可复制的内容。'),{empty:true});
+  return payload;
+ });
 }
-let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0;
+let relativeImageDialog;
+function prepareRelativeImages(resources,{requestId}={}){
+ relativeImageDialog ||= ImageDirectory.create({load:async(resource,directory)=>{
+  const resolvedPath=await window.md2chatDesktop.resolveImagePath(resource,directory);
+  try{return await ensureImage({src:resolvedPath},{allowLocal:true});}
+  catch(error){error.resolvedPath=resolvedPath;throw error;}
+ }});
+ return relativeImageDialog.request(resources,{waiting:requestId?(value,directory)=>window.md2chatDesktop.directoryPrompt(requestId,value,directory):undefined});
+}
+function directoryText(key,values={}){return (window.md2chatI18n?.t(key)||key).replace(/\{(\w+)\}/g,(_,name)=>String(values[name]??''));}
+function showSkippedImages(payload){
+ const details=document.getElementById('skipped-images'),skipped=payload.skippedImages||[];details.hidden=!skipped.length;
+ if(!skipped.length)return;
+ details.querySelector('summary').textContent=directoryText('已跳过 {n} 张图片',{n:skipped.length});
+ const list=details.querySelector('ul');list.replaceChildren();for(const resource of skipped){const item=document.createElement('li');item.textContent=resource;list.append(item);}
+}
+let cachedSource=null,cachedPayload=null,previewTimer,renderVersion=0,cancelledPreviewSource=null,skippedStatusText=null;
 if(window.md2chatDesktop){
  document.getElementById('back-home').hidden=true;
  document.querySelector('[data-copy-target="image"]').hidden=false;
@@ -229,25 +254,29 @@ if(window.md2chatDesktop){
 function conversionSummary(payload){return '原文图片 '+payload.originalImages+' 张 + 表格图片 '+payload.tableImages+' 张 + 公式 '+payload.mathImages+' 张 + 图表 '+payload.mermaidImages+' 张 + 代码 '+payload.codeImages+' 张 = 共 '+payload.imageCount+' 张图片。';}
 function updateCopyControls(){for(const b of copyButtons){const target=b.dataset.copyTarget;b.setAttribute('aria-pressed','false');b.title=desktopRequired(b)?'':target==='image'?copyTargetNote(target):'复制到'+ChatTargets.profile(target).label+'：'+copyTargetNote(target);if(desktopRequired(b)){b.disabled=true;if(target!=='image')b.setAttribute('aria-describedby',target+'-desktop-hint');}else b.removeAttribute('aria-describedby');}}
 updateCopyControls();
-async function updatePreview(){
+async function updatePreview({interactive=false}={}){
  const snapshot=inputSnapshot(),source=snapshot.source;const version=++renderVersion;clearInputError();
  button.disabled=true;
  if(source===cachedSource&&cachedPayload){button.disabled=false;return cachedPayload;}
  cachedPayload=null;
+ if(!interactive&&cancelledPreviewSource===source){button.disabled=false;return null;}
  if(!source.trim()){message.innerHTML='<p style="color:#718096">'+escapeHtml(window.md2chatI18n?.t('粘贴图文或 Markdown 后，这里会显示完整预览。') || '粘贴图文或 Markdown 后，这里会显示完整预览。')+'</p>';cachedSource=null;document.getElementById('conversion-info').textContent='';return null;}
  try{
   const payload=await buildPayload(source);
   if(version!==renderVersion)return null;
-  message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;button.disabled=false;updateCopyControls(true);
+  message.innerHTML=payload.preview;cachedSource=source;cachedPayload=payload;cancelledPreviewSource=null;button.disabled=false;updateCopyControls(true);showSkippedImages(payload);
   document.getElementById('conversion-info').textContent=conversionSummary(payload);
-  status.textContent=window.md2chatDesktop?'内容已准备好，可转图片或按平台复制。':'图文已准备好，点击目标平台图标复制。';return payload;
- }catch(error){if(version===renderVersion){message.textContent=error.message;status.textContent=error.message;markInputError(snapshot,error);document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}return null;}
+  status.textContent=payload.skippedImages?.length?directoryText('转换完成，已跳过 {n} 张图片。',{n:payload.skippedImages.length}):window.md2chatDesktop?'内容已准备好，可转图片或按平台复制。':'图文已准备好，点击目标平台图标复制。';skippedStatusText=payload.skippedImages?.length?status.textContent:null;return payload;
+ }catch(error){if(version===renderVersion){
+  if(error.cancelled||error.empty){cancelledPreviewSource=source;button.disabled=false;status.textContent=error.message;document.getElementById('conversion-info').textContent='';}
+  else{message.textContent=error.message;status.textContent=error.message;markInputError(snapshot,error);document.getElementById('conversion-info').textContent='转换未完成，请根据提示调整内容后重试。';}
+ }return null;}
 }
 document.getElementById('clear-input').addEventListener('click',()=>{
- inputEpoch++;clearTimeout(previewTimer);input.replaceChildren();assets.clear();selectedImageId=null;cachedSource=null;cachedPayload=null;
+ inputEpoch++;relativeImageDialog?.cancel();cancelledPreviewSource=null;clearTimeout(previewTimer);input.replaceChildren();assets.clear();selectedImageId=null;cachedSource=null;cachedPayload=null;document.getElementById('skipped-images').hidden=true;
  updateCopyControls(true);updatePreview();status.textContent='已清空，请粘贴新内容。';input.focus();
 });
-input.addEventListener('input',()=>{renderVersion++;clearInputError();button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
+input.addEventListener('input',()=>{renderVersion++;relativeImageDialog?.cancel();cancelledPreviewSource=null;clearInputError();button.disabled=true;cachedPayload=null;clearTimeout(previewTimer);status.textContent='正在准备文字、图片、公式和图表…';previewTimer=setTimeout(updatePreview,350);});
 function nativeCopy(payload){
  const sink=document.createElement('div');sink.contentEditable='true';sink.setAttribute('aria-hidden','true');sink.style.cssText='position:fixed;left:-100000px;top:0;width:1100px;background:white;';
  sink.innerHTML=payload.html;document.body.appendChild(sink);
@@ -261,7 +290,11 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
  if(copying||desktopRequired(copyButton))return;
  clearTimeout(previewTimer);
  const target=copyButton.dataset.copyTarget,profile=target==='image'?null:ChatTargets.profile(target);
- if(!cachedPayload||cachedSource!==serializeInput()){const refreshed=await updatePreview();if(refreshed)status.textContent=target==='image'?'预览已更新，请再次点击“图片”。':'预览已更新，请点击平台图标复制。';return;}
+ if(!cachedPayload||cachedSource!==serializeInput()){
+  copying=true;button.disabled=true;
+  try{if(!await updatePreview({interactive:true}))return;}
+  finally{copying=false;button.disabled=false;}
+ }
  if(target==='wecom'&&!['darwin','win32'].includes(window.md2chatDesktop?.platform)&&cachedPayload.segments.some(part=>part.type==='image')){
   try{wecomSegments.open(cachedPayload.segments);status.textContent='企微图文已分段，请按顺序复制并粘贴文字和图片。';}
   catch(error){showCopyNotice(error.message,true);}
@@ -285,6 +318,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
     message.innerHTML=ChatTargets.render([image],'wechat').html;
     document.getElementById('conversion-info').textContent=copyTargetNote('image');
     status.textContent='已转为图片并写入剪贴板，可以直接粘贴。';
+    if(payload.skippedImages?.length){const notice=directoryText('转换完成，已跳过 {n} 张图片。',{n:payload.skippedImages.length});skippedStatusText=notice;showCopyNotice(notice);status.textContent=notice;}
    }else{
     const notice='已复制转换开始时的内容；当前文档已更新，请重新转图片。';
     showCopyNotice(notice);status.textContent=notice;
@@ -306,6 +340,7 @@ for(const copyButton of copyButtons)copyButton.addEventListener('click',async()=
    message.innerHTML=ChatTargets.render(parts,target,window.md2chatDesktop?.platform||'web').html;
    document.getElementById('conversion-info').textContent=target==='email'?'邮件预览：'+payload.tableCount+' 个可编辑表格，'+count+' 张图片。':conversionSummary(payload);
    status.textContent='已复制到剪贴板（'+profile.label+'图文，'+count+' 张图片'+(target==='email'?'，表格可编辑':'')+'）。'+(native?'到钉钉聊天框粘贴即可。':windowsHtml?'已写入 Chromium 兼容图文，请到钉钉粘贴并确认图片完整。':copyTargetNote(target));
+   if(payload.skippedImages?.length){const notice=directoryText('转换完成，已跳过 {n} 张图片。',{n:payload.skippedImages.length});skippedStatusText=notice;showCopyNotice(notice);status.textContent=notice;}
   }
  }catch(error){showCopyNotice(target==='image'?'转图片未完成，请根据提示重试。':'复制失败，请查看下方提示后重试',true);status.textContent=target==='image'?error.message:'复制未完成：'+error.message+'。请允许剪贴板访问后重试。';}
  finally{copying=false;button.disabled=!cachedPayload||cachedSource!==serializeInput();}
@@ -418,7 +453,7 @@ document.getElementById('export-diagnostics').addEventListener('click',async()=>
 });
 
 // Tray conversions use their own image registry and never replace the editor's input or preview.
-async function convertClipboardContent(content,target){
+async function convertClipboardContent(content,target,options={}){
  if(target!=='image')ChatTargets.profile(target);
  const imageAssets=new Map();let nextId=1;
  const register=src=>{
@@ -429,12 +464,21 @@ async function convertClipboardContent(content,target){
  for(const item of content)sources.push(await ClipboardSource.toSource(item,{registerImage:register,htmlToSource}));
  const source=sources.join('\n');
  if(!source.trim())throw new Error('剪贴板中没有可转换的文字或图片。');
- const payload=await buildPayload(source,imageAssets);
- if(target==='image')return [await ClipboardImage.render(payload.segments)];
- return target==='email'?payload.emailSegments:payload.segments;
+ const payload=await buildPayload(source,imageAssets,options);
+ const parts=target==='image'?[await ClipboardImage.render(payload.segments)]:target==='email'?payload.emailSegments:payload.segments;
+ parts.skippedImages=payload.skippedImages||[];return parts;
 }
 window.md2chatDesktop?.onWecomSegments?.(parts=>wecomSegments.open(parts));
 window.md2chatDesktop?.onConvertClipboard?.(convertClipboardContent);
+window.md2chatDesktop?.onDirectoryCancel?.(()=>relativeImageDialog?.cancel());
+window.addEventListener?.('md2chat:language',()=>{
+ if(!cachedPayload)return;showSkippedImages(cachedPayload);
+ if(skippedStatusText&&status.textContent===skippedStatusText){
+  const next=directoryText('转换完成，已跳过 {n} 张图片。',{n:cachedPayload.skippedImages.length});
+  if(copyNotice.textContent===skippedStatusText)copyNotice.textContent=next;
+  status.textContent=next;skippedStatusText=next;
+ }
+});
 
 // Localize only the empty UI hint; a language change never rewrites user content.
 window.addEventListener?.('md2chat:language', () => { if (!serializeInput().trim()) void updatePreview(); });

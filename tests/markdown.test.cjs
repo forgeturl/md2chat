@@ -55,7 +55,7 @@ test('HTML tables containing images fail explicitly instead of silently dropping
  assert.throws(()=>ctx.htmlToSource('<table><tr><td><img src="data:image/png;base64,AAAA"></td></tr></table>'),/表格单元格中的图片/);
 });
 function payloadContext(){
- const ctx={ChatMarkdown:chat,ChatPayload:require('../assets/chat-payload.js'),ChatRenderers:{},assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
+ const ctx={ImageDirectory:require('../assets/image-directory.js'),ChatMarkdown:chat,ChatPayload:require('../assets/chat-payload.js'),ChatRenderers:{},assets:new Map([['1',{src:'data:image/png;base64,ORIGINAL',width:32,height:24}]]),ensureImage:async a=>a,renderTable:()=>[{src:'data:image/png;base64,TABLE',width:100,height:100}]};vm.createContext(ctx);
  vm.runInContext(code.slice(code.indexOf('const escapeHtml='),code.indexOf('const assets='))+code.slice(code.indexOf('function buildPayload('),code.indexOf('let cachedSource=')),ctx);return ctx;
 }
 test('task emojis survive chat, email, plaintext and WeCom segments without becoming images',async()=>{
@@ -113,6 +113,60 @@ test('desktop Markdown local images are embedded in preview and copy segments in
  assert.equal(result.segments[1].sourceUrl,undefined);assert.equal(result.originalImages,1);
  assert(result.preview.includes('<img src="'+data+'"'));assert(!result.html.includes(filename));
 });
+test('local SVG images become PNG before preview and platform output, including tray conversion',async()=>{
+ const png='data:image/png;base64,AAAA',svg='data:image/svg+xml;base64,PHN2Zy8+';
+ for(const platform of ['darwin','win32']){
+  const ctx=payloadContext(),reads=[],renders=[];
+  ctx.window={md2chatDesktop:{platform,readLocalImage:async src=>{reads.push(src);return svg;}}};
+  ctx.ChatRenderers.svg=async src=>{renders.push(src);return {src:png,width:640,height:400,displayWidth:320,displayHeight:200};};
+  ctx.Image=class{constructor(){this.naturalWidth=640;this.naturalHeight=400;}set src(value){assert.equal(value,png);this.onload();}};
+  ctx.fetch=()=>assert.fail('local SVG must not use network fetch');
+  vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+  const filename=platform==='darwin'?'/tmp/diagram.svg':'C:\\Pictures\\diagram.svg';
+  const source='前文\n\n![图]('+filename+')\n\n后文';
+  const result=await ctx.buildPayload(source);
+  assert.deepEqual(reads,[filename]);assert.deepEqual(renders,[svg]);
+  assert.deepEqual(Array.from(result.segments,part=>part.type),['text','image','text']);
+  assert.equal(result.segments[1].src,png);assert.equal(result.segments[1].displayWidth,320);
+  assert.equal(result.originalImages,1);assert(!result.html.includes('image/svg+xml'));
+  assert(result.preview.includes(png));assert.equal(result.emailSegments[1].src,png);
+  ctx.ChatTargets=require('../assets/chat-targets.js');ctx.ClipboardSource=require('../assets/clipboard-source.js');ctx.htmlToSource=()=>assert.fail('plain Markdown must not import HTML');
+  vm.runInContext(code.slice(code.indexOf('async function convertClipboardContent('),code.indexOf('window.md2chatDesktop?.onWecomSegments')),ctx);
+  const parts=await ctx.convertClipboardContent([{plain:source}],'wechat');
+  assert.equal(parts[1].src,png);assert.equal(parts[0].text,'前文');assert.equal(parts[2].text,'后文');
+ }
+});
+test('a local SVG rendering error identifies the original Markdown image',async()=>{
+ const ctx=payloadContext();ctx.window={md2chatDesktop:{readLocalImage:async()=>'data:image/svg+xml;base64,PHN2Zy8+'}};
+ ctx.ChatRenderers.svg=async()=>{throw new Error('图片数据无法解码');};
+ vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function registerImage('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
+ await assert.rejects(()=>ctx.buildPayload('![图](/tmp/broken.svg)'),{message:'/tmp/broken.svg：图片无法解码。'});
+});
+test('ignored images leave surrounding text and readable images in source order',async()=>{
+ const overrides=new Map([['assets/missing.svg',null],['assets/found.svg',{src:'data:image/png;base64,AAAA',width:30,height:20,ready:true}]]);
+ const result=await require('../assets/chat-payload.js').build('前文\n\n![缺失](assets/missing.svg)\n\n中间\n\n![保留](assets/found.svg)\n\n后文',{
+  markdown:chat,renderers:{},renderTable:()=>[],imageOverrides:overrides,ensureImage:async asset=>{assert.notEqual(asset.src,'assets/missing.svg');return asset;}
+ });
+ assert.deepEqual(result.skippedImages,['assets/missing.svg']);assert.equal(result.originalImages,1);
+ assert.deepEqual(result.segments.map(part=>part.type),['text','image','text']);assert(result.segments[0].text.includes('前文'));assert(result.segments[0].text.includes('中间'));assert.equal(result.segments[2].text,'后文');
+});
+test('relative Markdown images use only the directory entered for that conversion',async()=>{
+ const ctx=payloadContext(),reads=[],waiting=[];let actions;
+ ctx.window={md2chatDesktop:{resolveImagePath:async(resource,directory)=>{reads.push([resource,directory]);return directory+'/'+resource;},directoryPrompt:async(id,value)=>waiting.push([id,value])}};
+ const real=require('../assets/image-directory.js');ctx.ImageDirectory={...real,create:options=>real.create({...options,view:{open(value){actions=value;},update(){},close(){}}})};
+ ctx.ensureImage=async asset=>({src:'data:image/png;base64,AAAA',width:10,height:10});
+ const source='前文\n\n![图](assets/a.svg)\n\n后文';
+ for(const [requestId,directory] of [[7,'/first'],[8,'/second']]){
+  const promise=ctx.buildPayload(source,new Map(),{requestId});await new Promise(resolve=>setImmediate(resolve));await actions.submit(directory);
+  const payload=await promise;assert.equal(payload.originalImages,1);assert.deepEqual(Array.from(payload.segments,part=>part.type),['text','image','text']);
+ }
+ assert.deepEqual(reads,[['assets/a.svg','/first'],['assets/a.svg','/second']]);assert.deepEqual(waiting,[[7,true],[7,false],[8,true],[8,false]]);
+ const empty=ctx.buildPayload('![图](assets/a.svg)');await new Promise(resolve=>setImmediate(resolve));await actions.ignore('');await assert.rejects(empty,/没有可复制的内容/);
+});
+test('the payload size limit is enforced before relative-image preflight parsing',async()=>{
+ const ctx=payloadContext();ctx.ChatMarkdown={parse:()=>assert.fail('oversized input must not be parsed')};
+ await assert.rejects(async()=>ctx.buildPayload('x'.repeat(2*1024*1024+1)),/文字过长/);
+});
 test('local image paths require the desktop Markdown path, never HTML or browser fetch',async()=>{
  const requests=[],ctx={window:{},fetch:()=>assert.fail('local paths must not be fetched'),assets:new Map(),nextAsset:1};vm.createContext(ctx);
  vm.runInContext(code.slice(code.indexOf('function safeImageSource('),code.indexOf('function htmlToSource('))+code.slice(code.indexOf('async function ensureImage('),code.indexOf("input.addEventListener('click'")),ctx);
@@ -160,7 +214,7 @@ test('source error ranges target the complete failing Markdown image reference',
 });
 test('editing invalidates an in-flight preview before the debounce fires',()=>{
  let inputHandler;
- const ctx={renderVersion:4,clearInputError(){},button:{},cachedPayload:{},previewTimer:1,status:{},
+ const ctx={renderVersion:4,relativeImageDialog:null,clearInputError(){},button:{},cachedPayload:{},previewTimer:1,status:{},
   input:{addEventListener:(name,handler)=>{assert.equal(name,'input');inputHandler=handler;}},
   clearTimeout(){},setTimeout(){return 2;},updatePreview(){}};
  vm.createContext(ctx);

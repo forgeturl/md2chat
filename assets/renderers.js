@@ -51,6 +51,43 @@
    return {src:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height,displayWidth,displayHeight};
   }finally{URL.revokeObjectURL(url);}
  }
+ // Original SVG files are images, never live DOM. Browser image decoding keeps
+ // scripts and external resources inactive; the rest of the app only sees PNG.
+ async function originalSvg(source){
+  if(typeof source!=='string'||source.length>15*1024*1024||!/^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+={0,2}$/i.test(source))throw new Error('图片数据无效。');
+  let svg;
+  try{
+   const bytes=Uint8Array.from(atob(source.slice(source.indexOf(',')+1)),char=>char.charCodeAt(0));
+   const doc=new DOMParser().parseFromString(new TextDecoder('utf-8',{fatal:true}).decode(bytes),'image/svg+xml');
+   svg=doc.documentElement;
+   if(doc.querySelector('parsererror')||svg.localName!=='svg'||svg.namespaceURI!=='http://www.w3.org/2000/svg')throw new Error();
+  }catch{throw new Error('图片数据无法解码');}
+  // A viewBox-only file otherwise gets the browser's small default image size.
+  if(!svg.hasAttribute('width')&&!svg.hasAttribute('height')){
+   const box=(svg.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+   if(box.length===4&&box.every(Number.isFinite)&&box[2]>0&&box[3]>0){svg.setAttribute('width',box[2]);svg.setAttribute('height',box[3]);}
+  }
+  // A data URL also keeps self-contained foreignObject content canvas-readable.
+  const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  let canvas;
+  try{
+   const image=new Image();image.src=url;
+   try{await image.decode();}catch{throw new Error('图片数据无法解码');}
+   const width=image.naturalWidth,height=image.naturalHeight;
+   if(!width||!height)throw new Error('图片数据无法解码');
+   if(width*height>20000000)throw new Error('图片不能超过 2000 万像素');
+   const scale=width*height<=5000000?2:1;
+   canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=height*scale;
+   const context=canvas.getContext('2d');if(!context)throw new Error('图片数据无法解码');
+   context.drawImage(image,0,0,canvas.width,canvas.height);
+   let src;
+   try{src=canvas.toDataURL('image/png');}catch{throw new Error('图片数据无法解码');}
+   if(!src.startsWith('data:image/png;base64,'))throw new Error('图片数据无法解码');
+   const encoded=src.slice(src.indexOf(',')+1),bytes=encoded.length/4*3-(encoded.endsWith('==')?2:encoded.endsWith('=')?1:0);
+   if(bytes>10*1024*1024)throw new Error('单张图片不能超过 10 MB');
+   return {src,width:canvas.width,height:canvas.height,displayWidth:width,displayHeight:height};
+  }finally{if(canvas){canvas.width=0;canvas.height=0;}}
+ }
  async function run(type,source,display){
   if(type==='math'&&(source.length>10000||/\\(?:require|href|url|includegraphics)\b/.test(source)))throw new Error('公式过长或含不支持的外部资源命令');
   if(type==='mermaid'&&(source.length>30000||/%%\s*\{|^\s*---|(?:https?|data|file|javascript):|\b(?:img|image)\s*:/i.test(source)))throw new Error('图表过长或含配置/外部资源；请使用不带配置的 Mermaid 源码');
@@ -74,7 +111,7 @@
   const result=serial.then(()=>run(type,source,display));serial=result.catch(()=>{});cache.set(key,result);
   result.catch(()=>cache.delete(key));if(cache.size>24)cache.delete(cache.keys().next().value);return result;
  }
- const api={math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source),code:async(source,language)=>{
+ const api={svg:originalSvg,math:(tex,display=true)=>render('math',tex,display),mermaid:source=>render('mermaid',source),code:async(source,language)=>{
   await load('highlight/highlight.min.js');return (codeImages||root.CodeImages).render(source,language,root.hljs);
  }};
  if(typeof module==='object')module.exports=api;else root.ChatRenderers=api;

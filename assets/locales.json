@@ -6307,6 +6307,248 @@
       "de": "Neueste Version",
       "fr": "Dernière version",
       "hi": "नवीनतम संस्करण"
+    },
+    "补充图片目录": {
+      "zh-CN": "补充图片目录",
+      "en": "Locate images",
+      "es": "Localizar imágenes",
+      "pt-BR": "Localizar imagens",
+      "ja": "画像の場所を指定",
+      "ko": "이미지 위치 지정",
+      "de": "Bilder finden",
+      "fr": "Localiser les images",
+      "hi": "चित्रों का स्थान बताएँ"
+    },
+    "填写目录以读取图片，也可忽略图片继续。": {
+      "zh-CN": "填写目录以读取图片，也可忽略图片继续。",
+      "en": "Enter a folder to load images, or skip them and continue.",
+      "es": "Indica una carpeta para cargar las imágenes u omítelas para continuar.",
+      "pt-BR": "Informe uma pasta para carregar as imagens ou ignore-as para continuar.",
+      "ja": "フォルダを入力して画像を読み込むか、画像をスキップして続行できます。",
+      "ko": "폴더를 입력해 이미지를 불러오거나 건너뛰고 계속하세요.",
+      "de": "Ordner zum Laden der Bilder eingeben oder Bilder überspringen und fortfahren.",
+      "fr": "Indiquez un dossier pour charger les images, ou ignorez-les pour continuer.",
+      "hi": "चित्र लोड करने के लिए फ़ोल्डर दर्ज करें या उन्हें छोड़कर आगे बढ़ें।"
+    },
+    "Markdown 所在目录": {
+      "zh-CN": "Markdown 所在目录",
+      "en": "Markdown folder",
+      "es": "Carpeta del Markdown",
+      "pt-BR": "Pasta do Markdown",
+      "ja": "Markdown のフォルダ",
+      "ko": "Markdown 폴더",
+      "de": "Markdown-Ordner",
+      "fr": "Dossier du Markdown",
+      "hi": "Markdown का फ़ोल्डर"
+    },
+    "输入或粘贴目录路径": {
+      "zh-CN": "输入或粘贴目录路径",
+      "en": "Enter or paste a folder path",
+      "es": "Escribe o pega la ruta de la carpeta",
+      "pt-BR": "Digite ou cole o caminho da pasta",
+      "ja": "フォルダのパスを入力または貼り付け",
+      "ko": "폴더 경로를 입력하거나 붙여넣으세요",
+      "de": "Ordnerpfad eingeben oder einfügen",
+      "fr": "Saisissez ou collez le chemin du dossier",
+      "hi": "फ़ोल्डर का पथ लिखें या पेस्ट करें"
+    },
+    "正在检查图片…": {
+      "zh-CN": "正在检查图片…",
+      "en": "Checking images…",
+      "es": "Comprobando imágenes…",
+      "pt-BR": "Verificando imagens…",
+      "ja": "画像を確認中…",
+      "ko": "이미지 확인 중…",
+      "de": "Bilder werden geprüft…",
+      "fr": "Vérification des images…",
+      "hi": "चित्रों की जाँच हो रही है…"
+    },
+    "已读取 {loaded} 张，{missing} 张无法读取。": {
+      "zh-CN": "已读取 {loaded} 张，{missing} 张无法读取。",
+      "en": "Loaded: {loaded}. Unavailable: {missing}.",
+      "es": "Cargadas: {loaded}. No disponibles: {missing}.",
+      "pt-BR": "Carregadas: {loaded}. Indisponíveis: {missing}.",
+      "ja": "読み込み済み：{loaded} 枚、読み込めない画像：{missing} 枚。",
+      "ko": "불러옴: {loaded}개. 불러올 수 없음: {missing}개.",
+      "de": "Geladen: {loaded}. Nicht verfügbar: {missing}.",
+      "fr": "Chargées : {loaded}. Indisponibles : {missing}.",
+      "hi": "लोड हुए: {loaded}। अनुपलब्ध: {missing}।"
+    },
+    "图片引用（{n}）": {
+      "zh-CN": "图片引用（{n}）",
+      "en": "Image references ({n})",
+      "es": "Referencias de imágenes ({n})",
+      "pt-BR": "Referências de imagens ({n})",
+      "ja": "画像の参照（{n}）",
+      "ko": "이미지 참조 ({n})",
+      "de": "Bildverweise ({n})",
+      "fr": "Références des images ({n})",
+      "hi": "चित्र संदर्भ ({n})"
+    },
+    "忽略并继续": {
+      "zh-CN": "忽略并继续",
+      "en": "Skip and continue",
+      "es": "Omitir y continuar",
+      "pt-BR": "Ignorar e continuar",
+      "ja": "スキップして続行",
+      "ko": "건너뛰고 계속",
+      "de": "Überspringen und fortfahren",
+      "fr": "Ignorer et continuer",
+      "hi": "छोड़ें और आगे बढ़ें"
+    },
+    "将跳过 {n} 张图片。": {
+      "zh-CN": "将跳过 {n} 张图片。",
+      "en": "Will skip {n} images.",
+      "es": "Se omitirán {n} imágenes.",
+      "pt-BR": "Serão ignoradas {n} imagens.",
+      "ja": "{n} 枚の画像をスキップします。",
+      "ko": "이미지 {n}개를 건너뜁니다.",
+      "de": "{n} Bilder werden übersprungen.",
+      "fr": "{n} images seront ignorées.",
+      "hi": "{n} चित्र छोड़ दिए जाएँगे।"
+    },
+    "检查中…": {
+      "zh-CN": "检查中…",
+      "en": "Checking…",
+      "es": "Comprobando…",
+      "pt-BR": "Verificando…",
+      "ja": "確認中…",
+      "ko": "확인 중…",
+      "de": "Prüfen…",
+      "fr": "Vérification…",
+      "hi": "जाँच हो रही है…"
+    },
+    "目录不存在或无法访问。": {
+      "zh-CN": "目录不存在或无法访问。",
+      "en": "Folder not found or inaccessible.",
+      "es": "La carpeta no existe o no se puede acceder a ella.",
+      "pt-BR": "A pasta não existe ou não está acessível.",
+      "ja": "フォルダが存在しないか、アクセスできません。",
+      "ko": "폴더가 없거나 접근할 수 없습니다.",
+      "de": "Ordner nicht gefunden oder nicht zugänglich.",
+      "fr": "Dossier introuvable ou inaccessible.",
+      "hi": "फ़ोल्डर नहीं मिला या उस तक पहुँच नहीं है।"
+    },
+    "转换已取消。": {
+      "zh-CN": "转换已取消。",
+      "en": "Conversion cancelled.",
+      "es": "Conversión cancelada.",
+      "pt-BR": "Conversão cancelada.",
+      "ja": "変換をキャンセルしました。",
+      "ko": "변환을 취소했습니다.",
+      "de": "Konvertierung abgebrochen.",
+      "fr": "Conversion annulée.",
+      "hi": "रूपांतरण रद्द कर दिया गया।"
+    },
+    "没有可复制的内容。": {
+      "zh-CN": "没有可复制的内容。",
+      "en": "Nothing to copy.",
+      "es": "No hay contenido para copiar.",
+      "pt-BR": "Não há conteúdo para copiar.",
+      "ja": "コピーできる内容がありません。",
+      "ko": "복사할 내용이 없습니다.",
+      "de": "Kein Inhalt zum Kopieren.",
+      "fr": "Aucun contenu à copier.",
+      "hi": "कॉपी करने के लिए कोई सामग्री नहीं है।"
+    },
+    "转换完成，已跳过 {n} 张图片。": {
+      "zh-CN": "转换完成，已跳过 {n} 张图片。",
+      "en": "Conversion complete. Skipped {n} images.",
+      "es": "Conversión completada. Se omitieron {n} imágenes.",
+      "pt-BR": "Conversão concluída. {n} imagens foram ignoradas.",
+      "ja": "変換が完了しました。{n} 枚の画像をスキップしました。",
+      "ko": "변환 완료. 이미지 {n}개를 건너뛰었습니다.",
+      "de": "Konvertierung abgeschlossen. {n} Bilder übersprungen.",
+      "fr": "Conversion terminée. {n} images ignorées.",
+      "hi": "रूपांतरण पूरा हुआ। {n} चित्र छोड़े गए।"
+    },
+    "已跳过 {n} 张图片": {
+      "zh-CN": "已跳过 {n} 张图片",
+      "en": "Skipped {n} images",
+      "es": "Se omitieron {n} imágenes",
+      "pt-BR": "{n} imagens ignoradas",
+      "ja": "{n} 枚の画像をスキップしました",
+      "ko": "이미지 {n}개를 건너뛰었습니다",
+      "de": "{n} Bilder übersprungen",
+      "fr": "{n} images ignorées",
+      "hi": "{n} चित्र छोड़े गए"
+    },
+    "确定": {
+      "zh-CN": "确定",
+      "en": "Confirm",
+      "es": "Confirmar",
+      "pt-BR": "Confirmar",
+      "ja": "確定",
+      "ko": "확인",
+      "de": "Bestätigen",
+      "fr": "Confirmer",
+      "hi": "पुष्टि करें"
+    },
+    "路径无效。": {
+      "zh-CN": "路径无效。",
+      "en": "Invalid path.",
+      "es": "Ruta no válida.",
+      "pt-BR": "Caminho inválido.",
+      "ja": "パスが無効です。",
+      "ko": "잘못된 경로입니다.",
+      "de": "Ungültiger Pfad.",
+      "fr": "Chemin non valide.",
+      "hi": "पथ अमान्य है।"
+    },
+    "文件不存在。": {
+      "zh-CN": "文件不存在。",
+      "en": "File not found.",
+      "es": "No se encontró el archivo.",
+      "pt-BR": "Arquivo não encontrado.",
+      "ja": "ファイルが見つかりません。",
+      "ko": "파일을 찾을 수 없습니다.",
+      "de": "Datei nicht gefunden.",
+      "fr": "Fichier introuvable.",
+      "hi": "फ़ाइल नहीं मिली।"
+    },
+    "无读取权限。": {
+      "zh-CN": "无读取权限。",
+      "en": "No permission to read this file.",
+      "es": "No tienes permiso para leer este archivo.",
+      "pt-BR": "Sem permissão para ler este arquivo.",
+      "ja": "ファイルの読み取り権限がありません。",
+      "ko": "파일을 읽을 권한이 없습니다.",
+      "de": "Keine Leseberechtigung für diese Datei.",
+      "fr": "Vous ne pouvez pas lire ce fichier.",
+      "hi": "इस फ़ाइल को पढ़ने की अनुमति नहीं है।"
+    },
+    "不是普通图片文件。": {
+      "zh-CN": "不是普通图片文件。",
+      "en": "Not a regular image file.",
+      "es": "No es un archivo de imagen normal.",
+      "pt-BR": "Não é um arquivo de imagem regular.",
+      "ja": "通常の画像ファイルではありません。",
+      "ko": "일반 이미지 파일이 아닙니다.",
+      "de": "Keine reguläre Bilddatei.",
+      "fr": "Ce fichier n’est pas une image ordinaire.",
+      "hi": "यह सामान्य चित्र फ़ाइल नहीं है।"
+    },
+    "超过图片大小限制。": {
+      "zh-CN": "超过图片大小限制。",
+      "en": "Image exceeds the size limit.",
+      "es": "La imagen supera el límite de tamaño.",
+      "pt-BR": "A imagem excede o limite de tamanho.",
+      "ja": "画像のサイズ制限を超えています。",
+      "ko": "이미지 크기 제한을 초과했습니다.",
+      "de": "Das Bild überschreitet die Größenbegrenzung.",
+      "fr": "L’image dépasse la taille autorisée.",
+      "hi": "चित्र आकार सीमा से अधिक है।"
+    },
+    "不支持的图片格式。": {
+      "zh-CN": "不支持的图片格式。",
+      "en": "Unsupported image format.",
+      "es": "Formato de imagen no compatible.",
+      "pt-BR": "Formato de imagem não suportado.",
+      "ja": "未対応の画像形式です。",
+      "ko": "지원하지 않는 이미지 형식입니다.",
+      "de": "Nicht unterstütztes Bildformat.",
+      "fr": "Format d’image non pris en charge.",
+      "hi": "चित्र का प्रारूप समर्थित नहीं है।"
     }
   }
 }

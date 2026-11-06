@@ -51,6 +51,27 @@ pub(crate) fn local_image_path(source: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+pub(crate) fn resolve_image_path(source: &str, directory: &str) -> Result<PathBuf, String> {
+    if source.is_empty()
+        || source.len() > 8192
+        || source.starts_with('/')
+        || source.starts_with('\\')
+        || source.chars().any(|c| c <= '\u{1f}' || c == '\u{7f}')
+        || url::Url::parse(source).is_ok()
+    {
+        return Err("路径无效。".into());
+    }
+    let directory = directory.trim();
+    let directory = directory.strip_prefix('"').and_then(|value| value.strip_suffix('"')).unwrap_or(directory);
+    let base = local_image_path(directory)?;
+    if !fs::metadata(&base).is_ok_and(|metadata| metadata.is_dir()) {
+        return Err("目录不存在或无法访问。".into());
+    }
+    let base = url::Url::from_directory_path(base).map_err(|_| "路径无效。")?;
+    let resolved = base.join(&source.replace('\\', "/")).map_err(|_| "路径无效。")?;
+    local_image_path(resolved.as_str())
+}
+
 fn same_file(a: &Metadata, b: &Metadata) -> bool {
     if !a.is_file() || !b.is_file() || a.len() != b.len() {
         return false;
@@ -225,7 +246,21 @@ pub(crate) fn encode_png(image: &image::DynamicImage) -> Result<Vec<u8>, String>
 }
 
 pub fn read_local_image(source: &str) -> Result<String, String> {
-    let bytes = safe_read(&local_image_path(source)?, MAX_IMAGE_BYTES)?;
+    let path = local_image_path(source)?;
+    let bytes = safe_read(&path, MAX_IMAGE_BYTES)?;
+    // SVG is decoded only in the WebView's isolated image context, then converted
+    // to PNG before preview or clipboard output. Never insert this XML into HTML.
+    if path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("svg"))
+        && std::str::from_utf8(&bytes).is_ok()
+    {
+        return Ok(format!(
+            "data:image/svg+xml;base64,{}",
+            STANDARD.encode(bytes)
+        ));
+    }
     let mime = image_mime(&bytes)?;
     decode_image(&bytes)?;
     Ok(format!("data:{mime};base64,{}", STANDARD.encode(bytes)))
@@ -234,6 +269,45 @@ pub fn read_local_image(source: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn relative_images_resolve_against_the_entered_directory() {
+        let root = std::env::temp_dir().join(format!("md2chat-relative-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(root.join("docs")).unwrap();
+        let directory = root.join("docs");
+        let base = directory.to_str().unwrap();
+        assert_eq!(resolve_image_path("assets/a.svg", base).unwrap(), directory.join("assets/a.svg"));
+        assert_eq!(resolve_image_path("./图片/a%20b.svg", base).unwrap(), directory.join("图片/a b.svg"));
+        assert_eq!(resolve_image_path("../images/a.png", base).unwrap(), root.join("images/a.png"));
+        assert_eq!(resolve_image_path("assets\\a.svg", base).unwrap(), directory.join("assets/a.svg"));
+        assert_eq!(resolve_image_path("assets/a.svg", &format!("\"{base}\"")).unwrap(), directory.join("assets/a.svg"));
+        for source in ["https://host/a.svg", "file:///tmp/a.svg", "//host/a.svg", "\\host\\a.svg", "C:a.svg", "a.svg#fragment", "a.svg?query", "a\n.svg"] {
+            assert!(resolve_image_path(source, base).is_err(), "{source}");
+        }
+        assert!(resolve_image_path("a.svg", root.join("missing").to_str().unwrap()).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn local_svg_is_read_for_isolated_image_rasterization() {
+        let path = std::env::temp_dir().join(format!("md2chat-{}.SVG", uuid::Uuid::new_v4()));
+        let svg = "\u{feff}<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"10\"><text>中文</text></svg>";
+        fs::write(&path, svg).unwrap();
+        assert_eq!(
+            read_local_image(path.to_str().unwrap()).unwrap(),
+            format!("data:image/svg+xml;base64,{}", STANDARD.encode(svg))
+        );
+        fs::write(&path, [0xff, 0xfe]).unwrap();
+        assert!(read_local_image(path.to_str().unwrap()).is_err());
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn svg_contents_do_not_bypass_raster_format_validation() {
+        let path = std::env::temp_dir().join(format!("md2chat-{}.png", uuid::Uuid::new_v4()));
+        fs::write(&path, b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>").unwrap();
+        assert!(read_local_image(path.to_str().unwrap()).is_err());
+        fs::remove_file(path).unwrap();
+    }
+
     #[test]
     fn rejects_nonlocal_paths() {
         for path in [

@@ -35,6 +35,20 @@ test('conversion event carries only ID and kind; content is taken through the au
  const take = state.calls.find(call => call.command === 'conversion_take'); assert.equal(take.args.id, 1); assert.equal(Object.keys(take.args).length, 1);
  const result = state.calls.find(call => call.command === 'conversion_result'); assert.equal(result.args.result.parts[0].text, 'converted');
 });
+test('directory interaction belongs to its render request and cancellation is sent without an error alert',async()=>{
+ const state=fixture({invoke:async command=>command==='conversion_take'?{kind:'render',content:[{plain:'![图](assets/a.svg)'}],target:'wechat'}:undefined});
+ let context;
+ state.bridge.onWecomSegments(()=>{});state.bridge.onConvertClipboard(async(_content,_target,value)=>{context=value;await state.bridge.directoryPrompt(value.requestId,true);throw Object.assign(new Error('cancelled'),{cancelled:true});});
+ await tick();state.listeners.get('md2chat:conversion-request')({payload:{id:7,kind:'render'}});await tick();await tick();
+ assert.equal(context.requestId,7);const prompt=state.calls.find(call=>call.command==='conversion_directory_prompt');assert.equal(prompt.args.id,7);assert.equal(prompt.args.waiting,true);
+ const result=state.calls.find(call=>call.command==='conversion_result').args.result;assert.equal(result.cancelled,true);assert.equal(result.error,undefined);
+});
+test('skipped image counts accompany successful background render results',async()=>{
+ const state=fixture({invoke:async command=>command==='conversion_take'?{kind:'render',content:[],target:'wechat'}:undefined});
+ const parts=[{type:'text',text:'kept'}];parts.skippedImages=['a.svg','b.svg'];
+ state.bridge.onWecomSegments(()=>{});state.bridge.onConvertClipboard(()=>parts);await tick();state.listeners.get('md2chat:conversion-request')({payload:{id:8,kind:'render'}});await tick();
+ const result=state.calls.find(call=>call.command==='conversion_result').args.result;assert.equal(result.skippedImages,2);assert.equal(result.parts[0].text,'kept');
+});
 test('render errors and segment opening report completion without leaking unhandled rejections', async () => {
  let kind = 'render';
  const state = fixture({invoke: async command => command === 'conversion_take' ? {kind, parts: [{type: 'text', text: 'segment'}]} : undefined});
